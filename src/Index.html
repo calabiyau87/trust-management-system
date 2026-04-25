@@ -277,6 +277,70 @@
         background: #edf8f2;
       }
 
+      .chip-list,
+      .checkbox-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .checkbox-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        max-height: 220px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 400;
+      }
+
+      .icon-button {
+        display: inline-grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        padding: 0;
+      }
+
+      .group-heading {
+        margin: 14px 0 8px;
+        padding: 8px 10px;
+        border-radius: 7px;
+        background: var(--surface-muted);
+        color: var(--text);
+        font-weight: 800;
+      }
+
+      .settings-layout {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        gap: 14px;
+      }
+
+      .side-pane {
+        display: grid;
+        gap: 6px;
+        align-self: start;
+      }
+
+      .side-pane button {
+        text-align: left;
+      }
+
+      .side-pane button.active {
+        background: var(--surface-muted);
+        border-color: var(--accent);
+      }
+
       .empty,
       .loading,
       .error {
@@ -376,7 +440,8 @@
         .filters,
         .form-grid,
         .form-grid.two,
-        .admin-grid {
+        .admin-grid,
+        .settings-layout {
           grid-template-columns: 1fr;
         }
 
@@ -426,8 +491,10 @@
         tab: "board",
         data: null,
         boardFilters: {},
+        boardGrouping: "",
         timeFilters: {},
         payFilters: {},
+        settingsSection: "profile",
         status: ""
       };
 
@@ -470,6 +537,23 @@
         }).join("");
       }
 
+      function selectedList(value) {
+        return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+      }
+
+      function renderCheckboxList(name, items, valueKey, labelKey, selectedValues) {
+        const selected = new Set(selectedValues || []);
+        return `<div class="checkbox-list">${(items || []).map((item) => `
+          <label class="checkbox-row">
+            <input type="checkbox" name="${escapeHtml(name)}" value="${escapeHtml(item[valueKey])}" ${selected.has(String(item[valueKey])) ? "checked" : ""}>
+            <span>${escapeHtml(item[labelKey] || item[valueKey])}</span>
+          </label>`).join("")}</div>`;
+      }
+
+      function renderIcon(action, idName, idValue, label, symbol, danger = false) {
+        return `<button class="icon-button ${danger ? "danger" : ""}" data-action="${escapeHtml(action)}" ${idName ? `${idName}="${escapeHtml(idValue)}"` : ""} title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${symbol}</button>`;
+      }
+
       function setStatus(message) {
         state.status = message || "";
         const line = document.querySelector("[data-status-line]");
@@ -485,12 +569,41 @@
           state.payFilters.payPeriodId = state.data.currentPayPeriod["Pay Period ID"];
           render();
         } catch (error) {
+          let diagnostic = null;
+          try {
+            diagnostic = await callServer("getAuthDiagnostic");
+          } catch (diagnosticError) {
+            diagnostic = { diagnosticError: diagnosticError.message || String(diagnosticError) };
+          }
           document.getElementById("app").innerHTML = `
             <div class="error">
               <strong>Unable to load Trust Ops.</strong><br>
               ${escapeHtml(error.message || error)}
+              ${renderAuthDiagnostic(diagnostic)}
             </div>`;
         }
+      }
+
+      function renderAuthDiagnostic(diagnostic) {
+        if (!diagnostic) return "";
+        return `
+          <div class="panel" style="margin-top: 14px; box-shadow: none;">
+            <h3>Access Diagnostic</h3>
+            <div class="table-wrap">
+              <table>
+                <tbody>
+                  <tr><td data-label="Field">Active email</td><td data-label="Value">${escapeHtml(diagnostic.activeEmail || "(blank)")}</td></tr>
+                  <tr><td data-label="Field">Effective email</td><td data-label="Value">${escapeHtml(diagnostic.effectiveEmail || "(blank)")}</td></tr>
+                  <tr><td data-label="Field">Spreadsheet configured</td><td data-label="Value">${escapeHtml(diagnostic.spreadsheetConfigured)}</td></tr>
+                  <tr><td data-label="Field">Sheet access</td><td data-label="Value">${escapeHtml(diagnostic.sheetAccessOk)}</td></tr>
+                  <tr><td data-label="Field">User row found</td><td data-label="Value">${escapeHtml(diagnostic.userFound)}</td></tr>
+                  <tr><td data-label="Field">User active</td><td data-label="Value">${escapeHtml(diagnostic.userActive)}</td></tr>
+                  <tr><td data-label="Field">Stored email</td><td data-label="Value">${escapeHtml(diagnostic.storedEmail || "")}</td></tr>
+                  <tr><td data-label="Field">Issue</td><td data-label="Value">${escapeHtml(diagnostic.issue || diagnostic.sheetAccessError || diagnostic.diagnosticError || "")}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>`;
       }
 
       async function refreshData(parts = {}) {
@@ -514,9 +627,7 @@
           ["time", "Time Tracker"],
           ["pay", "Pay Summary"]
         ];
-        if (data.permissions.canManageUsers || data.permissions.canManageProjects || data.permissions.canManageSettings) {
-          tabs.push(["admin", "Admin"]);
-        }
+        tabs.push(["settings", "Settings"]);
         document.getElementById("app").className = "app-shell";
         document.getElementById("app").innerHTML = `
           <header>
@@ -542,7 +653,7 @@
       function renderActiveTab() {
         if (state.tab === "time") return renderTimeTracker();
         if (state.tab === "pay") return renderPaySummary();
-        if (state.tab === "admin") return renderAdmin();
+        if (state.tab === "settings") return renderSettings();
         return renderBoard();
       }
 
@@ -554,12 +665,45 @@
           if (filters.projectId && task["Project ID"] !== filters.projectId) return false;
           if (filters.priority && task.Priority !== filters.priority) return false;
           if (filters.assigneeUserId && !String(task["Assignee User IDs"] || "").split(",").map((id) => id.trim()).includes(filters.assigneeUserId)) return false;
+          if (filters.tag && selectedList(task.Tags).indexOf(filters.tag) === -1) return false;
           if (search) {
             const haystack = [task.Title, task.Notes, task.Status, task.Assignees, task["Project Name"], task.Priority, task.Tags].join(" ").toLowerCase();
             if (!haystack.includes(search)) return false;
           }
           return true;
         });
+      }
+
+      function groupTaskKey(task) {
+        const grouping = state.boardGrouping || "";
+        if (grouping === "Status") return task.Status || "No status";
+        if (grouping === "Project") return task["Project Name"] || "No project";
+        if (grouping === "Assignee") return task.Assignees || "Unassigned";
+        if (grouping === "Priority") return task.Priority || "No priority";
+        if (grouping === "Tag") return task.Tags || "No tag";
+        if (grouping === "Due Week") return task["Due Date"] ? task["Due Date"].slice(0, 10) : "No due date";
+        return "";
+      }
+
+      function renderBoardResults(tasks) {
+        if (!tasks.length) return '<div class="empty">No tasks match the current filters.</div>';
+        if (!state.boardGrouping) return renderTaskTable(tasks);
+        const grouped = tasks.reduce((acc, task) => {
+          const key = groupTaskKey(task);
+          acc[key] = acc[key] || [];
+          acc[key].push(task);
+          return acc;
+        }, {});
+        return Object.keys(grouped).sort().map((key) => `
+          <div class="group-heading">${escapeHtml(key)} &middot; ${grouped[key].length}</div>
+          ${renderTaskTable(grouped[key])}
+        `).join("");
+      }
+
+      function updateBoardResultsOnly() {
+        const container = document.getElementById("board-results");
+        if (!container) return;
+        container.innerHTML = renderBoardResults(applyBoardFilters(state.data.tasks));
       }
 
       function renderBoard() {
@@ -571,19 +715,31 @@
               <h2>Assignment Board</h2>
               <p>${tasks.length} visible task${tasks.length === 1 ? "" : "s"}</p>
             </div>
-            ${data.permissions.canCreateTask ? '<button class="primary" data-action="new-task">New Task</button>' : ""}
+            <div class="actions">
+              ${data.permissions.canCreateTask ? '<button class="primary" data-action="new-task">New Task</button>' : ""}
+              <button data-action="save-board-view">Save View</button>
+              <button data-action="clear-board-filters">Clear Filters</button>
+            </div>
           </section>
           <section class="panel">
             <div class="filters">
+              <label>Saved View <select data-action="load-board-view">
+                <option value="">Select view</option>
+                ${(data.boardViews || []).map((view) => `<option value="${escapeHtml(view["Board View ID"])}">${escapeHtml(view["View Name"])} (${escapeHtml(view.Visibility)})</option>`).join("")}
+              </select></label>
               <label>Search <input data-filter="search" value="${escapeHtml(state.boardFilters.search || "")}" placeholder="Task, notes, tags"></label>
               <label>Status <select data-filter="status">${constantOptions(data.constants.taskStatuses, state.boardFilters.status, true)}</select></label>
               <label>Project <select data-filter="projectId">${options(data.projects, "Project ID", "Project Name", state.boardFilters.projectId, true)}</select></label>
               <label>Assignee <select data-filter="assigneeUserId">${options(data.users, "User ID", "Full Name", state.boardFilters.assigneeUserId, true)}</select></label>
               <label>Priority <select data-filter="priority">${constantOptions(data.constants.priorities, state.boardFilters.priority, true)}</select></label>
+              <label>Tag <select data-filter="tag">${options(data.tags || [], "Tag", "Tag", state.boardFilters.tag, true)}</select></label>
+              <label>Group By <select data-board-grouping>
+                ${constantOptions(["", "Status", "Project", "Assignee", "Priority", "Due Week", "Tag"], state.boardGrouping, false)}
+              </select></label>
             </div>
           </section>
-          <section class="panel">
-            ${tasks.length ? renderTaskTable(tasks) : '<div class="empty">No tasks match the current filters.</div>'}
+          <section class="panel" id="board-results">
+            ${renderBoardResults(tasks)}
           </section>
         `;
       }
@@ -613,7 +769,8 @@
                     <td data-label="Actions">
                       <div class="actions">
                         ${task._permissions?.canAddTime ? `<button data-action="add-time" data-task-id="${escapeHtml(task["Task ID"])}">Add Time</button>` : ""}
-                        ${task._permissions?.canEdit ? `<button data-action="edit-task" data-task-id="${escapeHtml(task["Task ID"])}">Edit</button>` : ""}
+                        ${task._permissions?.canEdit ? renderIcon("edit-task", "data-task-id", task["Task ID"], "Edit task", "&#9998;") : ""}
+                        ${task._permissions?.canDelete ? renderIcon("delete-task", "data-task-id", task["Task ID"], "Delete task", "&#128465;") : ""}
                         ${task._permissions?.canComplete && task.Status !== "Complete" ? `<button data-action="complete-task" data-task-id="${escapeHtml(task["Task ID"])}">Complete</button>` : ""}
                       </div>
                     </td>
@@ -631,24 +788,27 @@
         const canSelectUser = data.permissions.canCreateTimeForAnyUser;
         const entries = tracker.entries || [];
         const totalHours = entries.reduce((sum, entry) => sum + Number(entry.Hours || 0), 0);
+        const selectedPeriod = tracker.selectedPayPeriod || data.currentPayPeriod || {};
+        const periodLocked = String(selectedPeriod.Locked) === "true" || selectedPeriod.Status === "Locked";
+        const selectedUser = (data.users || []).find((user) => user["User ID"] === targetUserId) || data.currentUser;
         return `
           <section class="toolbar">
             <div>
               <h2>Time Tracker</h2>
-              <p>${entries.length} entry${entries.length === 1 ? "" : "ies"} · ${totalHours.toFixed(2)} selected-period hours</p>
+              <p>${entries.length === 1 ? "1 entry" : `${entries.length} entries`} &middot; ${totalHours.toFixed(2)} selected-period hours</p>
             </div>
           </section>
           <section class="panel">
             <h3>Log Time</h3>
             <form data-form="time-entry" class="stack">
               <div class="form-grid">
-                ${canSelectUser ? `<label>User <select name="userId">${options(data.users, "User ID", "Full Name", targetUserId, false)}</select></label>` : ""}
+                ${canSelectUser ? `<label>User <select name="userId">${options(data.users, "User ID", "Full Name", targetUserId, false)}</select></label>` : `<label>User <input value="${escapeHtml(selectedUser["Full Name"] || data.context.fullName)}" disabled></label>`}
                 <label>Pay Period <select name="payPeriodId">${options(data.payPeriods, "Pay Period ID", "Pay Period Label", state.timeFilters.payPeriodId, false)}</select></label>
                 <label>Entry Type <select name="entryType">
                   <option value="Task">Task Time</option>
                   <option value="General Time">General Time</option>
                 </select></label>
-                <label>Date <input name="date" type="date" value="${new Date().toISOString().slice(0, 10)}"></label>
+                <label>Date <input name="date" type="date" min="${escapeHtml(selectedPeriod["Start Date"] || "")}" max="${escapeHtml(selectedPeriod["End Date"] || "")}" value="${escapeHtml(selectedPeriod["Start Date"] || new Date().toISOString().slice(0, 10))}"></label>
                 <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" required></label>
               </div>
               <div class="form-grid two" data-time-mode="task">
@@ -659,18 +819,36 @@
                 <label>Category <select name="categoryId">${options(tracker.categories || [], "Category ID", "Category", "", false)}</select></label>
                 <label>Notes <input name="generalNotes" placeholder="Optional notes"></label>
               </div>
-              ${data.permissions.canOverrideLockedPeriod ? '<label>Override Reason <input name="overrideReason" placeholder="Required only when editing/creating in a locked period"></label>' : ""}
+              ${periodLocked && data.permissions.canOverrideLockedPeriod ? '<label>Override Reason <input name="overrideReason" placeholder="Required for locked-period override"></label>' : ""}
+              ${periodLocked && !data.permissions.canOverrideLockedPeriod ? '<label>Request Reason <input name="requestReason" placeholder="Required for locked-period request"></label>' : ""}
               <div class="actions"><button class="primary" type="submit">Save Time</button></div>
             </form>
           </section>
           <section class="panel">
             <h3>Entries</h3>
             ${entries.length ? renderEntries(entries) : '<div class="empty">No time entries for this selection.</div>'}
+            ${tracker.requests?.length ? `<h3>Pending Requests</h3>${renderTimeRequests(tracker.requests)}` : ""}
           </section>
         `;
       }
 
       function renderEntries(entries) {
+        if (state.data.permissions.canViewAllTime) {
+          const byUser = entries.reduce((acc, entry) => {
+            const key = entry["User Name"] || "Unknown user";
+            acc[key] = acc[key] || [];
+            acc[key].push(entry);
+            return acc;
+          }, {});
+          return Object.keys(byUser).sort().map((userName) => `
+            <div class="group-heading">${escapeHtml(userName)}</div>
+            ${renderEntriesByDay(byUser[userName])}
+          `).join("");
+        }
+        return renderEntriesByDay(entries);
+      }
+
+      function renderEntriesByDay(entries) {
         const grouped = entries.reduce((acc, entry) => {
           const key = entry.Date || "No date";
           acc[key] = acc[key] || [];
@@ -693,13 +871,39 @@
                         <td data-label="Project">${escapeHtml(entry["Project Name"])}</td>
                         <td data-label="Hours">${escapeHtml(entry.Hours)}</td>
                         <td data-label="Pay Period">${escapeHtml(entry["Pay Period Label"])}</td>
-                        <td data-label="Actions"><button data-action="edit-time" data-entry-id="${escapeHtml(entry["Time Entry ID"])}">Edit</button></td>
+                        <td data-label="Actions">
+                          <div class="actions">
+                            ${entry._permissions?.canEdit ? renderIcon("edit-time", "data-entry-id", entry["Time Entry ID"], "Edit time entry", "&#9998;") : ""}
+                            ${entry._permissions?.canDelete ? renderIcon("delete-time", "data-entry-id", entry["Time Entry ID"], "Delete time entry", "&#128465;", true) : ""}
+                          </div>
+                        </td>
                       </tr>`).join("")}
                   </tbody>
                 </table>
               </div>
             </div>`;
         }).join("");
+      }
+
+      function renderTimeRequests(requests) {
+        return `
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Request</th><th>User</th><th>Pay Period</th><th>Reason</th><th>Actions</th></tr></thead>
+              <tbody>${requests.map((request) => `
+                <tr>
+                  <td data-label="Request">${escapeHtml(request["Request Type"])} &middot; ${escapeHtml(request.Status)}</td>
+                  <td data-label="User">${escapeHtml(request["Requested By Name"])}</td>
+                  <td data-label="Pay Period">${escapeHtml(request["Pay Period Label"])}</td>
+                  <td data-label="Reason">${escapeHtml(request.Reason)}</td>
+                  <td data-label="Actions">
+                    ${state.data.permissions.canApproveTimeRequests && request.Status === "Pending" ? `
+                      <button data-action="approve-time-request" data-request-id="${escapeHtml(request["Time Edit Request ID"])}">Approve</button>
+                      <button data-action="reject-time-request" data-request-id="${escapeHtml(request["Time Edit Request ID"])}">Reject</button>` : ""}
+                  </td>
+                </tr>`).join("")}</tbody>
+            </table>
+          </div>`;
       }
 
       function renderPaySummary() {
@@ -709,21 +913,32 @@
           <section class="toolbar">
             <div>
               <h2>Pay Summary</h2>
-              <p>${escapeHtml(summary.payPeriod?.["Pay Period Label"] || "")} ${summary.locked ? "· Locked" : "· Open"}</p>
+              <p>${escapeHtml(summary.payPeriod?.["Pay Period Label"] || "")} ${summary.locked ? "&middot; Locked" : "&middot; Open"}</p>
             </div>
-            ${data.permissions.canOverrideLockedPeriod && !summary.locked ? `<button data-action="lock-period" class="primary">Lock Pay Period</button>` : ""}
+            <div class="actions">
+              ${data.permissions.canLockPayPeriod && !summary.locked ? `<button data-action="lock-period" class="primary">Lock Pay Period</button>` : ""}
+              ${data.permissions.canUnlockPayPeriod && summary.locked ? `<button data-action="unlock-period">Unlock Pay Period</button>` : ""}
+            </div>
           </section>
           <section class="panel">
             <div class="filters">
               ${data.permissions.canViewAllPay ? `<label>User <select data-pay-filter="userId">${options(data.users, "User ID", "Full Name", state.payFilters.userId, true)}</select></label>` : ""}
               <label>Pay Period <select data-pay-filter="payPeriodId">${options(data.payPeriods, "Pay Period ID", "Pay Period Label", state.payFilters.payPeriodId, false)}</select></label>
+              <label>Range <select data-pay-range>
+                <option value="">Selected Period</option>
+                <option value="this-year">This Year</option>
+                <option value="last-year">Last Year</option>
+                <option value="last-month">Last Month</option>
+                <option value="ytd">Year to Date</option>
+                <option value="custom">Custom Range</option>
+              </select></label>
             </div>
           </section>
           <section class="panel">
             ${summary.summaries?.length ? `
               <div class="table-wrap">
                 <table>
-                  <thead><tr><th>User</th><th>Total Hours</th><th>Pay Type</th><th>Rate/Salary</th><th>Gross Pay</th></tr></thead>
+                  <thead><tr><th>User</th><th>Total Hours</th><th>Pay Type</th><th>Rate/Salary</th><th>Effective Hourly</th><th>Gross Pay</th></tr></thead>
                   <tbody>
                     ${summary.summaries.map((row) => `
                       <tr>
@@ -731,6 +946,7 @@
                         <td data-label="Total Hours">${escapeHtml(row["Total Hours"])}</td>
                         <td data-label="Pay Type">${escapeHtml(row["Pay Type"])}</td>
                         <td data-label="Rate/Salary">${row["Pay Type"] === "Hourly" ? money(row["Hourly Rate"]) + "/hr" : money(row["Salary Amount"])}</td>
+                        <td data-label="Effective Hourly">${row["Effective Hourly Rate"] ? money(row["Effective Hourly Rate"]) + "/hr" : "N/A"}</td>
                         <td data-label="Gross Pay"><strong>${money(row["Gross Pay"])}</strong></td>
                       </tr>`).join("")}
                   </tbody>
@@ -740,19 +956,167 @@
         `;
       }
 
-      function renderAdmin() {
+      function renderSettings() {
         const data = state.data;
+        const sections = [
+          ["profile", "Profile", true],
+          ["users", "Users", data.permissions.canManageUsers],
+          ["projects", "Projects", data.permissions.canManageProjects],
+          ["categories", "Time Categories", data.permissions.canManageTimeCategories],
+          ["tags", "Tags", data.permissions.canManageTags],
+          ["settings", "Settings", data.permissions.canManageSettings]
+        ].filter((section) => section[2]);
         return `
           <section class="toolbar">
             <div>
-              <h2>Admin</h2>
-              <p>Users, projects, categories, settings, and staging migration tools</p>
+              <h2>Settings</h2>
+              <p>Profile, users, projects, categories, tags, and application settings</p>
             </div>
           </section>
-          ${data.permissions.canManageUsers ? renderUserAdmin() : ""}
-          ${data.permissions.canManageProjects ? renderProjectAdmin() : ""}
-          ${data.permissions.canManageSettings ? renderCategoryAdmin() + renderSettingsAdmin() + renderMigrationAdmin() : ""}
+          <section class="settings-layout">
+            <aside class="panel side-pane">
+              ${sections.map(([id, label]) => `<button class="${state.settingsSection === id ? "active" : ""}" data-settings-section="${id}">${label}</button>`).join("")}
+            </aside>
+            <div>${renderSettingsContent()}</div>
+          </section>
         `;
+      }
+
+      function renderSettingsContent() {
+        if (state.settingsSection === "users") return renderUsersSettings();
+        if (state.settingsSection === "projects") return renderProjectsSettings();
+        if (state.settingsSection === "categories") return renderCategoriesSettings();
+        if (state.settingsSection === "tags") return renderTagsSettings();
+        if (state.settingsSection === "settings") return renderAppSettings();
+        return renderProfileSettings();
+      }
+
+      function renderProfileSettings() {
+        const user = state.data.currentUser || {};
+        return `
+          <section class="panel">
+            <h3>Profile</h3>
+            <form data-form="profile" class="stack">
+              <div class="form-grid two">
+                <label>First Name <input name="firstName" value="${escapeHtml(user["First Name"] || "")}" required></label>
+                <label>Last Name <input name="lastName" value="${escapeHtml(user["Last Name"] || "")}"></label>
+                <label>Full Name <input name="fullName" value="${escapeHtml(user["Full Name"] || state.data.context.fullName)}" required></label>
+                <label>Email <input value="${escapeHtml(user.Email || state.data.context.email)}" disabled></label>
+              </div>
+              <button class="primary" type="submit">Save Profile</button>
+            </form>
+          </section>`;
+      }
+
+      function renderUsersSettings() {
+        const data = state.data;
+        return `
+          <section class="panel">
+            <div class="toolbar"><h3>Users</h3><button class="primary" data-action="new-user">Create User</button></div>
+            <label>Access Diagnostic <input data-diagnostic-email placeholder="email@example.com"></label>
+            <div class="actions"><button data-action="diagnose-user">Diagnose Email</button></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tracking</th><th>Actions</th></tr></thead>
+                <tbody>${data.users.map((user) => `
+                  <tr>
+                    <td data-label="Name">${escapeHtml(user["Full Name"])}</td>
+                    <td data-label="Email">${escapeHtml(user.Email)}</td>
+                    <td data-label="Role">${escapeHtml(user.Role)}</td>
+                    <td data-label="Tracking">Time: ${escapeHtml(user["Track Time"])} / Pay: ${escapeHtml(user["Track Pay"])}</td>
+                    <td data-label="Actions">
+                      ${renderIcon("edit-user", "data-user-id", user["User ID"], "Edit user", "&#9998;")}
+                      ${renderIcon("delete-user", "data-user-id", user["User ID"], "Delete user", "&#128465;", true)}
+                    </td>
+                  </tr>`).join("")}</tbody>
+              </table>
+            </div>
+          </section>`;
+      }
+
+      function renderProjectsSettings() {
+        const data = state.data;
+        return `
+          <section class="panel">
+            <div class="toolbar"><h3>Projects</h3><button class="primary" data-action="new-project">Create Project</button></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Project</th><th>Status</th><th>Active</th><th>Actions</th></tr></thead>
+                <tbody>${data.projects.map((project) => `
+                  <tr>
+                    <td data-label="Project">${escapeHtml(project["Project Name"])}</td>
+                    <td data-label="Status">${escapeHtml(project.Status)}</td>
+                    <td data-label="Active">${escapeHtml(project.Active)}</td>
+                    <td data-label="Actions">
+                      ${renderIcon("edit-project", "data-project-id", project["Project ID"], "Edit project", "&#9998;")}
+                      ${renderIcon("delete-project", "data-project-id", project["Project ID"], "Delete project", "&#128465;", true)}
+                    </td>
+                  </tr>`).join("")}</tbody>
+              </table>
+            </div>
+          </section>`;
+      }
+
+      function renderCategoriesSettings() {
+        const data = state.data;
+        return `
+          <section class="panel">
+            <div class="toolbar"><h3>Time Categories</h3><button class="primary" data-action="new-category">Create Category</button></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Category</th><th>Default Project</th><th>Active</th><th>Actions</th></tr></thead>
+                <tbody>${data.categories.map((category) => `
+                  <tr>
+                    <td data-label="Category">${escapeHtml(category.Category)}</td>
+                    <td data-label="Default Project">${escapeHtml(category["Default Project"])}</td>
+                    <td data-label="Active">${escapeHtml(category.Active)}</td>
+                    <td data-label="Actions">
+                      ${renderIcon("edit-category", "data-category-id", category["Category ID"], "Edit category", "&#9998;")}
+                      ${renderIcon("delete-category", "data-category-id", category["Category ID"], "Delete category", "&#128465;", true)}
+                    </td>
+                  </tr>`).join("")}</tbody>
+              </table>
+            </div>
+          </section>`;
+      }
+
+      function renderTagsSettings() {
+        const data = state.data;
+        return `
+          <section class="panel">
+            <div class="toolbar"><h3>Tags</h3><button class="primary" data-action="new-tag">Create Tag</button></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Tag</th><th>Color</th><th>Description</th><th>Actions</th></tr></thead>
+                <tbody>${(data.tags || []).map((tag) => `
+                  <tr>
+                    <td data-label="Tag">${escapeHtml(tag.Tag)}</td>
+                    <td data-label="Color">${escapeHtml(tag.Color)}</td>
+                    <td data-label="Description">${escapeHtml(tag.Description)}</td>
+                    <td data-label="Actions">
+                      ${renderIcon("edit-tag", "data-tag-id", tag["Tag ID"], "Edit tag", "&#9998;")}
+                      ${renderIcon("delete-tag", "data-tag-id", tag["Tag ID"], "Delete tag", "&#128465;", true)}
+                    </td>
+                  </tr>`).join("")}</tbody>
+              </table>
+            </div>
+          </section>`;
+      }
+
+      function renderAppSettings() {
+        const settingMap = Object.fromEntries((state.data.settings || []).map((setting) => [setting["Setting Key"], setting["Setting Value"]]));
+        return `
+          <section class="panel">
+            <h3>Application Settings</h3>
+            <form data-form="explicit-settings" class="stack">
+              <div class="form-grid two">
+                <label>Pay Period Anchor Date <input name="anchorDate" type="date" value="${escapeHtml(settingMap.PAY_PERIOD_ANCHOR_DATE || "")}"></label>
+                <label>Pay Period Days <input name="periodDays" type="number" min="1" max="31" value="${escapeHtml(settingMap.DEFAULT_PAY_PERIOD_DAYS || "14")}"></label>
+              </div>
+              <button class="primary" type="submit">Save Settings</button>
+            </form>
+          </section>
+          ${renderMigrationAdmin()}`;
       }
 
       function renderUserAdmin() {
@@ -908,13 +1272,16 @@
                 <label>Project <select name="projectId">${options(data.projects, "Project ID", "Project Name", task?.["Project ID"], true)}</select></label>
                 <label>Priority <select name="priority">${constantOptions(data.constants.priorities, task?.Priority || "Medium", false)}</select></label>
               </div>
-              <label>Assignees <select name="assigneeUserIds" multiple size="5">
-                ${(data.users || []).map((user) => {
-                  const selected = String(task?.["Assignee User IDs"] || "").split(",").map((id) => id.trim()).includes(user["User ID"]) ? "selected" : "";
-                  return `<option value="${escapeHtml(user["User ID"])}" ${selected}>${escapeHtml(user["Full Name"])}</option>`;
-                }).join("")}
-              </select></label>
-              <label>Tags <input name="tags" value="${escapeHtml(task?.Tags || "")}"></label>
+              <label>Assignees ${renderCheckboxList("assigneeUserIds", data.users || [], "User ID", "Full Name", selectedList(task?.["Assignee User IDs"]))}</label>
+              <label>Tags
+                <select name="tags" multiple size="5">
+                  ${(data.tags || []).map((tag) => {
+                    const selected = selectedList(task?.Tags).includes(tag.Tag) ? "selected" : "";
+                    return `<option value="${escapeHtml(tag.Tag)}" ${selected}>${escapeHtml(tag.Tag)}</option>`;
+                  }).join("")}
+                </select>
+              </label>
+              ${data.permissions.canManageTags ? '<button type="button" data-action="new-tag">Create New Tag</button>' : ""}
               <div class="actions"><button class="primary" type="submit">${isEdit ? "Save Task" : "Create Task"}</button></div>
             </form>
           </div>`;
@@ -922,6 +1289,10 @@
 
       function openTimeModal(entry) {
         const data = state.data;
+        const tracker = data.tracker || {};
+        const selectedPeriod = tracker.selectedPayPeriod || data.currentPayPeriod || {};
+        const periodLocked = String(selectedPeriod.Locked) === "true" || selectedPeriod.Status === "Locked";
+        const canSelectUser = data.permissions.canCreateTimeForAnyUser;
         document.getElementById("modal-root").innerHTML = `
           <div class="modal-backdrop">
             <form class="modal stack" data-form="time-modal">
@@ -930,14 +1301,121 @@
                 <button type="button" data-action="close-modal">Close</button>
               </div>
               <input type="hidden" name="timeEntryId" value="${escapeHtml(entry["Time Entry ID"])}">
-              <div class="form-grid two">
-                <label>Date <input name="date" type="date" value="${escapeHtml(entry.Date)}"></label>
+              <div class="form-grid">
+                ${canSelectUser ? `<label>User <select name="userId">${options(data.users, "User ID", "Full Name", entry["User ID"], false)}</select></label>` : `<label>User <input value="${escapeHtml(entry["User Name"])}" disabled></label>`}
+                <label>Entry Type <select name="entryType">
+                  <option value="Task" ${entry["Entry Type"] === "Task" ? "selected" : ""}>Task Time</option>
+                  <option value="General Time" ${entry["Entry Type"] === "General Time" ? "selected" : ""}>General Time</option>
+                </select></label>
+                <label>Date <input name="date" type="date" min="${escapeHtml(selectedPeriod["Start Date"] || "")}" max="${escapeHtml(selectedPeriod["End Date"] || "")}" value="${escapeHtml(entry.Date)}"></label>
                 <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" value="${escapeHtml(entry.Hours)}"></label>
               </div>
+              <div class="form-grid two">
+                <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Title", entry["Task ID"], true)}</select></label>
+                <label>Category <select name="categoryId">${options(tracker.categories || [], "Category ID", "Category", entry["Category ID"], true)}</select></label>
+                <label>Project <select name="projectId">${options(data.projects || [], "Project ID", "Project Name", entry["Project ID"], true)}</select></label>
+              </div>
               <label>Notes <textarea name="notes">${escapeHtml(entry.Notes || "")}</textarea></label>
-              ${data.permissions.canOverrideLockedPeriod ? '<label>Override Reason <input name="overrideReason" placeholder="Required if this period is locked"></label>' : ""}
+              ${periodLocked && data.permissions.canOverrideLockedPeriod ? '<label>Override Reason <input name="overrideReason" placeholder="Required if this period is locked"></label>' : ""}
+              ${periodLocked && !data.permissions.canOverrideLockedPeriod ? '<label>Request Reason <input name="requestReason" placeholder="Required for locked-period request"></label>' : ""}
               <div class="actions"><button class="primary" type="submit">Save Entry</button></div>
             </form>
+          </div>`;
+      }
+
+      function openBoardViewModal() {
+        document.getElementById("modal-root").innerHTML = `
+          <div class="modal-backdrop">
+            <form class="modal stack" data-form="board-view-modal">
+              <div class="modal-header"><h3>Save Board View</h3><button type="button" data-action="close-modal">Close</button></div>
+              <label>View Name <input name="viewName" required></label>
+              <label>Visibility <select name="visibility"><option>Private</option><option>Shared</option></select></label>
+              <div class="actions"><button class="primary" type="submit">Save View</button></div>
+            </form>
+          </div>`;
+      }
+
+      function openUserModal(user = null) {
+        const data = state.data;
+        document.getElementById("modal-root").innerHTML = `
+          <div class="modal-backdrop">
+            <form class="modal stack" data-form="user">
+              <div class="modal-header"><h3>${user ? "Edit User" : "Create User"}</h3><button type="button" data-action="close-modal">Close</button></div>
+              <input type="hidden" name="userId" value="${escapeHtml(user?.["User ID"] || "")}">
+              <div class="form-grid two">
+                <label>First Name <input name="firstName" value="${escapeHtml(user?.["First Name"] || "")}" required></label>
+                <label>Last Name <input name="lastName" value="${escapeHtml(user?.["Last Name"] || "")}"></label>
+                <label>Full Name <input name="fullName" value="${escapeHtml(user?.["Full Name"] || "")}" required></label>
+                <label>Email <input name="email" type="email" value="${escapeHtml(user?.Email || "")}" required></label>
+                <label>Role <select name="role">${constantOptions(Object.values(data.constants.roles), user?.Role || "User", false)}</select></label>
+                <label>Pay Type <select name="payType">${constantOptions(["None", "Hourly", "Salary"], user?.["Pay Type"] || "None", false)}</select></label>
+                <label>Hourly Rate <input name="hourlyRate" type="number" step="0.01" min="0" value="${escapeHtml(user?.["Hourly Rate"] || "")}"></label>
+                <label>Salary Amount <input name="salaryAmount" type="number" step="0.01" min="0" value="${escapeHtml(user?.["Salary Amount"] || "")}"></label>
+              </div>
+              <label class="checkbox-row"><input name="active" type="checkbox" ${String(user?.Active) !== "false" ? "checked" : ""}> Active</label>
+              <label class="checkbox-row"><input name="trackTime" type="checkbox" ${String(user?.["Track Time"]) !== "false" ? "checked" : ""}> Track Time</label>
+              <label class="checkbox-row"><input name="trackPay" type="checkbox" ${String(user?.["Track Pay"]) === "true" ? "checked" : ""}> Track Pay</label>
+              <div class="actions"><button class="primary" type="submit">Save User</button></div>
+            </form>
+          </div>`;
+      }
+
+      function openProjectModal(project = null) {
+        document.getElementById("modal-root").innerHTML = `
+          <div class="modal-backdrop">
+            <form class="modal stack" data-form="project">
+              <div class="modal-header"><h3>${project ? "Edit Project" : "Create Project"}</h3><button type="button" data-action="close-modal">Close</button></div>
+              <input type="hidden" name="projectId" value="${escapeHtml(project?.["Project ID"] || "")}">
+              <label>Project Name <input name="projectName" value="${escapeHtml(project?.["Project Name"] || "")}" required></label>
+              <label>Description <textarea name="description">${escapeHtml(project?.Description || "")}</textarea></label>
+              <label>Status <input name="status" value="${escapeHtml(project?.Status || "Active")}"></label>
+              <label class="checkbox-row"><input name="active" type="checkbox" ${String(project?.Active) !== "false" ? "checked" : ""}> Active</label>
+              <div class="actions"><button class="primary" type="submit">Save Project</button></div>
+            </form>
+          </div>`;
+      }
+
+      function openCategoryModal(category = null) {
+        const data = state.data;
+        document.getElementById("modal-root").innerHTML = `
+          <div class="modal-backdrop">
+            <form class="modal stack" data-form="category">
+              <div class="modal-header"><h3>${category ? "Edit Category" : "Create Category"}</h3><button type="button" data-action="close-modal">Close</button></div>
+              <input type="hidden" name="categoryId" value="${escapeHtml(category?.["Category ID"] || "")}">
+              <label>Category <input name="category" value="${escapeHtml(category?.Category || "")}" required></label>
+              <label>Default Project <select name="defaultProjectId">${options(data.projects, "Project ID", "Project Name", category?.["Default Project ID"], true)}</select></label>
+              <label class="checkbox-row"><input name="active" type="checkbox" ${String(category?.Active) !== "false" ? "checked" : ""}> Active</label>
+              <div class="actions"><button class="primary" type="submit">Save Category</button></div>
+            </form>
+          </div>`;
+      }
+
+      function openTagModal(tag = null) {
+        document.getElementById("modal-root").innerHTML = `
+          <div class="modal-backdrop">
+            <form class="modal stack" data-form="tag">
+              <div class="modal-header"><h3>${tag ? "Edit Tag" : "Create Tag"}</h3><button type="button" data-action="close-modal">Close</button></div>
+              <input type="hidden" name="tagId" value="${escapeHtml(tag?.["Tag ID"] || "")}">
+              <label>Tag <input name="tag" value="${escapeHtml(tag?.Tag || "")}" required></label>
+              <label>Color <input name="color" value="${escapeHtml(tag?.Color || "")}" placeholder="#1f6f68"></label>
+              <label>Description <textarea name="description">${escapeHtml(tag?.Description || "")}</textarea></label>
+              <label class="checkbox-row"><input name="active" type="checkbox" ${String(tag?.Active) !== "false" ? "checked" : ""}> Active</label>
+              <div class="actions"><button class="primary" type="submit">Save Tag</button></div>
+            </form>
+          </div>`;
+      }
+
+      function openConfirmModal(message, action, payloadName, payloadValue) {
+        document.getElementById("modal-root").innerHTML = `
+          <div class="modal-backdrop">
+            <div class="modal stack">
+              <div class="modal-header"><h3>Confirm Delete</h3><button type="button" data-action="close-modal">Close</button></div>
+              <p>${escapeHtml(message)}</p>
+              <div class="actions">
+                <button type="button" data-action="${escapeHtml(action)}" ${payloadName}="${escapeHtml(payloadValue)}" class="danger">Delete</button>
+                <button type="button" data-action="close-modal">Cancel</button>
+              </div>
+            </div>
           </div>`;
       }
 
@@ -949,6 +1427,12 @@
           render();
           return;
         }
+        const settingsButton = event.target.closest("[data-settings-section]");
+        if (settingsButton) {
+          state.settingsSection = settingsButton.dataset.settingsSection;
+          render();
+          return;
+        }
         const action = event.target.closest("[data-action]")?.dataset.action;
         if (!action) return;
         try {
@@ -956,9 +1440,21 @@
             document.getElementById("modal-root").innerHTML = "";
           } else if (action === "new-task") {
             openTaskModal();
+          } else if (action === "save-board-view") {
+            openBoardViewModal();
+          } else if (action === "clear-board-filters") {
+            state.boardFilters = {};
+            state.boardGrouping = "";
+            render();
           } else if (action === "edit-task") {
             const task = state.data.tasks.find((item) => item["Task ID"] === event.target.closest("[data-task-id]").dataset.taskId);
             openTaskModal(task);
+          } else if (action === "delete-task") {
+            openConfirmModal("Delete this task? Existing audit history will be preserved.", "confirm-delete-task", "data-task-id", event.target.closest("[data-task-id]").dataset.taskId);
+          } else if (action === "confirm-delete-task") {
+            await callServer("archiveTask", event.target.closest("[data-task-id]").dataset.taskId);
+            document.getElementById("modal-root").innerHTML = "";
+            await refreshData({ message: "Task deleted." });
           } else if (action === "complete-task") {
             await callServer("completeTask", event.target.closest("[data-task-id]").dataset.taskId);
             await refreshData({ message: "Task completed." });
@@ -972,9 +1468,72 @@
             const entryId = event.target.closest("[data-entry-id]").dataset.entryId;
             const entry = (state.data.tracker.entries || []).find((item) => item["Time Entry ID"] === entryId);
             openTimeModal(entry);
+          } else if (action === "delete-time") {
+            openConfirmModal("Delete this time entry?", "confirm-delete-time", "data-entry-id", event.target.closest("[data-entry-id]").dataset.entryId);
+          } else if (action === "confirm-delete-time") {
+            await callServer("deleteTimeEntry", {
+              timeEntryId: event.target.closest("[data-entry-id]").dataset.entryId,
+              overrideReason: state.data.permissions.canOverrideLockedPeriod ? "Deleted by permitted user from Time Tracker" : "",
+              requestReason: "Delete requested from Time Tracker"
+            });
+            document.getElementById("modal-root").innerHTML = "";
+            await refreshData({ message: "Time entry deleted or request created." });
           } else if (action === "lock-period") {
             await callServer("lockPayPeriod", state.payFilters.payPeriodId || state.data.currentPayPeriod["Pay Period ID"]);
             await refreshData({ message: "Pay period locked." });
+          } else if (action === "unlock-period") {
+            await callServer("unlockPayPeriod", state.payFilters.payPeriodId || state.data.currentPayPeriod["Pay Period ID"]);
+            await refreshData({ message: "Pay period unlocked." });
+          } else if (action === "approve-time-request") {
+            await callServer("approveTimeEditRequest", event.target.closest("[data-request-id]").dataset.requestId, "Approved in Time Tracker");
+            await refreshData({ message: "Request approved." });
+          } else if (action === "reject-time-request") {
+            await callServer("rejectTimeEditRequest", event.target.closest("[data-request-id]").dataset.requestId, "Rejected in Time Tracker");
+            await refreshData({ message: "Request rejected." });
+          } else if (action === "new-user") {
+            openUserModal();
+          } else if (action === "edit-user") {
+            openUserModal(state.data.users.find((user) => user["User ID"] === event.target.closest("[data-user-id]").dataset.userId));
+          } else if (action === "delete-user") {
+            openConfirmModal("Archive this user?", "confirm-delete-user", "data-user-id", event.target.closest("[data-user-id]").dataset.userId);
+          } else if (action === "confirm-delete-user") {
+            await callServer("archiveUser", event.target.closest("[data-user-id]").dataset.userId);
+            document.getElementById("modal-root").innerHTML = "";
+            await refreshData({ message: "User archived." });
+          } else if (action === "new-project") {
+            openProjectModal();
+          } else if (action === "edit-project") {
+            openProjectModal(state.data.projects.find((project) => project["Project ID"] === event.target.closest("[data-project-id]").dataset.projectId));
+          } else if (action === "delete-project") {
+            openConfirmModal("Archive this project?", "confirm-delete-project", "data-project-id", event.target.closest("[data-project-id]").dataset.projectId);
+          } else if (action === "confirm-delete-project") {
+            await callServer("archiveProject", event.target.closest("[data-project-id]").dataset.projectId);
+            document.getElementById("modal-root").innerHTML = "";
+            await refreshData({ message: "Project archived." });
+          } else if (action === "new-category") {
+            openCategoryModal();
+          } else if (action === "edit-category") {
+            openCategoryModal(state.data.categories.find((category) => category["Category ID"] === event.target.closest("[data-category-id]").dataset.categoryId));
+          } else if (action === "delete-category") {
+            openConfirmModal("Archive this category?", "confirm-delete-category", "data-category-id", event.target.closest("[data-category-id]").dataset.categoryId);
+          } else if (action === "confirm-delete-category") {
+            await callServer("archiveCategory", event.target.closest("[data-category-id]").dataset.categoryId);
+            document.getElementById("modal-root").innerHTML = "";
+            await refreshData({ message: "Category archived." });
+          } else if (action === "new-tag") {
+            openTagModal();
+          } else if (action === "edit-tag") {
+            openTagModal((state.data.tags || []).find((tag) => tag["Tag ID"] === event.target.closest("[data-tag-id]").dataset.tagId));
+          } else if (action === "delete-tag") {
+            openConfirmModal("Archive this tag? Existing task tag text will be preserved.", "confirm-delete-tag", "data-tag-id", event.target.closest("[data-tag-id]").dataset.tagId);
+          } else if (action === "confirm-delete-tag") {
+            await callServer("archiveTag", event.target.closest("[data-tag-id]").dataset.tagId);
+            document.getElementById("modal-root").innerHTML = "";
+            await refreshData({ message: "Tag archived." });
+          } else if (action === "diagnose-user") {
+            const email = document.querySelector("[data-diagnostic-email]")?.value || "";
+            const result = await callServer("diagnoseUserAccess", email);
+            setStatus(result.issue || `User ${result.normalizedEmail} is active as ${result.role}.`);
           } else if (action === "migration-preview") {
             const preview = await callServer("getMigrationPreview");
             setStatus(`Prototype rows: Assignment Board ${preview.assignmentBoardRows}, Imported Tasks ${preview.importedTaskRows}.`);
@@ -990,7 +1549,7 @@
       document.addEventListener("input", async (event) => {
         if (event.target.matches("[data-filter]")) {
           state.boardFilters[event.target.dataset.filter] = event.target.value;
-          render();
+          updateBoardResultsOnly();
         }
       });
 
@@ -998,6 +1557,22 @@
         if (event.target.matches("[data-filter]")) {
           state.boardFilters[event.target.dataset.filter] = event.target.value;
           render();
+        }
+        if (event.target.matches("[data-board-grouping]")) {
+          state.boardGrouping = event.target.value;
+          render();
+        }
+        if (event.target.matches('[data-action="load-board-view"]')) {
+          const view = (state.data.boardViews || []).find((item) => item["Board View ID"] === event.target.value);
+          if (view) {
+            try {
+              state.boardFilters = JSON.parse(view["Filters JSON"] || "{}");
+            } catch (error) {
+              state.boardFilters = {};
+            }
+            state.boardGrouping = view.Grouping || "";
+            render();
+          }
         }
         if (event.target.matches("[data-pay-filter]")) {
           state.payFilters[event.target.dataset.payFilter] = event.target.value;
@@ -1030,7 +1605,8 @@
         event.preventDefault();
         try {
           if (formType === "task-modal") {
-            const selectedAssignees = Array.from(form.assigneeUserIds.selectedOptions).map((option) => option.value);
+            const selectedAssignees = Array.from(form.querySelectorAll('[name="assigneeUserIds"]:checked')).map((option) => option.value);
+            const selectedTags = Array.from(form.tags?.selectedOptions || []).map((option) => option.value);
             const payload = {
               taskId: form.taskId.value,
               title: form.title.value,
@@ -1040,7 +1616,7 @@
               projectId: form.projectId.value,
               priority: form.priority.value,
               assigneeUserIds: selectedAssignees,
-              tags: form.tags.value
+              tags: selectedTags
             };
             await callServer(payload.taskId ? "updateTask" : "createTask", payload);
             document.getElementById("modal-root").innerHTML = "";
@@ -1056,20 +1632,43 @@
               taskId: form.taskId?.value || "",
               categoryId: form.categoryId?.value || "",
               notes: entryType === "Task" ? form.notes.value : form.generalNotes.value,
-              overrideReason: form.overrideReason?.value || ""
+              overrideReason: form.overrideReason?.value || "",
+              requestReason: form.requestReason?.value || ""
             };
             await callServer("createTimeEntry", payload);
-            await refreshData({ message: "Time saved." });
+            await refreshData({ message: "Time saved or request created." });
           } else if (formType === "time-modal") {
             await callServer("updateTimeEntry", {
               timeEntryId: form.timeEntryId.value,
+              userId: form.userId?.value || undefined,
+              entryType: form.entryType.value,
               date: form.date.value,
               hours: form.hours.value,
+              taskId: form.taskId?.value || "",
+              categoryId: form.categoryId?.value || "",
+              projectId: form.projectId?.value || "",
               notes: form.notes.value,
-              overrideReason: form.overrideReason?.value || ""
+              overrideReason: form.overrideReason?.value || "",
+              requestReason: form.requestReason?.value || ""
             });
             document.getElementById("modal-root").innerHTML = "";
-            await refreshData({ message: "Time entry updated." });
+            await refreshData({ message: "Time entry updated or request created." });
+          } else if (formType === "board-view-modal") {
+            await callServer("saveBoardView", {
+              viewName: form.viewName.value,
+              visibility: form.visibility.value,
+              filters: state.boardFilters,
+              grouping: state.boardGrouping
+            });
+            document.getElementById("modal-root").innerHTML = "";
+            await refreshData({ message: "Board view saved." });
+          } else if (formType === "profile") {
+            await callServer("updateProfile", {
+              firstName: form.firstName.value,
+              lastName: form.lastName.value,
+              fullName: form.fullName.value
+            });
+            await refreshData({ message: "Profile saved." });
           } else if (formType === "user") {
             await callServer("saveUser", {
               userId: form.userId.value,
@@ -1086,6 +1685,7 @@
               "Track Pay": form.trackPay.checked
             });
             form.reset();
+            document.getElementById("modal-root").innerHTML = "";
             await refreshData({ message: "User saved." });
           } else if (formType === "project") {
             await callServer("saveProject", {
@@ -1096,6 +1696,7 @@
               active: form.active.checked
             });
             form.reset();
+            document.getElementById("modal-root").innerHTML = "";
             await refreshData({ message: "Project saved." });
           } else if (formType === "category") {
             await callServer("saveCategory", {
@@ -1105,7 +1706,18 @@
               active: form.active.checked
             });
             form.reset();
+            document.getElementById("modal-root").innerHTML = "";
             await refreshData({ message: "Category saved." });
+          } else if (formType === "tag") {
+            await callServer("saveTag", {
+              tagId: form.tagId.value,
+              tag: form.tag.value,
+              color: form.color.value,
+              description: form.description.value,
+              active: form.active.checked
+            });
+            document.getElementById("modal-root").innerHTML = "";
+            await refreshData({ message: "Tag saved." });
           } else if (formType === "setting") {
             await callServer("saveSetting", {
               key: form.key.value,
@@ -1114,6 +1726,18 @@
             });
             form.reset();
             await refreshData({ message: "Setting saved." });
+          } else if (formType === "explicit-settings") {
+            await callServer("saveSetting", {
+              key: "PAY_PERIOD_ANCHOR_DATE",
+              value: form.anchorDate.value,
+              description: "Known start date for the repeating pay-period calendar."
+            });
+            await callServer("saveSetting", {
+              key: "DEFAULT_PAY_PERIOD_DAYS",
+              value: form.periodDays.value,
+              description: "Number of calendar days in each pay period."
+            });
+            await refreshData({ message: "Settings saved." });
           }
         } catch (error) {
           setStatus(error.message || String(error));

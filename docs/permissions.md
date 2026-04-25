@@ -31,11 +31,10 @@ Admin cannot assign the Owner role.
 Operational access:
 
 - View the Assignment Board.
-- Create/edit/complete tasks.
-- Create time entries for any user.
-- Manage projects.
+- Default preset can create/edit tasks, create time entries for others, and manage projects.
+- Additional task, time, pay-period, and settings permissions are controlled by Manager Permission overrides.
 
-Managers cannot edit existing time entries in the MVP.
+Managers can be granted approval, lock/unlock, edit, delete, and settings capabilities through explicit overrides.
 
 ## User
 
@@ -51,4 +50,4 @@ Users cannot complete or edit tasks in the MVP.
 
 ## Locked Pay Periods
 
-Locked pay periods block normal edits. Owner/Admin can override locked-period time entry creation or edits only when an override reason is provided. The override is written to the audit log.
+Locked pay periods block normal edits. Users without override permission create Time Edit Requests. Owner/Admin and Managers with approval permission can approve or reject those requests. Direct overrides require a reason and are audited.

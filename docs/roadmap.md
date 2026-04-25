@@ -15,10 +15,12 @@
 
 ## MVP 0.2
 
-- Stronger migration helpers for legacy time entries.
-- Better admin editing flows.
-- Saved Assignment Board filters.
-- Pay summary approval notes and adjustments.
+- Saved Assignment Board filters and grouping.
+- Tags table and searchable task tag dropdowns.
+- Locked-period time edit request workflow.
+- Settings side-pane and profile editing.
+- Manager permission presets and overrides.
+- Pay-period lock/unlock.
 - More complete mobile QA pass.
 
 ## MVP 0.3

@@ -52,7 +52,13 @@ The checker validates required files, JSON manifests, Apps Script JavaScript syn
 
 1. Create or copy a staging Google Sheet.
 2. Create a Google Apps Script project.
-3. Replace `PASTE_STAGING_SCRIPT_ID_HERE` in `.clasp.json`.
+3. Set Apps Script target environment variables:
+
+```powershell
+$env:TRUST_OPS_PRODUCTION_SCRIPT_ID="PRODUCTION_SCRIPT_ID"
+$env:TRUST_OPS_TESTING_SCRIPT_ID="TESTING_SCRIPT_ID"
+```
+
 4. Log in and push:
 
 ```powershell
@@ -66,7 +72,7 @@ npm run clasp:push
 setupTrustOps("STAGING_SPREADSHEET_ID", "owner@example.com")
 ```
 
-The signed-in Google account must match `owner@example.com`. This creates the canonical tabs, default settings, first Owner user, default time categories, and the current pay period.
+The signed-in Google account must match `owner@example.com`. This creates the canonical tabs, default settings, first Owner user, default time categories, default tag/permission tables, and the current pay period.
 
 ## Deployment
 
@@ -82,5 +88,6 @@ Use staging first. Do not connect the production spreadsheet until auth, permiss
 - All writes re-fetch the current server-side user context.
 - Managers can create time entries for users but cannot edit existing entries.
 - Regular Users can view all tasks but only add time to assigned tasks.
-- Owner/Admin can edit all time entries and override locked periods with an audit reason.
+- Owner/Admin can edit all time entries, lock/unlock periods, and override locked periods with an audit reason.
+- Locked-period changes by non-overriding users create approval requests.
 - Pay summaries are calculated live while a period is open and snapshotted when locked.

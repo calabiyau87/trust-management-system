@@ -12,10 +12,14 @@ var TrustOpsConfig = (function () {
     TASKS: "Tasks",
     TIME_ENTRIES: "Time Entries",
     TIME_CATEGORIES: "Time Categories",
+    TAGS: "Tags",
     PAY_PERIODS: "Pay Periods",
     PAY_SUMMARIES: "Pay Summaries",
     AUDIT_LOG: "Audit Log",
     SETTINGS: "Settings",
+    BOARD_VIEWS: "Board Views",
+    MANAGER_PERMISSIONS: "Manager Permissions",
+    TIME_EDIT_REQUESTS: "Time Edit Requests",
     IMPORTED_TASKS: "Imported Tasks",
     LEGACY_ASSIGNMENT_BOARD: "Assignment Board"
   };
@@ -119,6 +123,20 @@ var TrustOpsConfig = (function () {
       "Archived"
     ]
   };
+  TABLES[SHEETS.TAGS] = {
+    idColumn: "Tag ID",
+    columns: [
+      "Tag ID",
+      "Tag",
+      "Color",
+      "Description",
+      "Active",
+      "Created By User ID",
+      "Created At",
+      "Updated At",
+      "Archived"
+    ]
+  };
   TABLES[SHEETS.PAY_PERIODS] = {
     idColumn: "Pay Period ID",
     columns: [
@@ -145,6 +163,7 @@ var TrustOpsConfig = (function () {
       "Pay Type",
       "Hourly Rate",
       "Salary Amount",
+      "Effective Hourly Rate",
       "Gross Pay",
       "Adjustments",
       "Notes",
@@ -175,6 +194,71 @@ var TrustOpsConfig = (function () {
     idColumn: "Setting Key",
     columns: ["Setting Key", "Setting Value", "Description", "Updated At"]
   };
+  TABLES[SHEETS.BOARD_VIEWS] = {
+    idColumn: "Board View ID",
+    columns: [
+      "Board View ID",
+      "View Name",
+      "Visibility",
+      "Owner User ID",
+      "Filters JSON",
+      "Grouping",
+      "Sort JSON",
+      "Columns JSON",
+      "Created At",
+      "Updated At",
+      "Archived"
+    ]
+  };
+  TABLES[SHEETS.MANAGER_PERMISSIONS] = {
+    idColumn: "Manager Permission ID",
+    columns: [
+      "Manager Permission ID",
+      "User ID",
+      "Preset",
+      "Overrides JSON",
+      "Can Create Tasks",
+      "Can Edit Tasks",
+      "Can Delete Tasks",
+      "Can Create Time For Others",
+      "Can View All Time",
+      "Can Edit Time Entries",
+      "Can Delete Time Entries",
+      "Can Approve Time Requests",
+      "Can Lock Pay Periods",
+      "Can Unlock Pay Periods",
+      "Can View All Pay",
+      "Can Manage Users",
+      "Can Manage Projects",
+      "Can Manage Time Categories",
+      "Can Manage Tags",
+      "Can Manage Settings",
+      "Updated By User ID",
+      "Updated At"
+    ]
+  };
+  TABLES[SHEETS.TIME_EDIT_REQUESTS] = {
+    idColumn: "Time Edit Request ID",
+    columns: [
+      "Time Edit Request ID",
+      "Request Type",
+      "Status",
+      "Requested By User ID",
+      "Requested By Name",
+      "Target User ID",
+      "Time Entry ID",
+      "Pay Period ID",
+      "Pay Period Label",
+      "Before JSON",
+      "After JSON",
+      "Reason",
+      "Decision Notes",
+      "Decided By User ID",
+      "Decided At",
+      "Created At",
+      "Updated At"
+    ]
+  };
 
   var TASK_STATUSES = ["In Progress", "Complete", "Blocked", "Waiting", "Archived"];
   var PRIORITIES = ["Low", "Medium", "High", "Urgent"];
@@ -185,6 +269,25 @@ var TrustOpsConfig = (function () {
   var PAY_PERIOD_STATUS = {
     OPEN: "Open",
     LOCKED: "Locked"
+  };
+  var REQUEST_STATUS = {
+    PENDING: "Pending",
+    APPROVED: "Approved",
+    REJECTED: "Rejected"
+  };
+  var REQUEST_TYPES = {
+    CREATE: "Create",
+    EDIT: "Edit",
+    DELETE: "Delete"
+  };
+  var VIEW_VISIBILITY = {
+    PRIVATE: "Private",
+    SHARED: "Shared"
+  };
+  var MANAGER_PRESETS = {
+    BASIC: "Basic",
+    OPERATIONS: "Operations",
+    ADMIN_LIKE: "Admin Like"
   };
 
   var DEFAULT_TIME_CATEGORIES = [
@@ -211,6 +314,10 @@ var TrustOpsConfig = (function () {
     PRIORITIES: PRIORITIES,
     ENTRY_TYPES: ENTRY_TYPES,
     PAY_PERIOD_STATUS: PAY_PERIOD_STATUS,
+    REQUEST_STATUS: REQUEST_STATUS,
+    REQUEST_TYPES: REQUEST_TYPES,
+    VIEW_VISIBILITY: VIEW_VISIBILITY,
+    MANAGER_PRESETS: MANAGER_PRESETS,
     DEFAULT_TIME_CATEGORIES: DEFAULT_TIME_CATEGORIES,
     PAY_PERIOD_DAYS: 14,
     PAY_PERIOD_ANCHOR_DATE: "2026-04-26",

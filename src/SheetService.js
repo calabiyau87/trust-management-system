@@ -1,4 +1,17 @@
 var TrustOpsSheetService = (function () {
+  var requestCache = {};
+
+  function resetRequestCache() {
+    requestCache = {};
+  }
+
+  function logTiming(label, startMs) {
+    var elapsed = Date.now() - startMs;
+    if (elapsed >= 750) {
+      console.log("TrustOps slow operation: " + label + " took " + elapsed + "ms");
+    }
+  }
+
   function getSpreadsheet() {
     var spreadsheetId = TrustOpsConfig.getSpreadsheetId();
     if (spreadsheetId) {
@@ -90,12 +103,16 @@ var TrustOpsSheetService = (function () {
   }
 
   function readTable(sheetName) {
+    if (requestCache[sheetName]) {
+      return TrustOpsUtils.clone(requestCache[sheetName]);
+    }
+    var startMs = Date.now();
     var sheet = getSheet(sheetName);
     var headers = getHeaders(sheetName);
     var lastRow = sheet.getLastRow();
     if (lastRow < 2) return [];
     var values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
-    return values
+    var records = values
       .map(function (row, index) {
         return rowToRecord(headers, row, index + 2);
       })
@@ -104,6 +121,9 @@ var TrustOpsSheetService = (function () {
           return key.charAt(0) !== "_" && TrustOpsUtils.normalizeText(record[key]);
         });
       });
+    requestCache[sheetName] = TrustOpsUtils.clone(records);
+    logTiming("readTable(" + sheetName + ")", startMs);
+    return records;
   }
 
   function idPrefixForSheet(sheetName) {
@@ -113,9 +133,13 @@ var TrustOpsSheetService = (function () {
     map[TrustOpsConfig.SHEETS.TASKS] = "tsk";
     map[TrustOpsConfig.SHEETS.TIME_ENTRIES] = "tim";
     map[TrustOpsConfig.SHEETS.TIME_CATEGORIES] = "cat";
+    map[TrustOpsConfig.SHEETS.TAGS] = "tag";
     map[TrustOpsConfig.SHEETS.PAY_PERIODS] = "pay";
     map[TrustOpsConfig.SHEETS.PAY_SUMMARIES] = "sum";
     map[TrustOpsConfig.SHEETS.AUDIT_LOG] = "aud";
+    map[TrustOpsConfig.SHEETS.BOARD_VIEWS] = "view";
+    map[TrustOpsConfig.SHEETS.MANAGER_PERMISSIONS] = "mgrperm";
+    map[TrustOpsConfig.SHEETS.TIME_EDIT_REQUESTS] = "ter";
     return map[sheetName] || "id";
   }
 
@@ -145,6 +169,7 @@ var TrustOpsSheetService = (function () {
         return cellForRecord(normalizedRecord[header]);
       });
       sheet.appendRow(row);
+      delete requestCache[sheetName];
       return findById(sheetName, normalizedRecord[config.idColumn]);
     });
   }
@@ -186,6 +211,7 @@ var TrustOpsSheetService = (function () {
         return cellForRecord(updated[header]);
       });
       sheet.getRange(record._rowNumber, 1, 1, headers.length).setValues([row]);
+      delete requestCache[sheetName];
       return findById(sheetName, id);
     });
   }
@@ -213,6 +239,8 @@ var TrustOpsSheetService = (function () {
 
   return {
     getSpreadsheet: getSpreadsheet,
+    resetRequestCache: resetRequestCache,
+    logTiming: logTiming,
     setSpreadsheetId: setSpreadsheetId,
     getSheet: getSheet,
     ensureAllSheets: ensureAllSheets,

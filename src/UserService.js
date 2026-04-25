@@ -72,6 +72,9 @@ var TrustOpsUserService = (function () {
     var userId = payload["User ID"] || payload.userId || "";
     var existing = userId ? TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.USERS, userId) : null;
     var record = buildUserRecord(payload || {}, existing);
+    if (existing && existing.Role === TrustOpsConfig.ROLES.OWNER && !TrustOpsPermissionService.isOwner(context)) {
+      throw new Error("Only Owner can change Owner user records.");
+    }
     if (record.Role === TrustOpsConfig.ROLES.OWNER && !TrustOpsPermissionService.isOwner(context)) {
       throw new Error("Only Owner can assign the Owner role.");
     }
@@ -86,6 +89,27 @@ var TrustOpsUserService = (function () {
     return TrustOpsUtils.sanitizeForClient(saved);
   }
 
+  function updateProfile(context, payload) {
+    var userId = payload.userId || payload["User ID"] || context.userId;
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.canEditProfile(context, userId),
+      "You do not have permission to edit this profile."
+    );
+    var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.USERS, userId);
+    if (!existing) throw new Error("User not found.");
+    var firstName = TrustOpsUtils.normalizeText(payload.firstName || payload["First Name"] || existing["First Name"]);
+    var lastName = TrustOpsUtils.normalizeText(payload.lastName || payload["Last Name"] || existing["Last Name"]);
+    var fullName = TrustOpsUtils.normalizeText(payload.fullName || payload["Full Name"] || [firstName, lastName].filter(Boolean).join(" "));
+    var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.USERS, userId, {
+      "First Name": TrustOpsUtils.requireValue(firstName, "First name"),
+      "Last Name": lastName,
+      "Full Name": TrustOpsUtils.requireValue(fullName, "Full name"),
+      "Updated At": TrustOpsUtils.nowIso()
+    });
+    TrustOpsAuditService.log(context, "PROFILE_UPDATED", "User", userId, existing, saved, "");
+    return TrustOpsUtils.sanitizeForClient(saved);
+  }
+
   function archiveUser(context, userId) {
     TrustOpsPermissionService.requireAllowed(
       TrustOpsPermissionService.canManageUsers(context),
@@ -93,6 +117,9 @@ var TrustOpsUserService = (function () {
     );
     var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.USERS, userId);
     if (!existing) throw new Error("User not found.");
+    if (existing.Role === TrustOpsConfig.ROLES.OWNER && !TrustOpsPermissionService.isOwner(context)) {
+      throw new Error("Only Owner can archive an Owner user.");
+    }
     var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.USERS, userId, {
       "Active": false,
       "Archived": true,
@@ -106,6 +133,7 @@ var TrustOpsUserService = (function () {
     listUsers: listUsers,
     listActiveUsers: listActiveUsers,
     saveUser: saveUser,
+    updateProfile: updateProfile,
     archiveUser: archiveUser
   };
 })();

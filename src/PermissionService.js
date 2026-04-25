@@ -17,11 +17,33 @@ var TrustOpsPermissionService = (function () {
   }
 
   function isPrivileged(context) {
-    return hasRole(context, [TrustOpsConfig.ROLES.OWNER, TrustOpsConfig.ROLES.ADMIN, TrustOpsConfig.ROLES.MANAGER]);
+    return isOwnerOrAdmin(context) || isManager(context);
   }
 
   function isOwnerOrAdmin(context) {
     return hasRole(context, [TrustOpsConfig.ROLES.OWNER, TrustOpsConfig.ROLES.ADMIN]);
+  }
+
+  function managerCan(context, capability) {
+    return TrustOpsManagerPermissionService.managerCan(context, capability);
+  }
+
+  function userIdIsOwner(userId) {
+    if (!TrustOpsUtils.normalizeText(userId)) return false;
+    var user = TrustOpsAuthService.getUserById(userId);
+    return user && user.Role === TrustOpsConfig.ROLES.OWNER;
+  }
+
+  function ownerControlled(record) {
+    if (!record) return false;
+    var userId = record["User ID"] || record["Created By User ID"] || record["Owner User ID"] || "";
+    return userIdIsOwner(userId);
+  }
+
+  function canAdminMutateRecord(context, record) {
+    if (isOwner(context)) return true;
+    if (isAdmin(context)) return !ownerControlled(record);
+    return false;
   }
 
   function canViewBoard(context) {
@@ -29,15 +51,25 @@ var TrustOpsPermissionService = (function () {
   }
 
   function canCreateTask(context) {
-    return isPrivileged(context);
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Create Tasks");
   }
 
-  function canEditTask(context) {
-    return isPrivileged(context);
+  function canEditTask(context, task) {
+    if (!context || !task) return false;
+    if (canAdminMutateRecord(context, task)) return true;
+    if (managerCan(context, "Can Edit Tasks")) return true;
+    return String(task["Created By User ID"]) === String(context.userId);
   }
 
-  function canCompleteTask(context) {
-    return isPrivileged(context);
+  function canDeleteTask(context, task) {
+    if (!context || !task) return false;
+    if (canAdminMutateRecord(context, task)) return true;
+    if (managerCan(context, "Can Delete Tasks")) return true;
+    return String(task["Created By User ID"]) === String(context.userId);
+  }
+
+  function canCompleteTask(context, task) {
+    return canEditTask(context, task);
   }
 
   function getAssigneeIds(task) {
@@ -52,43 +84,63 @@ var TrustOpsPermissionService = (function () {
   function canAddTimeToTask(context, task, targetUserId) {
     if (!context || !task) return false;
     var effectiveUserId = targetUserId || context.userId;
-    if (isPrivileged(context)) {
-      return getAssigneeIds(task).indexOf(String(effectiveUserId)) !== -1 || isOwnerOrAdmin(context) || isManager(context);
-    }
+    if (isOwnerOrAdmin(context)) return true;
+    if (managerCan(context, "Can Create Time For Others")) return true;
     return String(effectiveUserId) === String(context.userId) && isAssignedToTask(context, task);
   }
 
   function canCreateTimeEntry(context, targetUserId) {
     if (!context) return false;
-    if (isOwnerOrAdmin(context) || isManager(context)) return true;
+    if (isOwnerOrAdmin(context)) return true;
+    if (managerCan(context, "Can Create Time For Others")) return true;
     return String(targetUserId || context.userId) === String(context.userId);
   }
 
   function canViewTimeEntries(context, targetUserId) {
     if (!context) return false;
     if (isOwnerOrAdmin(context)) return true;
+    if (managerCan(context, "Can View All Time")) return true;
     return String(targetUserId || context.userId) === String(context.userId);
   }
 
   function canEditTimeEntry(context, entry) {
     if (!context || !entry) return false;
-    if (isOwnerOrAdmin(context)) return true;
-    if (isManager(context)) return false;
-    return String(entry["User ID"]) === String(context.userId);
+    if (canAdminMutateRecord(context, entry)) return true;
+    if (managerCan(context, "Can Edit Time Entries")) return true;
+    return String(entry["User ID"]) === String(context.userId) || String(entry["Created By User ID"]) === String(context.userId);
+  }
+
+  function canDeleteTimeEntry(context, entry) {
+    if (!context || !entry) return false;
+    if (canAdminMutateRecord(context, entry)) return true;
+    if (managerCan(context, "Can Delete Time Entries")) return true;
+    return String(entry["User ID"]) === String(context.userId) || String(entry["Created By User ID"]) === String(context.userId);
+  }
+
+  function canApproveTimeRequests(context) {
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Approve Time Requests");
+  }
+
+  function canLockPayPeriod(context) {
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Lock Pay Periods");
+  }
+
+  function canUnlockPayPeriod(context) {
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Unlock Pay Periods");
   }
 
   function canOverrideLockedPeriod(context) {
-    return isOwnerOrAdmin(context);
+    return canLockPayPeriod(context) || canUnlockPayPeriod(context);
   }
 
   function canViewPaySummary(context, targetUserId) {
     if (!context) return false;
-    if (isOwnerOrAdmin(context)) return true;
+    if (isOwnerOrAdmin(context) || managerCan(context, "Can View All Pay")) return true;
     return String(targetUserId || context.userId) === String(context.userId);
   }
 
   function canManageUsers(context) {
-    return isOwnerOrAdmin(context);
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Manage Users");
   }
 
   function canSetPayRate(context) {
@@ -96,26 +148,51 @@ var TrustOpsPermissionService = (function () {
   }
 
   function canManageProjects(context) {
-    return isPrivileged(context);
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Manage Projects");
+  }
+
+  function canManageTimeCategories(context) {
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Manage Time Categories");
+  }
+
+  function canManageTags(context) {
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Manage Tags");
   }
 
   function canManageSettings(context) {
-    return isOwnerOrAdmin(context);
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Manage Settings");
+  }
+
+  function canManageBoardViews(context) {
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Manage Settings");
+  }
+
+  function canEditProfile(context, userId) {
+    if (!context) return false;
+    return String(context.userId) === String(userId) || canManageUsers(context);
   }
 
   function getClientPermissions(context) {
     return {
       canViewBoard: canViewBoard(context),
       canCreateTask: canCreateTask(context),
-      canEditTask: canEditTask(context),
-      canCompleteTask: canCompleteTask(context),
-      canCreateTimeForAnyUser: isOwnerOrAdmin(context) || isManager(context),
-      canViewAllTime: isOwnerOrAdmin(context),
-      canEditAllTime: isOwnerOrAdmin(context),
-      canViewAllPay: isOwnerOrAdmin(context),
+      canEditTask: isOwnerOrAdmin(context) || managerCan(context, "Can Edit Tasks"),
+      canDeleteTask: isOwnerOrAdmin(context) || managerCan(context, "Can Delete Tasks"),
+      canCompleteTask: isOwnerOrAdmin(context) || managerCan(context, "Can Edit Tasks"),
+      canCreateTimeForAnyUser: isOwnerOrAdmin(context) || managerCan(context, "Can Create Time For Others"),
+      canViewAllTime: isOwnerOrAdmin(context) || managerCan(context, "Can View All Time"),
+      canEditAllTime: isOwnerOrAdmin(context) || managerCan(context, "Can Edit Time Entries"),
+      canDeleteAllTime: isOwnerOrAdmin(context) || managerCan(context, "Can Delete Time Entries"),
+      canApproveTimeRequests: canApproveTimeRequests(context),
+      canViewAllPay: isOwnerOrAdmin(context) || managerCan(context, "Can View All Pay"),
       canManageUsers: canManageUsers(context),
       canManageProjects: canManageProjects(context),
+      canManageTimeCategories: canManageTimeCategories(context),
+      canManageTags: canManageTags(context),
       canManageSettings: canManageSettings(context),
+      canManageBoardViews: canManageBoardViews(context),
+      canLockPayPeriod: canLockPayPeriod(context),
+      canUnlockPayPeriod: canUnlockPayPeriod(context),
       canOverrideLockedPeriod: canOverrideLockedPeriod(context)
     };
   }
@@ -133,21 +210,33 @@ var TrustOpsPermissionService = (function () {
     isManager: isManager,
     isPrivileged: isPrivileged,
     isOwnerOrAdmin: isOwnerOrAdmin,
+    userIdIsOwner: userIdIsOwner,
+    ownerControlled: ownerControlled,
+    canAdminMutateRecord: canAdminMutateRecord,
     canViewBoard: canViewBoard,
     canCreateTask: canCreateTask,
     canEditTask: canEditTask,
+    canDeleteTask: canDeleteTask,
     canCompleteTask: canCompleteTask,
     isAssignedToTask: isAssignedToTask,
     canAddTimeToTask: canAddTimeToTask,
     canCreateTimeEntry: canCreateTimeEntry,
     canViewTimeEntries: canViewTimeEntries,
     canEditTimeEntry: canEditTimeEntry,
+    canDeleteTimeEntry: canDeleteTimeEntry,
+    canApproveTimeRequests: canApproveTimeRequests,
+    canLockPayPeriod: canLockPayPeriod,
+    canUnlockPayPeriod: canUnlockPayPeriod,
     canOverrideLockedPeriod: canOverrideLockedPeriod,
     canViewPaySummary: canViewPaySummary,
     canManageUsers: canManageUsers,
     canSetPayRate: canSetPayRate,
     canManageProjects: canManageProjects,
+    canManageTimeCategories: canManageTimeCategories,
+    canManageTags: canManageTags,
     canManageSettings: canManageSettings,
+    canManageBoardViews: canManageBoardViews,
+    canEditProfile: canEditProfile,
     getClientPermissions: getClientPermissions,
     requireAllowed: requireAllowed
   };

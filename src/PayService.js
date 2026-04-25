@@ -1,6 +1,11 @@
 var TrustOpsPayService = (function () {
   function listPayPeriods() {
-    return TrustOpsUtils.recordsForClient(TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.PAY_PERIODS));
+    ensurePayPeriodsAround(new Date(), 1, 1);
+    var periods = TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.PAY_PERIODS);
+    periods.sort(function (a, b) {
+      return String(a["Start Date"]).localeCompare(String(b["Start Date"]));
+    });
+    return TrustOpsUtils.recordsForClient(periods);
   }
 
   function periodLabel(startDate, endDate) {
@@ -50,6 +55,22 @@ var TrustOpsPayService = (function () {
     });
   }
 
+  function ensurePayPeriodsAround(dateValue, previousCount, nextCount) {
+    var date = TrustOpsUtils.parseDate(dateValue || new Date());
+    var current = createGeneratedPayPeriod(date);
+    var periodDays = TrustOpsUtils.toNumber(
+      TrustOpsSettingsService.getSetting("DEFAULT_PAY_PERIOD_DAYS", TrustOpsConfig.PAY_PERIOD_DAYS)
+    ) || TrustOpsConfig.PAY_PERIOD_DAYS;
+    var start = TrustOpsUtils.parseDate(current["Start Date"]);
+    for (var previous = 1; previous <= (previousCount || 0); previous += 1) {
+      createGeneratedPayPeriod(TrustOpsUtils.addDays(start, previous * -periodDays));
+    }
+    for (var next = 1; next <= (nextCount || 0); next += 1) {
+      createGeneratedPayPeriod(TrustOpsUtils.addDays(start, next * periodDays));
+    }
+    return current;
+  }
+
   function isLocked(period) {
     return period && (TrustOpsUtils.toBoolean(period.Locked) || period.Status === TrustOpsConfig.PAY_PERIOD_STATUS.LOCKED);
   }
@@ -95,6 +116,7 @@ var TrustOpsPayService = (function () {
       "Pay Type": payType,
       "Hourly Rate": hourlyRate,
       "Salary Amount": salaryAmount,
+      "Effective Hourly Rate": totalHours ? Math.round((grossPay / totalHours) * 100) / 100 : "",
       "Gross Pay": Math.round(grossPay * 100) / 100,
       "Entries": TrustOpsUtils.recordsForClient(entries)
     };
@@ -147,6 +169,7 @@ var TrustOpsPayService = (function () {
         "Pay Type": summary["Pay Type"],
         "Hourly Rate": summary["Hourly Rate"],
         "Salary Amount": summary["Salary Amount"],
+        "Effective Hourly Rate": summary["Effective Hourly Rate"],
         "Gross Pay": summary["Gross Pay"],
         "Adjustments": 0,
         "Notes": "",
@@ -162,8 +185,8 @@ var TrustOpsPayService = (function () {
 
   function lockPayPeriod(context, payPeriodId) {
     TrustOpsPermissionService.requireAllowed(
-      TrustOpsPermissionService.canOverrideLockedPeriod(context),
-      "Only Owner/Admin can lock pay periods."
+      TrustOpsPermissionService.canLockPayPeriod(context),
+      "You do not have permission to lock pay periods."
     );
     var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.PAY_PERIODS, payPeriodId);
     if (!existing) throw new Error("Pay period not found.");
@@ -179,12 +202,30 @@ var TrustOpsPayService = (function () {
     return TrustOpsUtils.sanitizeForClient(saved);
   }
 
+  function unlockPayPeriod(context, payPeriodId) {
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.canUnlockPayPeriod(context),
+      "You do not have permission to unlock pay periods."
+    );
+    var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.PAY_PERIODS, payPeriodId);
+    if (!existing) throw new Error("Pay period not found.");
+    var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.PAY_PERIODS, payPeriodId, {
+      "Status": TrustOpsConfig.PAY_PERIOD_STATUS.OPEN,
+      "Locked": false,
+      "Updated At": TrustOpsUtils.nowIso()
+    });
+    TrustOpsAuditService.log(context, "PAY_PERIOD_UNLOCKED", "Pay Period", payPeriodId, existing, saved, "");
+    return TrustOpsUtils.sanitizeForClient(saved);
+  }
+
   return {
     listPayPeriods: listPayPeriods,
     findPayPeriodForDate: findPayPeriodForDate,
+    ensurePayPeriodsAround: ensurePayPeriodsAround,
     getCurrentPayPeriod: getCurrentPayPeriod,
     isLocked: isLocked,
     getPaySummary: getPaySummary,
-    lockPayPeriod: lockPayPeriod
+    lockPayPeriod: lockPayPeriod,
+    unlockPayPeriod: unlockPayPeriod
   };
 })();

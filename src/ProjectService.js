@@ -41,8 +41,8 @@ var TrustOpsProjectService = (function () {
 
   function saveCategory(context, payload) {
     TrustOpsPermissionService.requireAllowed(
-      TrustOpsPermissionService.canManageSettings(context),
-      "Only Owner/Admin can manage time categories."
+      TrustOpsPermissionService.canManageTimeCategories(context),
+      "You do not have permission to manage time categories."
     );
     var categoryId = payload["Category ID"] || payload.categoryId || "";
     var existing = categoryId ? TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.TIME_CATEGORIES, categoryId) : null;
@@ -65,10 +65,44 @@ var TrustOpsProjectService = (function () {
     return TrustOpsUtils.sanitizeForClient(saved);
   }
 
+  function archiveProject(context, projectId) {
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.canManageProjects(context),
+      "You do not have permission to delete projects."
+    );
+    var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.PROJECTS, projectId);
+    if (!existing) throw new Error("Project not found.");
+    var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.PROJECTS, projectId, {
+      "Active": false,
+      "Archived": true,
+      "Updated At": TrustOpsUtils.nowIso()
+    });
+    TrustOpsAuditService.log(context, "PROJECT_ARCHIVED", "Project", projectId, existing, saved, "");
+    return TrustOpsUtils.sanitizeForClient(saved);
+  }
+
+  function archiveCategory(context, categoryId) {
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.canManageTimeCategories(context),
+      "You do not have permission to delete time categories."
+    );
+    var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.TIME_CATEGORIES, categoryId);
+    if (!existing) throw new Error("Time category not found.");
+    var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.TIME_CATEGORIES, categoryId, {
+      "Active": false,
+      "Archived": true,
+      "Updated At": TrustOpsUtils.nowIso()
+    });
+    TrustOpsAuditService.log(context, "CATEGORY_ARCHIVED", "Time Category", categoryId, existing, saved, "");
+    return TrustOpsUtils.sanitizeForClient(saved);
+  }
+
   return {
     listProjects: listProjects,
     listCategories: listCategories,
     saveProject: saveProject,
-    saveCategory: saveCategory
+    saveCategory: saveCategory,
+    archiveProject: archiveProject,
+    archiveCategory: archiveCategory
   };
 })();

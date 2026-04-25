@@ -37,7 +37,8 @@ var TrustOpsTaskService = (function () {
     output._permissions = {
       canAddTime: TrustOpsPermissionService.canAddTimeToTask(context, task, context.userId),
       canEdit: TrustOpsPermissionService.canEditTask(context, task),
-      canComplete: TrustOpsPermissionService.canCompleteTask(context, task)
+      canComplete: TrustOpsPermissionService.canCompleteTask(context, task),
+      canDelete: TrustOpsPermissionService.canDeleteTask(context, task)
     };
     return output;
   }
@@ -87,6 +88,14 @@ var TrustOpsTaskService = (function () {
       payload["Assignee User IDs"] || payload.assigneeUserIds || [],
       payload.Assignees || payload.assignees || []
     );
+    var tags = TrustOpsUtils.splitList(payload.Tags || payload.tags || "");
+    var normalizedTags = tags.map(function (tagName) {
+      var existingTag = TrustOpsTagService.findTagByName(tagName);
+      if (!existingTag && TrustOpsPermissionService.canManageTags(context)) {
+        existingTag = TrustOpsTagService.saveTag(context, { tag: tagName });
+      }
+      return existingTag ? existingTag.Tag : tagName;
+    });
     return {
       "Title": TrustOpsUtils.requireValue(payload.Title || payload.title, "Task title"),
       "Notes": payload.Notes || payload.notes || "",
@@ -97,7 +106,7 @@ var TrustOpsTaskService = (function () {
       "Project ID": projectId,
       "Project Name": project ? project["Project Name"] : payload["Project Name"] || payload.projectName || "",
       "Priority": payload.Priority || payload.priority || "Medium",
-      "Tags": TrustOpsUtils.joinList(payload.Tags || payload.tags || ""),
+      "Tags": TrustOpsUtils.joinList(normalizedTags),
       "Created By User ID": existing ? existing["Created By User ID"] : context.userId,
       "Created At": existing ? existing["Created At"] : now,
       "Updated At": now,
@@ -152,6 +161,22 @@ var TrustOpsTaskService = (function () {
     return decorateTask(context, saved);
   }
 
+  function archiveTask(context, taskId) {
+    var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.TASKS, taskId);
+    if (!existing) throw new Error("Task not found.");
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.canDeleteTask(context, existing),
+      "You do not have permission to delete this task."
+    );
+    var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.TASKS, taskId, {
+      "Archived": true,
+      "Status": "Archived",
+      "Updated At": TrustOpsUtils.nowIso()
+    });
+    TrustOpsAuditService.log(context, "TASK_ARCHIVED", "Task", taskId, existing, saved, "");
+    return decorateTask(context, saved);
+  }
+
   function listIncompleteTasksForUser(context, userId) {
     var targetUserId = userId || context.userId;
     return activeTasks()
@@ -170,6 +195,7 @@ var TrustOpsTaskService = (function () {
     createTask: createTask,
     updateTask: updateTask,
     completeTask: completeTask,
+    archiveTask: archiveTask,
     listIncompleteTasksForUser: listIncompleteTasksForUser
   };
 })();

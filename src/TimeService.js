@@ -1,10 +1,12 @@
 var TrustOpsTimeService = (function () {
   function resolveTargetUser(context, payload) {
     var targetUserId = payload.userId || payload["User ID"] || context.userId;
-    TrustOpsPermissionService.requireAllowed(
-      TrustOpsPermissionService.canCreateTimeEntry(context, targetUserId),
-      "You do not have permission to create time for this user."
-    );
+    if (!(payload._approvedRequest && TrustOpsPermissionService.canApproveTimeRequests(context))) {
+      TrustOpsPermissionService.requireAllowed(
+        TrustOpsPermissionService.canCreateTimeEntry(context, targetUserId),
+        "You do not have permission to create time for this user."
+      );
+    }
     var user = TrustOpsAuthService.getUserById(targetUserId);
     if (!user) throw new Error("Target user not found.");
     if (!TrustOpsUtils.toBoolean(user.Active)) throw new Error("Target user is inactive.");
@@ -24,19 +26,28 @@ var TrustOpsTimeService = (function () {
     return period || TrustOpsPayService.findPayPeriodForDate(dateValue);
   }
 
-  function requireUnlockedOrOverride(context, period, overrideReason) {
-    if (!TrustOpsPayService.isLocked(period)) return false;
-    TrustOpsPermissionService.requireAllowed(
-      TrustOpsPermissionService.canOverrideLockedPeriod(context),
-      "This pay period is locked. Only Owner/Admin can override it."
-    );
-    TrustOpsUtils.requireValue(overrideReason, "Override reason");
-    return true;
+  function lockedDecision(context, period, payload) {
+    if (!TrustOpsPayService.isLocked(period)) return { locked: false, override: false, request: false };
+    if (payload && payload._approvedRequest && TrustOpsPermissionService.canApproveTimeRequests(context)) {
+      return { locked: true, override: true, request: false, reason: payload.overrideReason || "Approved locked-period request" };
+    }
+    if (TrustOpsPermissionService.canOverrideLockedPeriod(context)) {
+      TrustOpsUtils.requireValue(payload && payload.overrideReason, "Override reason");
+      return { locked: true, override: true, request: false, reason: payload.overrideReason };
+    }
+    return { locked: true, override: false, request: true, reason: payload && (payload.requestReason || payload.reason) || "Locked-period change request" };
   }
 
   function buildTimeRecord(context, payload, existing) {
     var now = TrustOpsUtils.nowIso();
-    var targetUser = existing ? TrustOpsAuthService.getUserById(existing["User ID"]) : resolveTargetUser(context, payload || {});
+    var targetPayload = {};
+    Object.keys(payload || {}).forEach(function (key) {
+      targetPayload[key] = payload[key];
+    });
+    if (existing && !targetPayload.userId && !targetPayload["User ID"]) {
+      targetPayload.userId = existing["User ID"];
+    }
+    var targetUser = resolveTargetUser(context, targetPayload || {});
     var entryType = payload.entryType || payload["Entry Type"] || existing && existing["Entry Type"] || TrustOpsConfig.ENTRY_TYPES.TASK;
     var dateValue = TrustOpsUtils.formatDate(payload.Date || payload.date || existing && existing.Date);
     TrustOpsUtils.requireValue(dateValue, "Date");
@@ -102,16 +113,28 @@ var TrustOpsTimeService = (function () {
 
   function createTimeEntry(context, payload) {
     var built = buildTimeRecord(context, payload || {}, null);
-    var override = requireUnlockedOrOverride(context, built.payPeriod, payload && payload.overrideReason);
+    var decision = lockedDecision(context, built.payPeriod, payload || {});
+    if (decision.request) {
+      return {
+        requestCreated: true,
+        request: TrustOpsTimeRequestService.createRequest(context, {
+          requestType: TrustOpsConfig.REQUEST_TYPES.CREATE,
+          targetUserId: built.record["User ID"],
+          payPeriodId: built.payPeriod["Pay Period ID"],
+          after: built.record,
+          reason: decision.reason
+        })
+      };
+    }
     var saved = TrustOpsSheetService.appendRecord(TrustOpsConfig.SHEETS.TIME_ENTRIES, built.record);
     TrustOpsAuditService.log(
       context,
-      override ? "TIME_ENTRY_CREATED_LOCKED_OVERRIDE" : "TIME_ENTRY_CREATED",
+      decision.override ? "TIME_ENTRY_CREATED_LOCKED_OVERRIDE" : "TIME_ENTRY_CREATED",
       "Time Entry",
       saved["Time Entry ID"],
       null,
       saved,
-      override ? payload.overrideReason : ""
+      decision.override ? decision.reason : ""
     );
     return TrustOpsUtils.sanitizeForClient(saved);
   }
@@ -126,17 +149,72 @@ var TrustOpsTimeService = (function () {
     );
     var oldPeriod = getPeriodByIdOrDate(existing["Pay Period ID"], existing.Date);
     var built = buildTimeRecord(context, payload || {}, existing);
-    var overrideOld = requireUnlockedOrOverride(context, oldPeriod, payload.overrideReason);
-    var overrideNew = requireUnlockedOrOverride(context, built.payPeriod, payload.overrideReason);
+    var oldDecision = lockedDecision(context, oldPeriod, payload || {});
+    var newDecision = lockedDecision(context, built.payPeriod, payload || {});
+    if (oldDecision.request || newDecision.request) {
+      return {
+        requestCreated: true,
+        request: TrustOpsTimeRequestService.createRequest(context, {
+          requestType: TrustOpsConfig.REQUEST_TYPES.EDIT,
+          targetUserId: built.record["User ID"],
+          timeEntryId: entryId,
+          payPeriodId: built.payPeriod["Pay Period ID"],
+          before: existing,
+          after: built.record,
+          reason: oldDecision.reason || newDecision.reason
+        })
+      };
+    }
     var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.TIME_ENTRIES, entryId, built.record);
     TrustOpsAuditService.log(
       context,
-      overrideOld || overrideNew ? "TIME_ENTRY_UPDATED_LOCKED_OVERRIDE" : "TIME_ENTRY_UPDATED",
+      oldDecision.override || newDecision.override ? "TIME_ENTRY_UPDATED_LOCKED_OVERRIDE" : "TIME_ENTRY_UPDATED",
       "Time Entry",
       entryId,
       existing,
       saved,
-      overrideOld || overrideNew ? payload.overrideReason : ""
+      oldDecision.override || newDecision.override ? oldDecision.reason || newDecision.reason : ""
+    );
+    return TrustOpsUtils.sanitizeForClient(saved);
+  }
+
+  function deleteTimeEntry(context, payload) {
+    var entryId = payload.timeEntryId || payload["Time Entry ID"];
+    var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.TIME_ENTRIES, entryId);
+    if (!existing || TrustOpsUtils.toBoolean(existing.Deleted)) throw new Error("Time entry not found.");
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.canDeleteTimeEntry(context, existing),
+      "You do not have permission to delete this time entry."
+    );
+    var period = getPeriodByIdOrDate(existing["Pay Period ID"], existing.Date);
+    var decision = lockedDecision(context, period, payload || {});
+    if (decision.request) {
+      return {
+        requestCreated: true,
+        request: TrustOpsTimeRequestService.createRequest(context, {
+          requestType: TrustOpsConfig.REQUEST_TYPES.DELETE,
+          targetUserId: existing["User ID"],
+          timeEntryId: entryId,
+          payPeriodId: period["Pay Period ID"],
+          before: existing,
+          after: { Deleted: true },
+          reason: decision.reason
+        })
+      };
+    }
+    var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.TIME_ENTRIES, entryId, {
+      "Deleted": true,
+      "Updated By User ID": context.userId,
+      "Updated At": TrustOpsUtils.nowIso()
+    });
+    TrustOpsAuditService.log(
+      context,
+      decision.override ? "TIME_ENTRY_DELETED_LOCKED_OVERRIDE" : "TIME_ENTRY_DELETED",
+      "Time Entry",
+      entryId,
+      existing,
+      saved,
+      decision.override ? decision.reason : ""
     );
     return TrustOpsUtils.sanitizeForClient(saved);
   }
@@ -158,7 +236,13 @@ var TrustOpsTimeService = (function () {
       if (a.Date === b.Date) return String(b["Updated At"]).localeCompare(String(a["Updated At"]));
       return String(b.Date).localeCompare(String(a.Date));
     });
-    return TrustOpsUtils.recordsForClient(entries);
+    return TrustOpsUtils.recordsForClient(entries).map(function (entry) {
+      entry._permissions = {
+        canEdit: TrustOpsPermissionService.canEditTimeEntry(context, entry),
+        canDelete: TrustOpsPermissionService.canDeleteTimeEntry(context, entry)
+      };
+      return entry;
+    });
   }
 
   function getTrackerData(context, filters) {
@@ -176,14 +260,36 @@ var TrustOpsTimeService = (function () {
         return TrustOpsUtils.toBoolean(category.Active);
       }),
       currentPayPeriod: TrustOpsUtils.sanitizeForClient(TrustOpsPayService.getCurrentPayPeriod()),
-      entries: entries
+      selectedPayPeriod: TrustOpsUtils.sanitizeForClient(payload.payPeriodId ? TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.PAY_PERIODS, payload.payPeriodId) : TrustOpsPayService.getCurrentPayPeriod()),
+      entries: entries,
+      requests: TrustOpsTimeRequestService.listRequests(context, { payPeriodId: payload.payPeriodId })
     };
+  }
+
+  function applyApprovedRequest(context, requestType, timeEntryId, payload, reason) {
+    var approvedPayload = {};
+    Object.keys(payload || {}).forEach(function (key) {
+      approvedPayload[key] = payload[key];
+    });
+    approvedPayload._approvedRequest = true;
+    approvedPayload.overrideReason = reason || "Approved locked-period request";
+    if (requestType === TrustOpsConfig.REQUEST_TYPES.CREATE) {
+      return createTimeEntry(context, approvedPayload);
+    }
+    if (requestType === TrustOpsConfig.REQUEST_TYPES.DELETE) {
+      approvedPayload.timeEntryId = timeEntryId;
+      return deleteTimeEntry(context, approvedPayload);
+    }
+    approvedPayload.timeEntryId = timeEntryId;
+    return updateTimeEntry(context, approvedPayload);
   }
 
   return {
     createTimeEntry: createTimeEntry,
     updateTimeEntry: updateTimeEntry,
+    deleteTimeEntry: deleteTimeEntry,
     listTimeEntries: listTimeEntries,
-    getTrackerData: getTrackerData
+    getTrackerData: getTrackerData,
+    applyApprovedRequest: applyApprovedRequest
   };
 })();

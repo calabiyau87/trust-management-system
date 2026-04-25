@@ -5,10 +5,11 @@
   "description": "Google Apps Script and Google Sheets MVP for internal trust operations management.",
   "scripts": {
     "check": "node scripts/static-check.js",
+    "clasp:configure": "node scripts/configure-clasp.js",
     "clasp:login": "npx @google/clasp login",
-    "clasp:push": "npx @google/clasp push",
-    "clasp:pull": "npx @google/clasp pull",
-    "clasp:deploy": "npx @google/clasp deploy"
+    "clasp:push": "node scripts/configure-clasp.js && npx @google/clasp push",
+    "clasp:pull": "node scripts/configure-clasp.js && npx @google/clasp pull",
+    "clasp:deploy": "node scripts/configure-clasp.js && npx @google/clasp deploy"
   },
   "engines": {
     "node": ">=18"

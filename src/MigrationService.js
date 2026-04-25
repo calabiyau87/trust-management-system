@@ -82,6 +82,9 @@ var TrustOpsMigrationService = (function () {
     seedSettings();
     var owner = seedOwner(ownerEmail);
     seedCategories();
+    if (TrustOpsPermissionService.canManageTags({ userId: owner["User ID"], role: TrustOpsConfig.ROLES.OWNER })) {
+      TrustOpsTagService.seedFromTaskTags({ userId: owner["User ID"], email: TrustOpsUtils.normalizeEmail(ownerEmail), role: TrustOpsConfig.ROLES.OWNER });
+    }
     TrustOpsPayService.getCurrentPayPeriod();
     TrustOpsAuditService.log(
       { userId: owner["User ID"], email: TrustOpsUtils.normalizeEmail(ownerEmail) },

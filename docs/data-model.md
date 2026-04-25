@@ -70,6 +70,30 @@ Uses simple MVP statuses:
 
 If no pay period exists for an entry date, `PayService` generates one from `PAY_PERIOD_ANCHOR_DATE` and `DEFAULT_PAY_PERIOD_DAYS`.
 
+## Tags
+
+Stable ID: `Tag ID`
+
+Stores reusable task tags for searchable dropdowns. Archived tags remain as historical text on existing tasks.
+
+## Board Views
+
+Stable ID: `Board View ID`
+
+Stores saved Assignment Board filters, grouping, sorting, visible columns, owner, and Private/Shared visibility.
+
+## Manager Permissions
+
+Stable ID: `Manager Permission ID`
+
+Stores Manager preset plus per-capability overrides for task, time, pay-period, and settings/admin scopes.
+
+## Time Edit Requests
+
+Stable ID: `Time Edit Request ID`
+
+Stores locked-period create/edit/delete requests with before/after JSON, reason, status, and approval/rejection metadata.
+
 ## Pay Summaries
 
 Stable ID: `Pay Summary ID`

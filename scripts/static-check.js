@@ -6,7 +6,8 @@ const root = path.resolve(__dirname, "..");
 const requiredFiles = [
   "README.md",
   "package.json",
-  ".clasp.json",
+  ".clasp.example.json",
+  "AGENTS.md",
   "src/appsscript.json",
   "src/Code.js",
   "src/Config.js",
@@ -22,6 +23,10 @@ const requiredFiles = [
   "src/PayService.js",
   "src/SettingsService.js",
   "src/MigrationService.js",
+  "src/TagService.js",
+  "src/BoardViewService.js",
+  "src/ManagerPermissionService.js",
+  "src/TimeRequestService.js",
   "src/ChatService.js",
   "src/GoogleTasksService.js",
   "src/GmailService.js",
@@ -31,7 +36,12 @@ const requiredFiles = [
   "docs/data-model.md",
   "docs/permissions.md",
   "docs/deployment.md",
-  "docs/roadmap.md"
+  "docs/roadmap.md",
+  "docs/agents/backend-agent.md",
+  "docs/agents/frontend-agent.md",
+  "docs/agents/data-agent.md",
+  "docs/agents/qa-agent.md",
+  "docs/agents/release-agent.md"
 ];
 
 function fail(message) {
@@ -46,7 +56,7 @@ for (const relativePath of requiredFiles) {
   }
 }
 
-for (const relativePath of ["package.json", ".clasp.json", "src/appsscript.json"]) {
+for (const relativePath of ["package.json", ".clasp.example.json", "src/appsscript.json"]) {
   try {
     JSON.parse(fs.readFileSync(path.join(root, relativePath), "utf8"));
   } catch (error) {
@@ -74,6 +84,15 @@ for (const needle of ["google.script.run", "Assignment Board", "Time Tracker", "
     fail(`Index.html does not include expected text: ${needle}`);
   }
 }
+
+const scriptMatches = [...indexHtml.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)];
+scriptMatches.forEach((match, index) => {
+  try {
+    new Function(match[1]);
+  } catch (error) {
+    fail(`Index.html inline script ${index + 1} has a JavaScript syntax error: ${error.message}`);
+  }
+});
 
 if (!process.exitCode) {
   console.log("static-check passed");

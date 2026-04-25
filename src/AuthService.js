@@ -9,6 +9,24 @@ var TrustOpsAuthService = (function () {
     return TrustOpsUtils.normalizeEmail(email);
   }
 
+  function getEffectiveEmail() {
+    var email = "";
+    try {
+      email = Session.getEffectiveUser().getEmail();
+    } catch (error) {
+      email = "";
+    }
+    return TrustOpsUtils.normalizeEmail(email);
+  }
+
+  function getTemporaryUserKey() {
+    try {
+      return Session.getTemporaryActiveUserKey();
+    } catch (error) {
+      return "";
+    }
+  }
+
   function getUserByEmail(email) {
     var normalizedEmail = TrustOpsUtils.normalizeEmail(email);
     if (!normalizedEmail) return null;
@@ -65,12 +83,93 @@ var TrustOpsAuthService = (function () {
     }
   }
 
+  function diagnoseUserAccess(context, email) {
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.canManageUsers(context),
+      "Only users with user-management permission can diagnose access."
+    );
+    var normalizedEmail = TrustOpsUtils.normalizeEmail(email);
+    var user = getUserByEmail(normalizedEmail);
+    return {
+      searchedEmail: email || "",
+      normalizedEmail: normalizedEmail,
+      found: Boolean(user),
+      active: user ? TrustOpsUtils.toBoolean(user.Active) : false,
+      archived: user ? TrustOpsUtils.toBoolean(user.Archived) : false,
+      role: user ? user.Role : "",
+      userId: user ? user["User ID"] : "",
+      exactStoredEmail: user ? user.Email : "",
+      issue: !normalizedEmail
+        ? "No email provided."
+        : !user
+          ? "No active user row matches this normalized email."
+          : !TrustOpsUtils.toBoolean(user.Active)
+            ? "User exists but is inactive."
+            : TrustOpsUtils.toBoolean(user.Archived)
+              ? "User exists but is archived."
+              : ""
+    };
+  }
+
+  function getPublicAuthDiagnostic() {
+    var activeEmail = getActiveEmail();
+    var effectiveEmail = getEffectiveEmail();
+    var diagnostic = {
+      activeEmail: activeEmail,
+      effectiveEmail: effectiveEmail,
+      temporaryUserKey: getTemporaryUserKey(),
+      spreadsheetConfigured: Boolean(TrustOpsConfig.getSpreadsheetId()),
+      userLookupAttempted: false,
+      userFound: false,
+      userActive: false,
+      userArchived: false,
+      userRole: "",
+      userId: "",
+      storedEmail: "",
+      sheetAccessOk: false,
+      sheetAccessError: "",
+      issue: ""
+    };
+    if (!activeEmail) {
+      diagnostic.issue = "Apps Script did not expose the signed-in user's email to Session.getActiveUser().getEmail().";
+      return diagnostic;
+    }
+    try {
+      diagnostic.userLookupAttempted = true;
+      var user = getUserByEmail(activeEmail);
+      diagnostic.sheetAccessOk = true;
+      diagnostic.userFound = Boolean(user);
+      if (user) {
+        diagnostic.userActive = TrustOpsUtils.toBoolean(user.Active);
+        diagnostic.userArchived = TrustOpsUtils.toBoolean(user.Archived);
+        diagnostic.userRole = user.Role || "";
+        diagnostic.userId = user["User ID"] || "";
+        diagnostic.storedEmail = user.Email || "";
+      }
+      diagnostic.issue = !user
+        ? "No Users row matches the signed-in email."
+        : !diagnostic.userActive
+          ? "The matching Users row is inactive."
+          : diagnostic.userArchived
+            ? "The matching Users row is archived."
+            : "";
+    } catch (error) {
+      diagnostic.sheetAccessError = error.message || String(error);
+      diagnostic.issue = "The signed-in user could not read the configured spreadsheet.";
+    }
+    return diagnostic;
+  }
+
   return {
     getActiveEmail: getActiveEmail,
+    getEffectiveEmail: getEffectiveEmail,
+    getTemporaryUserKey: getTemporaryUserKey,
     getUserByEmail: getUserByEmail,
     getUserById: getUserById,
     requireAuthorizedUser: requireAuthorizedUser,
     getOptionalUserContext: getOptionalUserContext,
-    requireBootstrapAllowed: requireBootstrapAllowed
+    requireBootstrapAllowed: requireBootstrapAllowed,
+    diagnoseUserAccess: diagnoseUserAccess,
+    getPublicAuthDiagnostic: getPublicAuthDiagnostic
   };
 })();
