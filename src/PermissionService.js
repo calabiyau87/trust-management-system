@@ -164,12 +164,18 @@ var TrustOpsPermissionService = (function () {
   }
 
   function canManageBoardViews(context) {
-    return isOwnerOrAdmin(context) || managerCan(context, "Can Manage Settings");
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Manage Board Views") || managerCan(context, "Can Manage Settings");
   }
 
   function canEditProfile(context, userId) {
     if (!context) return false;
     return String(context.userId) === String(userId) || canManageUsers(context);
+  }
+
+  function canChangeProfileColor(context, userId) {
+    if (!context) return false;
+    if (isOwnerOrAdmin(context)) return true;
+    return String(context.userId) === String(userId) && managerCan(context, "Can Change Profile Color");
   }
 
   function getClientPermissions(context) {
@@ -191,6 +197,7 @@ var TrustOpsPermissionService = (function () {
       canManageTags: canManageTags(context),
       canManageSettings: canManageSettings(context),
       canManageBoardViews: canManageBoardViews(context),
+      canChangeProfileColor: canChangeProfileColor(context, context.userId),
       canLockPayPeriod: canLockPayPeriod(context),
       canUnlockPayPeriod: canUnlockPayPeriod(context),
       canOverrideLockedPeriod: canOverrideLockedPeriod(context)
@@ -236,6 +243,7 @@ var TrustOpsPermissionService = (function () {
     canManageTags: canManageTags,
     canManageSettings: canManageSettings,
     canManageBoardViews: canManageBoardViews,
+    canChangeProfileColor: canChangeProfileColor,
     canEditProfile: canEditProfile,
     getClientPermissions: getClientPermissions,
     requireAllowed: requireAllowed

@@ -6,7 +6,7 @@ Canonical tables are created by `setupTrustOps(spreadsheetId, ownerEmail)`.
 
 Stable ID: `User ID`
 
-Tracks identity, role, active state, pay configuration, tracking flags, manager assignment, timestamps, and archive state.
+Tracks identity, role, active state, profile color/image/theme preferences, pay configuration, tracking flags, manager assignment, timestamps, and archive state.
 
 Roles:
 
@@ -82,11 +82,11 @@ Stable ID: `Board View ID`
 
 Stores saved Assignment Board filters, grouping, sorting, visible columns, owner, and Private/Shared visibility.
 
-## Manager Permissions
+## User Permissions
 
 Stable ID: `Manager Permission ID`
 
-Stores Manager preset plus per-capability overrides for task, time, pay-period, and settings/admin scopes.
+Stored in the `Manager Permissions` sheet for backward compatibility. Supports Manager preset defaults plus per-capability overrides for any user, including task creation, tag management, board-view management, profile-color changes, time, pay-period, and settings/admin scopes.
 
 ## Time Edit Requests
 
@@ -100,6 +100,8 @@ Stable ID: `Pay Summary ID`
 
 Open periods are calculated live. When a period is locked, summaries are snapshotted for payroll history.
 
+Locked-period summary lists read snapshot rows when available. Pay summary detail views are calculated from time entries on demand.
+
 ## Audit Log
 
 Stable ID: `Audit ID`
@@ -111,3 +113,5 @@ Stores actor, timestamp, action, entity type, entity ID, before JSON, after JSON
 Stable ID: `Setting Key`
 
 Stores non-sensitive configuration. Secrets and future webhook URLs should move to `PropertiesService`.
+
+Current visual settings include `TASK_STATUS_COLORS_JSON`, a status-to-hex-color map used by Assignment Board task badges.

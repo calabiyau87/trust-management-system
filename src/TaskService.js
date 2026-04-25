@@ -122,7 +122,7 @@ var TrustOpsTaskService = (function () {
   function createTask(context, payload) {
     TrustOpsPermissionService.requireAllowed(
       TrustOpsPermissionService.canCreateTask(context),
-      "Only Owner/Admin/Manager can create tasks."
+      "You do not have permission to create tasks."
     );
     var record = buildTaskRecord(context, payload || {}, null);
     var saved = TrustOpsSheetService.appendRecord(TrustOpsConfig.SHEETS.TASKS, record);

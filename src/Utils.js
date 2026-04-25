@@ -123,6 +123,12 @@ var TrustOpsUtils = (function () {
     return value;
   }
 
+  function normalizeHexColor(value, fallback) {
+    var text = normalizeText(value);
+    if (/^#[0-9a-fA-F]{6}$/.test(text)) return text.toLowerCase();
+    return fallback || "";
+  }
+
   function sanitizeForClient(record) {
     var output = {};
     Object.keys(record || {}).forEach(function (key) {
@@ -161,6 +167,7 @@ var TrustOpsUtils = (function () {
     daysBetween: daysBetween,
     isBetweenInclusive: isBetweenInclusive,
     requireValue: requireValue,
+    normalizeHexColor: normalizeHexColor,
     sanitizeForClient: sanitizeForClient,
     recordsForClient: recordsForClient
   };

@@ -6,6 +6,11 @@ var TrustOpsUserService = (function () {
       "Last Name": user["Last Name"],
       "Full Name": user["Full Name"],
       "Email": user.Email,
+      "Profile Color": user["Profile Color"],
+      "Theme Mode": user["Theme Mode"],
+      "Google Profile Photo URL": user["Google Profile Photo URL"],
+      "Profile Image URL": user["Profile Image URL"],
+      "Profile Image File ID": user["Profile Image File ID"],
       "Role": user.Role,
       "Active": user.Active,
       "Track Time": user["Track Time"],
@@ -25,6 +30,11 @@ var TrustOpsUserService = (function () {
         return TrustOpsUtils.toBoolean(user.Active);
       })
       .map(publicUser);
+  }
+
+  function normalizeThemeMode(value, fallback) {
+    var mode = TrustOpsUtils.normalizeText(value || fallback || "System");
+    return TrustOpsConfig.THEME_MODES.indexOf(mode) === -1 ? "System" : mode;
   }
 
   function listActiveUsers() {
@@ -49,6 +59,11 @@ var TrustOpsUserService = (function () {
       "Last Name": lastName,
       "Full Name": fullName,
       "Email": email,
+      "Profile Color": TrustOpsUtils.normalizeHexColor(payload["Profile Color"] || payload.profileColor, existing && existing["Profile Color"] || ""),
+      "Theme Mode": normalizeThemeMode(payload["Theme Mode"] || payload.themeMode, existing && existing["Theme Mode"]),
+      "Google Profile Photo URL": payload["Google Profile Photo URL"] || payload.googleProfilePhotoUrl || existing && existing["Google Profile Photo URL"] || "",
+      "Profile Image URL": payload["Profile Image URL"] || payload.profileImageUrl || existing && existing["Profile Image URL"] || "",
+      "Profile Image File ID": payload["Profile Image File ID"] || payload.profileImageFileId || existing && existing["Profile Image File ID"] || "",
       "Role": payload.Role || payload.role || TrustOpsConfig.ROLES.USER,
       "Active": payload.Active === undefined ? true : TrustOpsUtils.toBoolean(payload.Active),
       "Pay Type": payload["Pay Type"] || payload.payType || "None",
@@ -86,7 +101,16 @@ var TrustOpsUserService = (function () {
       ? TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.USERS, userId, record)
       : TrustOpsSheetService.appendRecord(TrustOpsConfig.SHEETS.USERS, record);
     TrustOpsAuditService.log(context, existing ? "USER_UPDATED" : "USER_CREATED", "User", saved["User ID"], existing, saved, "");
-    return TrustOpsUtils.sanitizeForClient(saved);
+    var output = TrustOpsUtils.sanitizeForClient(saved);
+    if (TrustOpsPermissionService.isOwnerOrAdmin(context)) {
+      try {
+        shareSpreadsheetWithUser(context, saved["User ID"]);
+      } catch (error) {
+        output.shareError = error.message || String(error);
+        TrustOpsAuditService.log(context, "SPREADSHEET_SHARE_FAILED", "User", saved["User ID"], null, { email: saved.Email, error: output.shareError }, output.shareError);
+      }
+    }
+    return output;
   }
 
   function updateProfile(context, payload) {
@@ -100,13 +124,82 @@ var TrustOpsUserService = (function () {
     var firstName = TrustOpsUtils.normalizeText(payload.firstName || payload["First Name"] || existing["First Name"]);
     var lastName = TrustOpsUtils.normalizeText(payload.lastName || payload["Last Name"] || existing["Last Name"]);
     var fullName = TrustOpsUtils.normalizeText(payload.fullName || payload["Full Name"] || [firstName, lastName].filter(Boolean).join(" "));
-    var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.USERS, userId, {
+    var patch = {
       "First Name": TrustOpsUtils.requireValue(firstName, "First name"),
       "Last Name": lastName,
       "Full Name": TrustOpsUtils.requireValue(fullName, "Full name"),
       "Updated At": TrustOpsUtils.nowIso()
-    });
+    };
+    if (payload.themeMode !== undefined || payload["Theme Mode"] !== undefined) {
+      patch["Theme Mode"] = normalizeThemeMode(payload.themeMode || payload["Theme Mode"], existing["Theme Mode"]);
+    }
+    if (payload.profileColor !== undefined || payload["Profile Color"] !== undefined) {
+      TrustOpsPermissionService.requireAllowed(
+        TrustOpsPermissionService.canChangeProfileColor(context, userId),
+        "You do not have permission to change this profile color."
+      );
+      patch["Profile Color"] = TrustOpsUtils.normalizeHexColor(payload.profileColor || payload["Profile Color"], existing["Profile Color"] || "");
+    }
+    if (payload.googleProfilePhotoUrl !== undefined || payload["Google Profile Photo URL"] !== undefined) {
+      patch["Google Profile Photo URL"] = payload.googleProfilePhotoUrl || payload["Google Profile Photo URL"] || "";
+    }
+    var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.USERS, userId, patch);
     TrustOpsAuditService.log(context, "PROFILE_UPDATED", "User", userId, existing, saved, "");
+    return TrustOpsUtils.sanitizeForClient(saved);
+  }
+
+  function shareSpreadsheetWithUser(context, userId) {
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.isOwnerOrAdmin(context),
+      "Only Owner/Admin can share spreadsheet access."
+    );
+    var user = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.USERS, userId);
+    if (!user) throw new Error("User not found.");
+    var email = TrustOpsUtils.requireValue(user.Email, "User email");
+    var spreadsheetId = TrustOpsConfig.getSpreadsheetId();
+    TrustOpsUtils.requireValue(spreadsheetId, "Spreadsheet ID");
+    var file = DriveApp.getFileById(spreadsheetId);
+    file.addEditor(email);
+    var result = {
+      userId: userId,
+      email: email,
+      shared: true,
+      sharedAt: TrustOpsUtils.nowIso()
+    };
+    TrustOpsAuditService.log(context, "SPREADSHEET_SHARED_WITH_USER", "User", userId, null, result, "");
+    return result;
+  }
+
+  function uploadProfileImage(context, payload) {
+    var userId = payload.userId || payload["User ID"] || context.userId;
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.canEditProfile(context, userId),
+      "You do not have permission to edit this profile."
+    );
+    var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.USERS, userId);
+    if (!existing) throw new Error("User not found.");
+    var dataUrl = TrustOpsUtils.requireValue(payload.dataUrl || payload.imageDataUrl, "Image data");
+    var match = String(dataUrl).match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) throw new Error("Profile image must be uploaded as a data URL.");
+    var mimeType = match[1];
+    if (["image/png", "image/jpeg", "image/gif", "image/webp"].indexOf(mimeType) === -1) {
+      throw new Error("Profile image must be PNG, JPEG, GIF, or WebP.");
+    }
+    var bytes = Utilities.base64Decode(match[2]);
+    if (bytes.length > 2 * 1024 * 1024) {
+      throw new Error("Profile image must be 2 MB or smaller.");
+    }
+    var extension = mimeType === "image/jpeg" ? "jpg" : mimeType.split("/")[1];
+    var fileName = "trust-ops-profile-" + userId + "." + extension;
+    var file = DriveApp.createFile(Utilities.newBlob(bytes, mimeType, fileName));
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    var imageUrl = "https://drive.google.com/uc?export=view&id=" + file.getId();
+    var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.USERS, userId, {
+      "Profile Image File ID": file.getId(),
+      "Profile Image URL": imageUrl,
+      "Updated At": TrustOpsUtils.nowIso()
+    });
+    TrustOpsAuditService.log(context, "PROFILE_IMAGE_UPLOADED", "User", userId, existing, saved, file.getId());
     return TrustOpsUtils.sanitizeForClient(saved);
   }
 
@@ -134,6 +227,8 @@ var TrustOpsUserService = (function () {
     listActiveUsers: listActiveUsers,
     saveUser: saveUser,
     updateProfile: updateProfile,
+    shareSpreadsheetWithUser: shareSpreadsheetWithUser,
+    uploadProfileImage: uploadProfileImage,
     archiveUser: archiveUser
   };
 })();

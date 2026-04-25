@@ -15,15 +15,20 @@ var TrustOpsManagerPermissionService = (function () {
     "Can Manage Projects",
     "Can Manage Time Categories",
     "Can Manage Tags",
-    "Can Manage Settings"
+    "Can Manage Board Views",
+    "Can Manage Settings",
+    "Can Change Profile Color"
   ];
 
-  function defaultPermissions(preset) {
+  function defaultPermissions(preset, role) {
     var selectedPreset = preset || TrustOpsConfig.MANAGER_PRESETS.OPERATIONS;
     var permissions = {};
     CAPABILITIES.forEach(function (capability) {
       permissions[capability] = false;
     });
+    if (role !== TrustOpsConfig.ROLES.MANAGER) {
+      return permissions;
+    }
     permissions["Can Create Tasks"] = true;
     permissions["Can Edit Tasks"] = true;
     permissions["Can Create Time For Others"] = true;
@@ -50,11 +55,12 @@ var TrustOpsManagerPermissionService = (function () {
   }
 
   function effectiveForUser(userId) {
+    var user = TrustOpsAuthService.getUserById(userId);
     var rows = TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.MANAGER_PERMISSIONS);
     var record = rows.filter(function (row) {
       return String(row["User ID"]) === String(userId);
     })[0];
-    var permissions = defaultPermissions(record && record.Preset);
+    var permissions = defaultPermissions(record && record.Preset, user && user.Role);
     if (record) {
       CAPABILITIES.forEach(function (capability) {
         if (TrustOpsUtils.normalizeText(record[capability])) {
@@ -76,28 +82,54 @@ var TrustOpsManagerPermissionService = (function () {
     };
   }
 
-  function managerCan(context, capability) {
-    if (!context || context.role !== TrustOpsConfig.ROLES.MANAGER) return false;
+  function userCan(context, capability) {
+    if (!context) return false;
     return TrustOpsUtils.toBoolean(effectiveForUser(context.userId).permissions[capability]);
+  }
+
+  function managerCan(context, capability) {
+    return userCan(context, capability);
   }
 
   function listManagerPermissions(context) {
     TrustOpsPermissionService.requireAllowed(
       TrustOpsPermissionService.isOwnerOrAdmin(context),
-      "Only Owner/Admin can view manager permissions."
+      "Only Owner/Admin can view user permissions."
     );
     return TrustOpsUtils.recordsForClient(TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.MANAGER_PERMISSIONS));
   }
 
-  function saveManagerPermissions(context, payload) {
+  function listUserPermissions(context) {
     TrustOpsPermissionService.requireAllowed(
       TrustOpsPermissionService.isOwnerOrAdmin(context),
-      "Only Owner/Admin can manage manager permissions."
+      "Only Owner/Admin can view user permissions."
     );
-    var userId = TrustOpsUtils.requireValue(payload.userId || payload["User ID"], "Manager user");
+    var users = TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.USERS).filter(function (user) {
+      return !TrustOpsUtils.toBoolean(user.Archived);
+    });
+    return users.map(function (user) {
+      var effective = effectiveForUser(user["User ID"]);
+      return {
+        "User ID": user["User ID"],
+        "User Name": user["Full Name"],
+        "Role": user.Role,
+        "Preset": effective.preset,
+        "Manager Permission ID": effective.record ? effective.record["Manager Permission ID"] : "",
+        "Permissions": effective.permissions
+      };
+    });
+  }
+
+  function saveUserPermissions(context, payload) {
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.isOwnerOrAdmin(context),
+      "Only Owner/Admin can manage user permissions."
+    );
+    var userId = TrustOpsUtils.requireValue(payload.userId || payload["User ID"], "User");
     var user = TrustOpsAuthService.getUserById(userId);
-    if (!user || user.Role !== TrustOpsConfig.ROLES.MANAGER) {
-      throw new Error("Manager permissions can only be assigned to Manager users.");
+    if (!user) throw new Error("User not found.");
+    if (user.Role === TrustOpsConfig.ROLES.OWNER && !TrustOpsPermissionService.isOwner(context)) {
+      throw new Error("Only Owner can change Owner user permissions.");
     }
     var existingRows = TrustOpsSheetService.findByColumn(TrustOpsConfig.SHEETS.MANAGER_PERMISSIONS, "User ID", userId);
     var existing = existingRows[0] || null;
@@ -118,16 +150,23 @@ var TrustOpsManagerPermissionService = (function () {
     var saved = existing
       ? TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.MANAGER_PERMISSIONS, existing["Manager Permission ID"], record)
       : TrustOpsSheetService.appendRecord(TrustOpsConfig.SHEETS.MANAGER_PERMISSIONS, record);
-    TrustOpsAuditService.log(context, existing ? "MANAGER_PERMISSIONS_UPDATED" : "MANAGER_PERMISSIONS_CREATED", "Manager Permissions", saved["Manager Permission ID"], existing, saved, "");
+    TrustOpsAuditService.log(context, existing ? "USER_PERMISSIONS_UPDATED" : "USER_PERMISSIONS_CREATED", "User Permissions", saved["Manager Permission ID"], existing, saved, "");
     return TrustOpsUtils.sanitizeForClient(saved);
+  }
+
+  function saveManagerPermissions(context, payload) {
+    return saveUserPermissions(context, payload);
   }
 
   return {
     CAPABILITIES: CAPABILITIES,
     defaultPermissions: defaultPermissions,
     effectiveForUser: effectiveForUser,
+    userCan: userCan,
     managerCan: managerCan,
     listManagerPermissions: listManagerPermissions,
+    listUserPermissions: listUserPermissions,
+    saveUserPermissions: saveUserPermissions,
     saveManagerPermissions: saveManagerPermissions
   };
 })();

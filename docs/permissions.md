@@ -45,8 +45,14 @@ Basic access:
 - Add general time for self.
 - Edit own unlocked time entries.
 - View own pay summary.
+- Set their own light/dark/system theme.
+- Upload their own profile image.
 
-Users cannot complete or edit tasks in the MVP.
+Users can be granted explicit capabilities, including creating their own tasks, managing tags, and changing their profile color. Tasks a user creates can be edited and deleted by that user unless a broader server-side rule blocks the mutation.
+
+## User Permission Overrides
+
+The `Manager Permissions` sheet now stores per-capability overrides for any user, not only Managers. Existing Manager rows remain valid. Owner/Admin users can edit these overrides from the Users settings modal, while the server continues to enforce owner protections.
 
 ## Locked Pay Periods
 

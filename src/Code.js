@@ -22,6 +22,10 @@ function getInitialData() {
   resetTrustOpsRequest_();
   TrustOpsSheetService.ensureAllSheets();
   var context = TrustOpsAuthService.requireAuthorizedUser();
+  var googleProfile = TrustOpsAuthService.getGoogleProfile();
+  if (googleProfile.picture && !context.user["Google Profile Photo URL"]) {
+    context.user["Google Profile Photo URL"] = googleProfile.picture;
+  }
   var currentPayPeriod = TrustOpsPayService.getCurrentPayPeriod();
   return {
     appName: TrustOpsConfig.APP_NAME,
@@ -29,7 +33,10 @@ function getInitialData() {
       roles: TrustOpsConfig.ROLES,
       taskStatuses: TrustOpsConfig.TASK_STATUSES,
       priorities: TrustOpsConfig.PRIORITIES,
-      entryTypes: TrustOpsConfig.ENTRY_TYPES
+      entryTypes: TrustOpsConfig.ENTRY_TYPES,
+      themeModes: TrustOpsConfig.THEME_MODES,
+      managerPresets: TrustOpsConfig.MANAGER_PRESETS,
+      permissionCapabilities: TrustOpsManagerPermissionService.CAPABILITIES
     },
     currentUser: context.user,
     context: {
@@ -45,13 +52,16 @@ function getInitialData() {
     tags: TrustOpsTagService.listTags(false),
     boardViews: TrustOpsBoardViewService.listBoardViews(context),
     managerPermissions: TrustOpsPermissionService.isOwnerOrAdmin(context) ? TrustOpsManagerPermissionService.listManagerPermissions(context) : [],
+    userPermissions: TrustOpsPermissionService.isOwnerOrAdmin(context) ? TrustOpsManagerPermissionService.listUserPermissions(context) : [],
     payPeriods: TrustOpsPayService.listPayPeriods(),
     currentPayPeriod: TrustOpsUtils.sanitizeForClient(currentPayPeriod),
     tasks: TrustOpsTaskService.listTasks(context, {}),
     tracker: TrustOpsTimeService.getTrackerData(context, { userId: context.userId, payPeriodId: currentPayPeriod["Pay Period ID"] }),
     paySummary: TrustOpsPayService.getPaySummary(context, { userId: context.userId, payPeriodId: currentPayPeriod["Pay Period ID"] }),
     timeRequests: TrustOpsTimeRequestService.listRequests(context, { status: TrustOpsConfig.REQUEST_STATUS.PENDING }),
-    settings: TrustOpsPermissionService.canManageSettings(context) ? TrustOpsSettingsService.listSettings(context) : []
+    settings: TrustOpsPermissionService.canManageSettings(context) ? TrustOpsSettingsService.listSettings(context) : [],
+    visualSettings: TrustOpsSettingsService.getClientVisualSettings(),
+    googleProfile: googleProfile
   };
 }
 
@@ -64,6 +74,14 @@ function refreshAppData(filters) {
   var context = requireTrustOpsContext_();
   var payload = filters || {};
   return {
+    currentUser: context.user,
+    context: {
+      userId: context.userId,
+      email: context.email,
+      fullName: context.fullName,
+      role: context.role
+    },
+    permissions: TrustOpsPermissionService.getClientPermissions(context),
     tasks: TrustOpsTaskService.listTasks(context, payload.taskFilters || {}),
     tracker: TrustOpsTimeService.getTrackerData(context, payload.timeFilters || {}),
     paySummary: TrustOpsPayService.getPaySummary(context, payload.payFilters || {}),
@@ -73,9 +91,21 @@ function refreshAppData(filters) {
     tags: TrustOpsTagService.listTags(false),
     boardViews: TrustOpsBoardViewService.listBoardViews(context),
     managerPermissions: TrustOpsPermissionService.isOwnerOrAdmin(context) ? TrustOpsManagerPermissionService.listManagerPermissions(context) : [],
+    userPermissions: TrustOpsPermissionService.isOwnerOrAdmin(context) ? TrustOpsManagerPermissionService.listUserPermissions(context) : [],
     payPeriods: TrustOpsPayService.listPayPeriods(),
     timeRequests: TrustOpsTimeRequestService.listRequests(context, { status: TrustOpsConfig.REQUEST_STATUS.PENDING }),
-    settings: TrustOpsPermissionService.canManageSettings(context) ? TrustOpsSettingsService.listSettings(context) : []
+    settings: TrustOpsPermissionService.canManageSettings(context) ? TrustOpsSettingsService.listSettings(context) : [],
+    visualSettings: TrustOpsSettingsService.getClientVisualSettings()
+  };
+}
+
+function getBoardData(filters) {
+  var context = requireTrustOpsContext_();
+  return {
+    tasks: TrustOpsTaskService.listTasks(context, filters || {}),
+    tags: TrustOpsTagService.listTags(false),
+    boardViews: TrustOpsBoardViewService.listBoardViews(context),
+    visualSettings: TrustOpsSettingsService.getClientVisualSettings()
   };
 }
 
@@ -119,6 +149,15 @@ function getPaySummary(filters) {
   return TrustOpsPayService.getPaySummary(requireTrustOpsContext_(), filters || {});
 }
 
+function getPaySummaryDetail(filters) {
+  return TrustOpsPayService.getPaySummaryDetail(requireTrustOpsContext_(), filters || {});
+}
+
+function getPayPeriodForDate(dateValue) {
+  requireTrustOpsContext_();
+  return TrustOpsUtils.sanitizeForClient(TrustOpsPayService.findPayPeriodForDate(dateValue));
+}
+
 function lockPayPeriod(payPeriodId) {
   return TrustOpsPayService.lockPayPeriod(requireTrustOpsContext_(), payPeriodId);
 }
@@ -133,6 +172,14 @@ function saveUser(payload) {
 
 function updateProfile(payload) {
   return TrustOpsUserService.updateProfile(requireTrustOpsContext_(), payload || {});
+}
+
+function uploadProfileImage(payload) {
+  return TrustOpsUserService.uploadProfileImage(requireTrustOpsContext_(), payload || {});
+}
+
+function shareSpreadsheetWithUser(userId) {
+  return TrustOpsUserService.shareSpreadsheetWithUser(requireTrustOpsContext_(), userId);
 }
 
 function archiveUser(userId) {
@@ -173,6 +220,10 @@ function archiveBoardView(viewId) {
 
 function saveManagerPermissions(payload) {
   return TrustOpsManagerPermissionService.saveManagerPermissions(requireTrustOpsContext_(), payload || {});
+}
+
+function saveUserPermissions(payload) {
+  return TrustOpsManagerPermissionService.saveUserPermissions(requireTrustOpsContext_(), payload || {});
 }
 
 function createTimeEditRequest(payload) {

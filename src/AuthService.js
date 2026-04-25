@@ -160,6 +160,28 @@ var TrustOpsAuthService = (function () {
     return diagnostic;
   }
 
+  function getGoogleProfile() {
+    try {
+      var response = UrlFetchApp.fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+        headers: {
+          Authorization: "Bearer " + ScriptApp.getOAuthToken()
+        },
+        muteHttpExceptions: true
+      });
+      if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) {
+        return {};
+      }
+      var profile = JSON.parse(response.getContentText() || "{}");
+      return {
+        name: profile.name || "",
+        picture: profile.picture || "",
+        email: TrustOpsUtils.normalizeEmail(profile.email || "")
+      };
+    } catch (error) {
+      return {};
+    }
+  }
+
   return {
     getActiveEmail: getActiveEmail,
     getEffectiveEmail: getEffectiveEmail,
@@ -170,6 +192,7 @@ var TrustOpsAuthService = (function () {
     getOptionalUserContext: getOptionalUserContext,
     requireBootstrapAllowed: requireBootstrapAllowed,
     diagnoseUserAccess: diagnoseUserAccess,
-    getPublicAuthDiagnostic: getPublicAuthDiagnostic
+    getPublicAuthDiagnostic: getPublicAuthDiagnostic,
+    getGoogleProfile: getGoogleProfile
   };
 })();

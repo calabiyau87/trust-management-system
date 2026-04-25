@@ -20,6 +20,21 @@
         --shadow: 0 8px 24px rgba(21, 34, 50, 0.08);
       }
 
+      body[data-theme="dark"] {
+        --bg: #101417;
+        --surface: #171d22;
+        --surface-muted: #222b31;
+        --text: #edf2f7;
+        --muted: #a4b0bd;
+        --border: #34414b;
+        --accent: #48a095;
+        --accent-strong: #66b9ae;
+        --danger: #e07b7b;
+        --warning: #e7bd63;
+        --ok: #76c79b;
+        --shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+      }
+
       * {
         box-sizing: border-box;
       }
@@ -81,7 +96,8 @@
         min-height: 38px;
         border: 1px solid var(--border);
         border-radius: 7px;
-        background: #fff;
+        background: var(--surface);
+        color: var(--text);
         padding: 8px 10px;
       }
 
@@ -93,6 +109,16 @@
       input[type="checkbox"] {
         width: auto;
         min-height: auto;
+      }
+
+      input[type="color"] {
+        width: 46px;
+        min-height: 38px;
+        padding: 4px;
+      }
+
+      input[type="file"] {
+        padding: 6px;
       }
 
       label {
@@ -147,6 +173,16 @@
         margin: 0;
         color: var(--muted);
         font-size: 12px;
+      }
+
+      .user-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      header > .user-chip:not(.user-chip-current) {
+        display: none;
       }
 
       nav {
@@ -311,6 +347,79 @@
         padding: 0;
       }
 
+      .avatar {
+        display: inline-grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        border: 1px solid var(--border);
+        background: var(--accent);
+        color: #fff;
+        overflow: hidden;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .user-cell,
+      .profile-preview {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .color-field {
+        display: grid;
+        grid-template-columns: 46px minmax(110px, 1fr);
+        gap: 8px;
+        align-items: center;
+      }
+
+      .swatch {
+        display: inline-block;
+        width: 22px;
+        height: 22px;
+        border-radius: 5px;
+        border: 1px solid var(--border);
+        vertical-align: middle;
+      }
+
+      .tag-picker {
+        display: grid;
+        gap: 8px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px;
+      }
+
+      .tag-option-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .chip-remove {
+        border: 0;
+        background: transparent;
+        padding: 0 0 0 5px;
+        color: inherit;
+      }
+
+      .pay-row {
+        cursor: pointer;
+      }
+
+      .pay-row:hover {
+        background: var(--surface-muted);
+      }
+
       .group-heading {
         margin: 14px 0 8px;
         padding: 8px 10px;
@@ -369,6 +478,11 @@
         padding: 18px;
         background: rgba(16, 24, 32, 0.38);
         z-index: 20;
+      }
+
+      .modal-backdrop[data-modal-level="2"] {
+        z-index: 30;
+        background: rgba(16, 24, 32, 0.24);
       }
 
       .modal {
@@ -492,8 +606,9 @@
         data: null,
         boardFilters: {},
         boardGrouping: "",
+        selectedBoardViewId: "",
         timeFilters: {},
-        payFilters: {},
+        payFilters: { rangeMode: "current" },
         settingsSection: "profile",
         status: ""
       };
@@ -518,6 +633,59 @@
 
       function money(value) {
         return Number(value || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
+      }
+
+      function parseJson(value, fallback = {}) {
+        try {
+          return JSON.parse(value || "{}") || fallback;
+        } catch (error) {
+          return fallback;
+        }
+      }
+
+      function normalizeHex(value, fallback = "#1f6f68") {
+        const text = String(value || "").trim();
+        return /^#[0-9a-fA-F]{6}$/.test(text) ? text.toLowerCase() : fallback;
+      }
+
+      function cssEscape(value) {
+        return window.CSS && CSS.escape ? CSS.escape(String(value)) : String(value).replace(/"/g, '\\"');
+      }
+
+      function settingMap() {
+        return Object.fromEntries((state.data?.settings || []).map((setting) => [setting["Setting Key"], setting["Setting Value"]]));
+      }
+
+      function taskStatusColors() {
+        return state.data?.visualSettings?.taskStatusColors || {};
+      }
+
+      function badgeStyleForStatus(status) {
+        const color = taskStatusColors()[status];
+        return color ? ` style="color: ${escapeHtml(color)}; border-color: ${escapeHtml(color)}; background: ${escapeHtml(color)}18;"` : "";
+      }
+
+      function initials(name) {
+        return String(name || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase() || "?";
+      }
+
+      function avatarForUser(user, size = "") {
+        const color = normalizeHex(user?.["Profile Color"], "#1f6f68");
+        const imageUrl = user?.["Profile Image URL"] || user?.["Google Profile Photo URL"] || "";
+        const style = `background:${escapeHtml(color)}`;
+        return `<span class="avatar ${escapeHtml(size)}" style="${style}" title="${escapeHtml(user?.["Full Name"] || user?.Email || "")}">${imageUrl ? `<img alt="" src="${escapeHtml(imageUrl)}">` : escapeHtml(initials(user?.["Full Name"] || user?.Email))}</span>`;
+      }
+
+      function findUser(userId) {
+        return (state.data.users || []).find((user) => String(user["User ID"]) === String(userId)) || null;
+      }
+
+      function renderColorField(name, value, fallback = "#1f6f68") {
+        const color = normalizeHex(value, fallback);
+        return `<div class="color-field" data-color-field>
+          <input type="color" data-color-wheel="${escapeHtml(name)}" value="${escapeHtml(color)}" aria-label="${escapeHtml(name)} color">
+          <input name="${escapeHtml(name)}" data-color-hex="${escapeHtml(name)}" value="${escapeHtml(color)}" pattern="^#[0-9a-fA-F]{6}$" maxlength="7">
+        </div>`;
       }
 
       function options(items, valueKey, labelKey, selectedValue, includeBlank) {
@@ -554,10 +722,39 @@
         return `<button class="icon-button ${danger ? "danger" : ""}" data-action="${escapeHtml(action)}" ${idName ? `${idName}="${escapeHtml(idValue)}"` : ""} title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${symbol}</button>`;
       }
 
+      function setModal(html) {
+        document.getElementById("modal-root").innerHTML = html;
+      }
+
+      function pushModal(html) {
+        const root = document.getElementById("modal-root");
+        root.insertAdjacentHTML("beforeend", html);
+        Array.from(root.querySelectorAll(".modal-backdrop")).forEach((modal, index) => {
+          modal.dataset.modalLevel = String(index + 1);
+        });
+      }
+
+      function closeTopModal() {
+        const modals = document.querySelectorAll("#modal-root .modal-backdrop");
+        if (!modals.length) return;
+        modals[modals.length - 1].remove();
+      }
+
+      function clearModals() {
+        document.getElementById("modal-root").innerHTML = "";
+      }
+
       function setStatus(message) {
         state.status = message || "";
         const line = document.querySelector("[data-status-line]");
         if (line) line.textContent = state.status;
+      }
+
+      function applyUserPreferences() {
+        const user = state.data?.currentUser || {};
+        const mode = user["Theme Mode"] || "System";
+        const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.body.dataset.theme = mode === "Dark" || (mode === "System" && prefersDark) ? "dark" : "light";
       }
 
       async function loadInitial() {
@@ -566,7 +763,8 @@
           state.timeFilters.userId = state.data.context.userId;
           state.timeFilters.payPeriodId = state.data.currentPayPeriod["Pay Period ID"];
           state.payFilters.userId = state.data.context.userId;
-          state.payFilters.payPeriodId = state.data.currentPayPeriod["Pay Period ID"];
+          state.payFilters.rangeMode = "current";
+          applyUserPreferences();
           render();
         } catch (error) {
           let diagnostic = null;
@@ -615,13 +813,43 @@
         };
         const fresh = await callServer("refreshAppData", payload);
         Object.assign(state.data, fresh);
+        applyUserPreferences();
         setStatus(parts.message || "Updated.");
         render();
+      }
+
+      async function refreshBoardData(message = "Board updated.") {
+        const fresh = await callServer("getBoardData", state.boardFilters);
+        Object.assign(state.data, fresh);
+        setStatus(message);
+        render();
+      }
+
+      async function refreshTrackerData(message = "Time tracker refreshed.") {
+        state.data.tracker = await callServer("getTrackerData", state.timeFilters);
+        setStatus(message);
+        render();
+      }
+
+      async function refreshPaySummaryData(message = "Pay summary refreshed.") {
+        state.data.paySummary = await callServer("getPaySummary", buildPayFilters());
+        setStatus(message);
+        render();
+      }
+
+      function upsertLocalTag(tag) {
+        const tags = state.data.tags || [];
+        const index = tags.findIndex((item) => item["Tag ID"] === tag["Tag ID"]);
+        if (index === -1) tags.push(tag);
+        else tags[index] = tag;
+        tags.sort((a, b) => String(a.Tag).localeCompare(String(b.Tag)));
+        state.data.tags = tags;
       }
 
       function render() {
         const data = state.data;
         if (!data) return;
+        applyUserPreferences();
         const tabs = [
           ["board", "Assignment Board"],
           ["time", "Time Tracker"],
@@ -638,7 +866,7 @@
                 <p>Tasks, time, pay periods, and administration</p>
               </div>
             </div>
-            <div class="user-chip">${escapeHtml(data.context.fullName)} · ${escapeHtml(data.context.role)}</div>
+            <div class="user-chip user-chip-current">${avatarForUser(data.currentUser)}<span>${escapeHtml(data.context.fullName)} / ${escapeHtml(data.context.role)}</span></div>
           </header>
           <nav>
             ${tabs.map(([id, label]) => `<button class="${state.tab === id ? "active" : ""}" data-tab="${id}">${label}</button>`).join("")}
@@ -672,6 +900,27 @@
           }
           return true;
         });
+      }
+
+      function selectedBoardView() {
+        return (state.data.boardViews || []).find((view) => String(view["Board View ID"]) === String(state.selectedBoardViewId)) || null;
+      }
+
+      function canModifyBoardView(view) {
+        if (!view) return false;
+        return String(view["Owner User ID"]) === String(state.data.context.userId) || state.data.permissions.canManageBoardViews;
+      }
+
+      function buildBoardViewPayload(form) {
+        const view = selectedBoardView();
+        const canUpdate = canModifyBoardView(view);
+        return {
+          viewId: canUpdate ? state.selectedBoardViewId : "",
+          viewName: form.viewName.value,
+          visibility: canUpdate ? form.visibility.value : "Private",
+          filters: state.boardFilters,
+          grouping: state.boardGrouping
+        };
       }
 
       function groupTaskKey(task) {
@@ -709,6 +958,8 @@
       function renderBoard() {
         const data = state.data;
         const tasks = applyBoardFilters(data.tasks);
+        const view = selectedBoardView();
+        const canDeleteSelectedView = canModifyBoardView(view);
         return `
           <section class="toolbar">
             <div>
@@ -718,6 +969,7 @@
             <div class="actions">
               ${data.permissions.canCreateTask ? '<button class="primary" data-action="new-task">New Task</button>' : ""}
               <button data-action="save-board-view">Save View</button>
+              ${canDeleteSelectedView ? renderIcon("delete-board-view", "", "", "Delete saved view", "&#128465;", true) : ""}
               <button data-action="clear-board-filters">Clear Filters</button>
             </div>
           </section>
@@ -725,7 +977,7 @@
             <div class="filters">
               <label>Saved View <select data-action="load-board-view">
                 <option value="">Select view</option>
-                ${(data.boardViews || []).map((view) => `<option value="${escapeHtml(view["Board View ID"])}">${escapeHtml(view["View Name"])} (${escapeHtml(view.Visibility)})</option>`).join("")}
+                ${(data.boardViews || []).map((item) => `<option value="${escapeHtml(item["Board View ID"])}" ${String(item["Board View ID"]) === String(state.selectedBoardViewId) ? "selected" : ""}>${escapeHtml(item["View Name"])} (${escapeHtml(item.Visibility)})</option>`).join("")}
               </select></label>
               <label>Search <input data-filter="search" value="${escapeHtml(state.boardFilters.search || "")}" placeholder="Task, notes, tags"></label>
               <label>Status <select data-filter="status">${constantOptions(data.constants.taskStatuses, state.boardFilters.status, true)}</select></label>
@@ -761,17 +1013,17 @@
                       <div>${escapeHtml(task.Notes || "")}</div>
                       ${task.Tags ? `<span class="badge">${escapeHtml(task.Tags)}</span>` : ""}
                     </td>
-                    <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}">${escapeHtml(task.Status)}</span></td>
+                    <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}"${badgeStyleForStatus(task.Status)}>${escapeHtml(task.Status)}</span></td>
                     <td data-label="Assignees">${escapeHtml(task.Assignees)}</td>
                     <td data-label="Project">${escapeHtml(task["Project Name"])}</td>
                     <td data-label="Priority"><span class="badge ${escapeHtml(String(task.Priority).toLowerCase())}">${escapeHtml(task.Priority)}</span></td>
                     <td data-label="Due">${escapeHtml(task["Due Date"])}</td>
                     <td data-label="Actions">
                       <div class="actions">
-                        ${task._permissions?.canAddTime ? `<button data-action="add-time" data-task-id="${escapeHtml(task["Task ID"])}">Add Time</button>` : ""}
+                        ${task._permissions?.canComplete && task.Status !== "Complete" ? renderIcon("complete-task", "data-task-id", task["Task ID"], "Complete task", "&#10003;") : ""}
+                        ${task._permissions?.canAddTime ? renderIcon("add-time", "data-task-id", task["Task ID"], "Add time", "&#128336;") : ""}
                         ${task._permissions?.canEdit ? renderIcon("edit-task", "data-task-id", task["Task ID"], "Edit task", "&#9998;") : ""}
-                        ${task._permissions?.canDelete ? renderIcon("delete-task", "data-task-id", task["Task ID"], "Delete task", "&#128465;") : ""}
-                        ${task._permissions?.canComplete && task.Status !== "Complete" ? `<button data-action="complete-task" data-task-id="${escapeHtml(task["Task ID"])}">Complete</button>` : ""}
+                        ${task._permissions?.canDelete ? renderIcon("delete-task", "data-task-id", task["Task ID"], "Delete task", "&#128465;", true) : ""}
                       </div>
                     </td>
                   </tr>`).join("")}
@@ -779,6 +1031,20 @@
             </table>
           </div>
         `;
+      }
+
+      function renderTimeLockFields(period) {
+        const locked = String(period?.Locked) === "true" || period?.Status === "Locked";
+        if (!locked) return "";
+        if (state.data.permissions.canOverrideLockedPeriod) {
+          return '<label>Override Reason <input name="overrideReason" placeholder="Required for locked-period override"></label>';
+        }
+        return '<label>Request Reason <input name="requestReason" placeholder="Required for locked-period request"></label>';
+      }
+
+      function findClientPayPeriodForDate(dateValue) {
+        const date = String(dateValue || "");
+        return (state.data.payPeriods || []).find((period) => date >= String(period["Start Date"]) && date <= String(period["End Date"])) || null;
       }
 
       function renderTimeTracker() {
@@ -791,6 +1057,7 @@
         const selectedPeriod = tracker.selectedPayPeriod || data.currentPayPeriod || {};
         const periodLocked = String(selectedPeriod.Locked) === "true" || selectedPeriod.Status === "Locked";
         const selectedUser = (data.users || []).find((user) => user["User ID"] === targetUserId) || data.currentUser;
+        const defaultEntryDate = selectedPeriod["Start Date"] || new Date().toISOString().slice(0, 10);
         return `
           <section class="toolbar">
             <div>
@@ -799,16 +1066,21 @@
             </div>
           </section>
           <section class="panel">
+            <div class="filters">
+              ${canSelectUser ? `<label>User <select data-time-filter="userId">${options(data.users, "User ID", "Full Name", targetUserId, false)}</select></label>` : `<label>User <input value="${escapeHtml(selectedUser["Full Name"] || data.context.fullName)}" disabled></label>`}
+              <label>Entries Period <select data-time-filter="payPeriodId">${options(data.payPeriods, "Pay Period ID", "Pay Period Label", state.timeFilters.payPeriodId, false)}</select></label>
+            </div>
+          </section>
+          <section class="panel">
             <h3>Log Time</h3>
             <form data-form="time-entry" class="stack">
               <div class="form-grid">
-                ${canSelectUser ? `<label>User <select name="userId">${options(data.users, "User ID", "Full Name", targetUserId, false)}</select></label>` : `<label>User <input value="${escapeHtml(selectedUser["Full Name"] || data.context.fullName)}" disabled></label>`}
-                <label>Pay Period <select name="payPeriodId">${options(data.payPeriods, "Pay Period ID", "Pay Period Label", state.timeFilters.payPeriodId, false)}</select></label>
+                <label>User <input value="${escapeHtml(selectedUser["Full Name"] || data.context.fullName)}" disabled></label>
                 <label>Entry Type <select name="entryType">
                   <option value="Task">Task Time</option>
                   <option value="General Time">General Time</option>
                 </select></label>
-                <label>Date <input name="date" type="date" min="${escapeHtml(selectedPeriod["Start Date"] || "")}" max="${escapeHtml(selectedPeriod["End Date"] || "")}" value="${escapeHtml(selectedPeriod["Start Date"] || new Date().toISOString().slice(0, 10))}"></label>
+                <label>Date <input name="date" type="date" value="${escapeHtml(defaultEntryDate)}"></label>
                 <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" required></label>
               </div>
               <div class="form-grid two" data-time-mode="task">
@@ -819,8 +1091,7 @@
                 <label>Category <select name="categoryId">${options(tracker.categories || [], "Category ID", "Category", "", false)}</select></label>
                 <label>Notes <input name="generalNotes" placeholder="Optional notes"></label>
               </div>
-              ${periodLocked && data.permissions.canOverrideLockedPeriod ? '<label>Override Reason <input name="overrideReason" placeholder="Required for locked-period override"></label>' : ""}
-              ${periodLocked && !data.permissions.canOverrideLockedPeriod ? '<label>Request Reason <input name="requestReason" placeholder="Required for locked-period request"></label>' : ""}
+              <div data-time-lock-fields>${renderTimeLockFields(periodLocked ? selectedPeriod : null)}</div>
               <div class="actions"><button class="primary" type="submit">Save Time</button></div>
             </form>
           </section>
@@ -898,40 +1169,67 @@
                   <td data-label="Reason">${escapeHtml(request.Reason)}</td>
                   <td data-label="Actions">
                     ${state.data.permissions.canApproveTimeRequests && request.Status === "Pending" ? `
-                      <button data-action="approve-time-request" data-request-id="${escapeHtml(request["Time Edit Request ID"])}">Approve</button>
-                      <button data-action="reject-time-request" data-request-id="${escapeHtml(request["Time Edit Request ID"])}">Reject</button>` : ""}
+                      ${renderIcon("approve-time-request", "data-request-id", request["Time Edit Request ID"], "Approve", "&#10003;")}
+                      ${renderIcon("reject-time-request", "data-request-id", request["Time Edit Request ID"], "Reject", "&#10005;", true)}` : ""}
                   </td>
                 </tr>`).join("")}</tbody>
             </table>
           </div>`;
       }
 
+      function payRangeOptions() {
+        const selected = state.payFilters.rangeMode || "current";
+        const fixed = [
+          ["current", "Current Pay Period"],
+          ["last", "Last Pay Period"]
+        ];
+        const periods = (state.data.payPeriods || []).map((period) => [`period:${period["Pay Period ID"]}`, period["Pay Period Label"]]);
+        const ranges = [
+          ["this-year", "This Year"],
+          ["last-year", "Last Year"],
+          ["last-month", "Last Month"],
+          ["ytd", "Year to Date"],
+          ["custom", "Custom Range"]
+        ];
+        return fixed.concat(periods, ranges).map(([value, label]) => `<option value="${escapeHtml(value)}" ${String(value) === String(selected) ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
+      }
+
+      function buildPayFilters(extra = {}) {
+        const rangeMode = state.payFilters.rangeMode || "current";
+        const filters = {
+          userId: state.payFilters.userId || "",
+          rangeMode: rangeMode
+        };
+        if (rangeMode === "custom") {
+          filters.startDate = state.payFilters.startDate || "";
+          filters.endDate = state.payFilters.endDate || "";
+        }
+        return Object.assign(filters, extra);
+      }
+
       function renderPaySummary() {
         const data = state.data;
         const summary = data.paySummary || { summaries: [] };
+        const range = summary.range || {};
+        const selectedPeriodId = summary.payPeriod?.["Pay Period ID"] || "";
         return `
           <section class="toolbar">
             <div>
               <h2>Pay Summary</h2>
-              <p>${escapeHtml(summary.payPeriod?.["Pay Period Label"] || "")} ${summary.locked ? "&middot; Locked" : "&middot; Open"}</p>
+              <p>${escapeHtml(range.label || summary.payPeriod?.["Pay Period Label"] || "")} ${summary.payPeriod ? (summary.locked ? "&middot; Locked" : "&middot; Open") : ""}</p>
             </div>
             <div class="actions">
-              ${data.permissions.canLockPayPeriod && !summary.locked ? `<button data-action="lock-period" class="primary">Lock Pay Period</button>` : ""}
-              ${data.permissions.canUnlockPayPeriod && summary.locked ? `<button data-action="unlock-period">Unlock Pay Period</button>` : ""}
+              ${selectedPeriodId && data.permissions.canLockPayPeriod && !summary.locked ? renderIcon("lock-period", "", "", "Lock period", "&#128274;") : ""}
+              ${selectedPeriodId && data.permissions.canUnlockPayPeriod && summary.locked ? renderIcon("unlock-period", "", "", "Unlock period", "&#128275;") : ""}
             </div>
           </section>
           <section class="panel">
             <div class="filters">
               ${data.permissions.canViewAllPay ? `<label>User <select data-pay-filter="userId">${options(data.users, "User ID", "Full Name", state.payFilters.userId, true)}</select></label>` : ""}
-              <label>Pay Period <select data-pay-filter="payPeriodId">${options(data.payPeriods, "Pay Period ID", "Pay Period Label", state.payFilters.payPeriodId, false)}</select></label>
-              <label>Range <select data-pay-range>
-                <option value="">Selected Period</option>
-                <option value="this-year">This Year</option>
-                <option value="last-year">Last Year</option>
-                <option value="last-month">Last Month</option>
-                <option value="ytd">Year to Date</option>
-                <option value="custom">Custom Range</option>
-              </select></label>
+              <label>Range <select data-pay-filter="rangeMode">${payRangeOptions()}</select></label>
+              ${state.payFilters.rangeMode === "custom" ? `
+                <label>Start Date <input type="date" data-pay-filter="startDate" value="${escapeHtml(state.payFilters.startDate || "")}"></label>
+                <label>End Date <input type="date" data-pay-filter="endDate" value="${escapeHtml(state.payFilters.endDate || "")}"></label>` : ""}
             </div>
           </section>
           <section class="panel">
@@ -941,8 +1239,8 @@
                   <thead><tr><th>User</th><th>Total Hours</th><th>Pay Type</th><th>Rate/Salary</th><th>Effective Hourly</th><th>Gross Pay</th></tr></thead>
                   <tbody>
                     ${summary.summaries.map((row) => `
-                      <tr>
-                        <td data-label="User">${escapeHtml(row["User Name"])}</td>
+                      <tr class="pay-row" data-action="open-pay-detail" data-user-id="${escapeHtml(row["User ID"])}">
+                        <td data-label="User"><span class="user-cell">${avatarForUser(findUser(row["User ID"]) || row)}${escapeHtml(row["User Name"])}</span></td>
                         <td data-label="Total Hours">${escapeHtml(row["Total Hours"])}</td>
                         <td data-label="Pay Type">${escapeHtml(row["Pay Type"])}</td>
                         <td data-label="Rate/Salary">${row["Pay Type"] === "Hourly" ? money(row["Hourly Rate"]) + "/hr" : money(row["Salary Amount"])}</td>
@@ -993,16 +1291,22 @@
 
       function renderProfileSettings() {
         const user = state.data.currentUser || {};
+        const googlePhoto = user["Google Profile Photo URL"] || state.data.googleProfile?.picture || "";
         return `
           <section class="panel">
             <h3>Profile</h3>
             <form data-form="profile" class="stack">
+              <div class="profile-preview">${avatarForUser(Object.assign({}, user, { "Google Profile Photo URL": googlePhoto }))}<strong>${escapeHtml(user["Full Name"] || state.data.context.fullName)}</strong></div>
               <div class="form-grid two">
                 <label>First Name <input name="firstName" value="${escapeHtml(user["First Name"] || "")}" required></label>
                 <label>Last Name <input name="lastName" value="${escapeHtml(user["Last Name"] || "")}"></label>
                 <label>Full Name <input name="fullName" value="${escapeHtml(user["Full Name"] || state.data.context.fullName)}" required></label>
                 <label>Email <input value="${escapeHtml(user.Email || state.data.context.email)}" disabled></label>
+                <label>Theme <select name="themeMode">${constantOptions(state.data.constants.themeModes || ["System", "Light", "Dark"], user["Theme Mode"] || "System", false)}</select></label>
+                ${state.data.permissions.canChangeProfileColor ? `<label>Profile Color ${renderColorField("profileColor", user["Profile Color"] || "#1f6f68")}</label>` : `<label>Profile Color <span><span class="swatch" style="background:${escapeHtml(normalizeHex(user["Profile Color"], "#1f6f68"))}"></span></span></label>`}
+                <label>Profile Image <input name="profileImage" type="file" accept="image/png,image/jpeg,image/gif,image/webp"></label>
               </div>
+              <input type="hidden" name="googleProfilePhotoUrl" value="${escapeHtml(googlePhoto)}">
               <button class="primary" type="submit">Save Profile</button>
             </form>
           </section>`;
@@ -1020,12 +1324,13 @@
                 <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tracking</th><th>Actions</th></tr></thead>
                 <tbody>${data.users.map((user) => `
                   <tr>
-                    <td data-label="Name">${escapeHtml(user["Full Name"])}</td>
+                    <td data-label="Name"><span class="user-cell">${avatarForUser(user)}${escapeHtml(user["Full Name"])}</span></td>
                     <td data-label="Email">${escapeHtml(user.Email)}</td>
                     <td data-label="Role">${escapeHtml(user.Role)}</td>
                     <td data-label="Tracking">Time: ${escapeHtml(user["Track Time"])} / Pay: ${escapeHtml(user["Track Pay"])}</td>
                     <td data-label="Actions">
                       ${renderIcon("edit-user", "data-user-id", user["User ID"], "Edit user", "&#9998;")}
+                      ${data.userPermissions?.length ? renderIcon("share-user-spreadsheet", "data-user-id", user["User ID"], "Share spreadsheet", "&#128279;") : ""}
                       ${renderIcon("delete-user", "data-user-id", user["User ID"], "Delete user", "&#128465;", true)}
                     </td>
                   </tr>`).join("")}</tbody>
@@ -1091,7 +1396,7 @@
                 <tbody>${(data.tags || []).map((tag) => `
                   <tr>
                     <td data-label="Tag">${escapeHtml(tag.Tag)}</td>
-                    <td data-label="Color">${escapeHtml(tag.Color)}</td>
+                    <td data-label="Color"><span class="swatch" style="background:${escapeHtml(normalizeHex(tag.Color, "#1f6f68"))}"></span> ${escapeHtml(tag.Color)}</td>
                     <td data-label="Description">${escapeHtml(tag.Description)}</td>
                     <td data-label="Actions">
                       ${renderIcon("edit-tag", "data-tag-id", tag["Tag ID"], "Edit tag", "&#9998;")}
@@ -1105,6 +1410,7 @@
 
       function renderAppSettings() {
         const settingMap = Object.fromEntries((state.data.settings || []).map((setting) => [setting["Setting Key"], setting["Setting Value"]]));
+        const colors = Object.assign({}, state.data.visualSettings?.taskStatusColors || {}, parseJson(settingMap.TASK_STATUS_COLORS_JSON, {}));
         return `
           <section class="panel">
             <h3>Application Settings</h3>
@@ -1112,6 +1418,10 @@
               <div class="form-grid two">
                 <label>Pay Period Anchor Date <input name="anchorDate" type="date" value="${escapeHtml(settingMap.PAY_PERIOD_ANCHOR_DATE || "")}"></label>
                 <label>Pay Period Days <input name="periodDays" type="number" min="1" max="31" value="${escapeHtml(settingMap.DEFAULT_PAY_PERIOD_DAYS || "14")}"></label>
+              </div>
+              <h3>Task Status Colors</h3>
+              <div class="form-grid two">
+                ${(state.data.constants.taskStatuses || []).map((status) => `<label>${escapeHtml(status)} ${renderColorField(`statusColor__${status}`, colors[status] || "#647181", "#647181")}</label>`).join("")}
               </div>
               <button class="primary" type="submit">Save Settings</button>
             </form>
@@ -1150,7 +1460,7 @@
                       <td data-label="Name">${escapeHtml(user["Full Name"])}</td>
                       <td data-label="Email">${escapeHtml(user.Email)}</td>
                       <td data-label="Role">${escapeHtml(user.Role)}</td>
-                      <td data-label="Tracking">Time: ${escapeHtml(user["Track Time"])} · Pay: ${escapeHtml(user["Track Pay"])}</td>
+                      <td data-label="Tracking">Time: ${escapeHtml(user["Track Time"])} / Pay: ${escapeHtml(user["Track Pay"])}</td>
                     </tr>`).join("")}</tbody>
                 </table>
               </div>
@@ -1253,10 +1563,47 @@
           </section>`;
       }
 
+      function activeTags() {
+        return (state.data.tags || []).filter((tag) => String(tag.Active) !== "false");
+      }
+
+      function renderTagPicker(selectedTags) {
+        const selected = selectedTags || [];
+        return `<div class="tag-picker" data-tag-picker>
+          <input type="hidden" name="tags" value="${escapeHtml(selected.join(", "))}">
+          <div class="chip-list" data-tag-chips></div>
+          <input data-tag-search placeholder="Search or create tag" autocomplete="off">
+          <div class="tag-option-list" data-tag-options></div>
+        </div>`;
+      }
+
+      function updateTagPicker(picker) {
+        const hidden = picker.querySelector('input[name="tags"]');
+        const searchInput = picker.querySelector("[data-tag-search]");
+        const query = String(searchInput?.value || "").trim().toLowerCase();
+        const selected = selectedList(hidden.value);
+        picker.querySelector("[data-tag-chips]").innerHTML = selected.map((tag) => `
+          <span class="badge">${escapeHtml(tag)}<button type="button" class="chip-remove" data-action="remove-tag-selection" data-tag-name="${escapeHtml(tag)}" title="Remove ${escapeHtml(tag)}" aria-label="Remove ${escapeHtml(tag)}">&times;</button></span>
+        `).join("");
+        const matches = activeTags().filter((tag) => {
+          if (selected.indexOf(tag.Tag) !== -1) return false;
+          return !query || String(tag.Tag).toLowerCase().includes(query);
+        }).slice(0, 12);
+        const exact = activeTags().some((tag) => String(tag.Tag).toLowerCase() === query);
+        const createButton = query && !exact && state.data.permissions.canManageTags
+          ? `<button type="button" data-action="new-tag-from-task" data-tag-name="${escapeHtml(searchInput.value.trim())}">Create "${escapeHtml(searchInput.value.trim())}"</button>`
+          : "";
+        picker.querySelector("[data-tag-options]").innerHTML = matches.map((tag) => `<button type="button" data-action="add-tag-selection" data-tag-name="${escapeHtml(tag.Tag)}">${escapeHtml(tag.Tag)}</button>`).join("") + createButton;
+      }
+
+      function updateAllTagPickers() {
+        document.querySelectorAll("[data-tag-picker]").forEach(updateTagPicker);
+      }
+
       function openTaskModal(task = null) {
         const data = state.data;
         const isEdit = Boolean(task);
-        document.getElementById("modal-root").innerHTML = `
+        setModal(`
           <div class="modal-backdrop">
             <form class="modal stack" data-form="task-modal">
               <div class="modal-header">
@@ -1273,27 +1620,19 @@
                 <label>Priority <select name="priority">${constantOptions(data.constants.priorities, task?.Priority || "Medium", false)}</select></label>
               </div>
               <label>Assignees ${renderCheckboxList("assigneeUserIds", data.users || [], "User ID", "Full Name", selectedList(task?.["Assignee User IDs"]))}</label>
-              <label>Tags
-                <select name="tags" multiple size="5">
-                  ${(data.tags || []).map((tag) => {
-                    const selected = selectedList(task?.Tags).includes(tag.Tag) ? "selected" : "";
-                    return `<option value="${escapeHtml(tag.Tag)}" ${selected}>${escapeHtml(tag.Tag)}</option>`;
-                  }).join("")}
-                </select>
-              </label>
-              ${data.permissions.canManageTags ? '<button type="button" data-action="new-tag">Create New Tag</button>' : ""}
+              <label>Tags ${renderTagPicker(selectedList(task?.Tags))}</label>
               <div class="actions"><button class="primary" type="submit">${isEdit ? "Save Task" : "Create Task"}</button></div>
             </form>
-          </div>`;
+          </div>`);
+        updateAllTagPickers();
       }
 
       function openTimeModal(entry) {
         const data = state.data;
         const tracker = data.tracker || {};
-        const selectedPeriod = tracker.selectedPayPeriod || data.currentPayPeriod || {};
-        const periodLocked = String(selectedPeriod.Locked) === "true" || selectedPeriod.Status === "Locked";
+        const selectedPeriod = findClientPayPeriodForDate(entry.Date) || tracker.selectedPayPeriod || data.currentPayPeriod || {};
         const canSelectUser = data.permissions.canCreateTimeForAnyUser;
-        document.getElementById("modal-root").innerHTML = `
+        setModal(`
           <div class="modal-backdrop">
             <form class="modal stack" data-form="time-modal">
               <div class="modal-header">
@@ -1307,7 +1646,7 @@
                   <option value="Task" ${entry["Entry Type"] === "Task" ? "selected" : ""}>Task Time</option>
                   <option value="General Time" ${entry["Entry Type"] === "General Time" ? "selected" : ""}>General Time</option>
                 </select></label>
-                <label>Date <input name="date" type="date" min="${escapeHtml(selectedPeriod["Start Date"] || "")}" max="${escapeHtml(selectedPeriod["End Date"] || "")}" value="${escapeHtml(entry.Date)}"></label>
+                <label>Date <input name="date" type="date" value="${escapeHtml(entry.Date)}"></label>
                 <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" value="${escapeHtml(entry.Hours)}"></label>
               </div>
               <div class="form-grid two">
@@ -1316,28 +1655,54 @@
                 <label>Project <select name="projectId">${options(data.projects || [], "Project ID", "Project Name", entry["Project ID"], true)}</select></label>
               </div>
               <label>Notes <textarea name="notes">${escapeHtml(entry.Notes || "")}</textarea></label>
-              ${periodLocked && data.permissions.canOverrideLockedPeriod ? '<label>Override Reason <input name="overrideReason" placeholder="Required if this period is locked"></label>' : ""}
-              ${periodLocked && !data.permissions.canOverrideLockedPeriod ? '<label>Request Reason <input name="requestReason" placeholder="Required for locked-period request"></label>' : ""}
+              <div data-time-lock-fields>${renderTimeLockFields(selectedPeriod)}</div>
               <div class="actions"><button class="primary" type="submit">Save Entry</button></div>
             </form>
-          </div>`;
+          </div>`);
       }
 
       function openBoardViewModal() {
-        document.getElementById("modal-root").innerHTML = `
+        const view = selectedBoardView();
+        const canUpdate = canModifyBoardView(view);
+        setModal(`
           <div class="modal-backdrop">
             <form class="modal stack" data-form="board-view-modal">
               <div class="modal-header"><h3>Save Board View</h3><button type="button" data-action="close-modal">Close</button></div>
-              <label>View Name <input name="viewName" required></label>
-              <label>Visibility <select name="visibility"><option>Private</option><option>Shared</option></select></label>
+              <label>View Name <input name="viewName" required value="${escapeHtml(canUpdate ? view?.["View Name"] || "" : view ? `${view["View Name"]} Copy` : "")}"></label>
+              <label>Visibility <select name="visibility">
+                <option ${(!canUpdate || view?.Visibility !== "Shared") ? "selected" : ""}>Private</option>
+                ${state.data.permissions.canManageBoardViews ? `<option ${canUpdate && view?.Visibility === "Shared" ? "selected" : ""}>Shared</option>` : ""}
+              </select></label>
               <div class="actions"><button class="primary" type="submit">Save View</button></div>
             </form>
-          </div>`;
+          </div>`);
+      }
+
+      function effectivePermissionsForUser(userId) {
+        return (state.data.userPermissions || []).find((row) => String(row["User ID"]) === String(userId))?.Permissions || {};
+      }
+
+      function renderUserPermissionControls(user) {
+        if (!state.data.userPermissions?.length) return "";
+        if (!user || !user["User ID"]) return "";
+        const permissions = effectivePermissionsForUser(user?.["User ID"]);
+        const capabilities = state.data.constants.permissionCapabilities || [];
+        return `<section class="panel" style="box-shadow:none;margin:0;">
+          <h3>Permissions</h3>
+          <div class="checkbox-list">
+            ${capabilities.map((capability) => `
+              <label class="checkbox-row">
+                <input name="permission" type="checkbox" value="${escapeHtml(capability)}" ${permissions[capability] ? "checked" : ""}>
+                <span>${escapeHtml(capability.replace(/^Can /, ""))}</span>
+              </label>
+            `).join("")}
+          </div>
+        </section>`;
       }
 
       function openUserModal(user = null) {
         const data = state.data;
-        document.getElementById("modal-root").innerHTML = `
+        setModal(`
           <div class="modal-backdrop">
             <form class="modal stack" data-form="user">
               <div class="modal-header"><h3>${user ? "Edit User" : "Create User"}</h3><button type="button" data-action="close-modal">Close</button></div>
@@ -1351,17 +1716,20 @@
                 <label>Pay Type <select name="payType">${constantOptions(["None", "Hourly", "Salary"], user?.["Pay Type"] || "None", false)}</select></label>
                 <label>Hourly Rate <input name="hourlyRate" type="number" step="0.01" min="0" value="${escapeHtml(user?.["Hourly Rate"] || "")}"></label>
                 <label>Salary Amount <input name="salaryAmount" type="number" step="0.01" min="0" value="${escapeHtml(user?.["Salary Amount"] || "")}"></label>
+                <label>Theme <select name="themeMode">${constantOptions(data.constants.themeModes || ["System", "Light", "Dark"], user?.["Theme Mode"] || "System", false)}</select></label>
+                <label>Profile Color ${renderColorField("profileColor", user?.["Profile Color"] || "#1f6f68")}</label>
               </div>
               <label class="checkbox-row"><input name="active" type="checkbox" ${String(user?.Active) !== "false" ? "checked" : ""}> Active</label>
               <label class="checkbox-row"><input name="trackTime" type="checkbox" ${String(user?.["Track Time"]) !== "false" ? "checked" : ""}> Track Time</label>
               <label class="checkbox-row"><input name="trackPay" type="checkbox" ${String(user?.["Track Pay"]) === "true" ? "checked" : ""}> Track Pay</label>
+              ${renderUserPermissionControls(user)}
               <div class="actions"><button class="primary" type="submit">Save User</button></div>
             </form>
-          </div>`;
+          </div>`);
       }
 
       function openProjectModal(project = null) {
-        document.getElementById("modal-root").innerHTML = `
+        setModal(`
           <div class="modal-backdrop">
             <form class="modal stack" data-form="project">
               <div class="modal-header"><h3>${project ? "Edit Project" : "Create Project"}</h3><button type="button" data-action="close-modal">Close</button></div>
@@ -1372,12 +1740,12 @@
               <label class="checkbox-row"><input name="active" type="checkbox" ${String(project?.Active) !== "false" ? "checked" : ""}> Active</label>
               <div class="actions"><button class="primary" type="submit">Save Project</button></div>
             </form>
-          </div>`;
+          </div>`);
       }
 
       function openCategoryModal(category = null) {
         const data = state.data;
-        document.getElementById("modal-root").innerHTML = `
+        setModal(`
           <div class="modal-backdrop">
             <form class="modal stack" data-form="category">
               <div class="modal-header"><h3>${category ? "Edit Category" : "Create Category"}</h3><button type="button" data-action="close-modal">Close</button></div>
@@ -1387,26 +1755,28 @@
               <label class="checkbox-row"><input name="active" type="checkbox" ${String(category?.Active) !== "false" ? "checked" : ""}> Active</label>
               <div class="actions"><button class="primary" type="submit">Save Category</button></div>
             </form>
-          </div>`;
+          </div>`);
       }
 
-      function openTagModal(tag = null) {
-        document.getElementById("modal-root").innerHTML = `
+      function openTagModal(tag = null, options = {}) {
+        const html = `
           <div class="modal-backdrop">
-            <form class="modal stack" data-form="tag">
+            <form class="modal stack" data-form="tag" ${options.returnToTask ? 'data-return-to-task="true"' : ""}>
               <div class="modal-header"><h3>${tag ? "Edit Tag" : "Create Tag"}</h3><button type="button" data-action="close-modal">Close</button></div>
               <input type="hidden" name="tagId" value="${escapeHtml(tag?.["Tag ID"] || "")}">
-              <label>Tag <input name="tag" value="${escapeHtml(tag?.Tag || "")}" required></label>
-              <label>Color <input name="color" value="${escapeHtml(tag?.Color || "")}" placeholder="#1f6f68"></label>
+              <label>Tag <input name="tag" value="${escapeHtml(options.prefill || tag?.Tag || "")}" required></label>
+              <label>Color ${renderColorField("color", tag?.Color || "#1f6f68")}</label>
               <label>Description <textarea name="description">${escapeHtml(tag?.Description || "")}</textarea></label>
               <label class="checkbox-row"><input name="active" type="checkbox" ${String(tag?.Active) !== "false" ? "checked" : ""}> Active</label>
               <div class="actions"><button class="primary" type="submit">Save Tag</button></div>
             </form>
           </div>`;
+        if (options.stack) pushModal(html);
+        else setModal(html);
       }
 
       function openConfirmModal(message, action, payloadName, payloadValue) {
-        document.getElementById("modal-root").innerHTML = `
+        setModal(`
           <div class="modal-backdrop">
             <div class="modal stack">
               <div class="modal-header"><h3>Confirm Delete</h3><button type="button" data-action="close-modal">Close</button></div>
@@ -1416,7 +1786,42 @@
                 <button type="button" data-action="close-modal">Cancel</button>
               </div>
             </div>
-          </div>`;
+          </div>`);
+      }
+
+      function renderHoursList(rows, emptyText) {
+        if (!rows || !rows.length) return `<div class="empty">${escapeHtml(emptyText)}</div>`;
+        return `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Hours</th></tr></thead><tbody>
+          ${rows.map((row) => `<tr><td data-label="Name">${escapeHtml(row.label)}</td><td data-label="Hours">${escapeHtml(row.hours)}</td></tr>`).join("")}
+        </tbody></table></div>`;
+      }
+
+      function openPaySummaryDetailModal(detail) {
+        pushModal(`
+          <div class="modal-backdrop">
+            <div class="modal stack">
+              <div class="modal-header"><h3>Pay Details</h3><button type="button" data-action="close-modal">Close</button></div>
+              <div class="profile-preview">${avatarForUser(detail.user)}<strong>${escapeHtml(detail.user["Full Name"])}</strong><span>${escapeHtml(detail.range.label)}</span></div>
+              <div class="form-grid two">
+                <div class="panel" style="box-shadow:none;margin:0;"><h3>Total Hours</h3><strong>${escapeHtml(detail.metrics.totalHours)}</strong></div>
+                <div class="panel" style="box-shadow:none;margin:0;"><h3>Average Hours / Week</h3><strong>${escapeHtml(detail.metrics.averageHoursPerWeek)}</strong></div>
+              </div>
+              <h3>Task Time</h3>
+              ${renderHoursList(detail.taskTotals, "No task time in this range.")}
+              <h3>Project Time</h3>
+              ${renderHoursList(detail.projectTotals, "No project time in this range.")}
+              <h3>Entries</h3>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Date</th><th>Entry</th><th>Project</th><th>Hours</th></tr></thead>
+                <tbody>${(detail.entries || []).map((entry) => `<tr>
+                  <td data-label="Date">${escapeHtml(entry.Date)}</td>
+                  <td data-label="Entry">${escapeHtml(entry["Task / Category"])}</td>
+                  <td data-label="Project">${escapeHtml(entry["Project Name"])}</td>
+                  <td data-label="Hours">${escapeHtml(entry.Hours)}</td>
+                </tr>`).join("")}</tbody>
+              </table></div>
+            </div>
+          </div>`);
       }
 
       document.addEventListener("click", async (event) => {
@@ -1437,7 +1842,7 @@
         if (!action) return;
         try {
           if (action === "close-modal") {
-            document.getElementById("modal-root").innerHTML = "";
+            closeTopModal();
           } else if (action === "new-task") {
             openTaskModal();
           } else if (action === "save-board-view") {
@@ -1445,7 +1850,16 @@
           } else if (action === "clear-board-filters") {
             state.boardFilters = {};
             state.boardGrouping = "";
+            state.selectedBoardViewId = "";
             render();
+          } else if (action === "delete-board-view") {
+            const view = selectedBoardView();
+            if (view) openConfirmModal(`Delete saved view "${view["View Name"]}"?`, "confirm-delete-board-view", "data-board-view-id", view["Board View ID"]);
+          } else if (action === "confirm-delete-board-view") {
+            await callServer("archiveBoardView", event.target.closest("[data-board-view-id]").dataset.boardViewId);
+            state.selectedBoardViewId = "";
+            clearModals();
+            await refreshBoardData("Board view deleted.");
           } else if (action === "edit-task") {
             const task = state.data.tasks.find((item) => item["Task ID"] === event.target.closest("[data-task-id]").dataset.taskId);
             openTaskModal(task);
@@ -1453,11 +1867,11 @@
             openConfirmModal("Delete this task? Existing audit history will be preserved.", "confirm-delete-task", "data-task-id", event.target.closest("[data-task-id]").dataset.taskId);
           } else if (action === "confirm-delete-task") {
             await callServer("archiveTask", event.target.closest("[data-task-id]").dataset.taskId);
-            document.getElementById("modal-root").innerHTML = "";
-            await refreshData({ message: "Task deleted." });
+            clearModals();
+            await refreshBoardData("Task deleted.");
           } else if (action === "complete-task") {
             await callServer("completeTask", event.target.closest("[data-task-id]").dataset.taskId);
-            await refreshData({ message: "Task completed." });
+            await refreshBoardData("Task completed.");
           } else if (action === "add-time") {
             const taskId = event.target.closest("[data-task-id]").dataset.taskId;
             state.tab = "time";
@@ -1476,20 +1890,24 @@
               overrideReason: state.data.permissions.canOverrideLockedPeriod ? "Deleted by permitted user from Time Tracker" : "",
               requestReason: "Delete requested from Time Tracker"
             });
-            document.getElementById("modal-root").innerHTML = "";
-            await refreshData({ message: "Time entry deleted or request created." });
+            clearModals();
+            await refreshTrackerData("Time entry deleted or request created.");
           } else if (action === "lock-period") {
-            await callServer("lockPayPeriod", state.payFilters.payPeriodId || state.data.currentPayPeriod["Pay Period ID"]);
-            await refreshData({ message: "Pay period locked." });
+            const periodId = state.data.paySummary?.payPeriod?.["Pay Period ID"];
+            const saved = await callServer("lockPayPeriod", periodId);
+            state.data.payPeriods = (state.data.payPeriods || []).map((period) => period["Pay Period ID"] === saved["Pay Period ID"] ? saved : period);
+            await refreshPaySummaryData("Pay period locked.");
           } else if (action === "unlock-period") {
-            await callServer("unlockPayPeriod", state.payFilters.payPeriodId || state.data.currentPayPeriod["Pay Period ID"]);
-            await refreshData({ message: "Pay period unlocked." });
+            const periodId = state.data.paySummary?.payPeriod?.["Pay Period ID"];
+            const saved = await callServer("unlockPayPeriod", periodId);
+            state.data.payPeriods = (state.data.payPeriods || []).map((period) => period["Pay Period ID"] === saved["Pay Period ID"] ? saved : period);
+            await refreshPaySummaryData("Pay period unlocked.");
           } else if (action === "approve-time-request") {
             await callServer("approveTimeEditRequest", event.target.closest("[data-request-id]").dataset.requestId, "Approved in Time Tracker");
-            await refreshData({ message: "Request approved." });
+            await refreshTrackerData("Request approved.");
           } else if (action === "reject-time-request") {
             await callServer("rejectTimeEditRequest", event.target.closest("[data-request-id]").dataset.requestId, "Rejected in Time Tracker");
-            await refreshData({ message: "Request rejected." });
+            await refreshTrackerData("Request rejected.");
           } else if (action === "new-user") {
             openUserModal();
           } else if (action === "edit-user") {
@@ -1498,7 +1916,7 @@
             openConfirmModal("Archive this user?", "confirm-delete-user", "data-user-id", event.target.closest("[data-user-id]").dataset.userId);
           } else if (action === "confirm-delete-user") {
             await callServer("archiveUser", event.target.closest("[data-user-id]").dataset.userId);
-            document.getElementById("modal-root").innerHTML = "";
+            clearModals();
             await refreshData({ message: "User archived." });
           } else if (action === "new-project") {
             openProjectModal();
@@ -1508,7 +1926,7 @@
             openConfirmModal("Archive this project?", "confirm-delete-project", "data-project-id", event.target.closest("[data-project-id]").dataset.projectId);
           } else if (action === "confirm-delete-project") {
             await callServer("archiveProject", event.target.closest("[data-project-id]").dataset.projectId);
-            document.getElementById("modal-root").innerHTML = "";
+            clearModals();
             await refreshData({ message: "Project archived." });
           } else if (action === "new-category") {
             openCategoryModal();
@@ -1518,18 +1936,43 @@
             openConfirmModal("Archive this category?", "confirm-delete-category", "data-category-id", event.target.closest("[data-category-id]").dataset.categoryId);
           } else if (action === "confirm-delete-category") {
             await callServer("archiveCategory", event.target.closest("[data-category-id]").dataset.categoryId);
-            document.getElementById("modal-root").innerHTML = "";
+            clearModals();
             await refreshData({ message: "Category archived." });
           } else if (action === "new-tag") {
             openTagModal();
+          } else if (action === "new-tag-from-task") {
+            openTagModal(null, { stack: true, returnToTask: true, prefill: event.target.closest("[data-tag-name]").dataset.tagName });
+            setTimeout(() => document.querySelector('#modal-root .modal-backdrop:last-child [name="tag"]')?.focus(), 0);
+          } else if (action === "add-tag-selection") {
+            const picker = event.target.closest("[data-tag-picker]");
+            const hidden = picker.querySelector('input[name="tags"]');
+            const selected = selectedList(hidden.value);
+            const tagName = event.target.closest("[data-tag-name]").dataset.tagName;
+            if (selected.indexOf(tagName) === -1) selected.push(tagName);
+            hidden.value = selected.join(", ");
+            picker.querySelector("[data-tag-search]").value = "";
+            updateTagPicker(picker);
+          } else if (action === "remove-tag-selection") {
+            const picker = event.target.closest("[data-tag-picker]");
+            const hidden = picker.querySelector('input[name="tags"]');
+            const tagName = event.target.closest("[data-tag-name]").dataset.tagName;
+            hidden.value = selectedList(hidden.value).filter((item) => item !== tagName).join(", ");
+            updateTagPicker(picker);
           } else if (action === "edit-tag") {
             openTagModal((state.data.tags || []).find((tag) => tag["Tag ID"] === event.target.closest("[data-tag-id]").dataset.tagId));
           } else if (action === "delete-tag") {
             openConfirmModal("Archive this tag? Existing task tag text will be preserved.", "confirm-delete-tag", "data-tag-id", event.target.closest("[data-tag-id]").dataset.tagId);
           } else if (action === "confirm-delete-tag") {
             await callServer("archiveTag", event.target.closest("[data-tag-id]").dataset.tagId);
-            document.getElementById("modal-root").innerHTML = "";
+            clearModals();
             await refreshData({ message: "Tag archived." });
+          } else if (action === "share-user-spreadsheet") {
+            await callServer("shareSpreadsheetWithUser", event.target.closest("[data-user-id]").dataset.userId);
+            setStatus("Spreadsheet shared with user.");
+          } else if (action === "open-pay-detail") {
+            const userId = event.target.closest("[data-user-id]").dataset.userId;
+            const detail = await callServer("getPaySummaryDetail", buildPayFilters({ userId }));
+            openPaySummaryDetailModal(detail);
           } else if (action === "diagnose-user") {
             const email = document.querySelector("[data-diagnostic-email]")?.value || "";
             const result = await callServer("diagnoseUserAccess", email);
@@ -1551,6 +1994,19 @@
           state.boardFilters[event.target.dataset.filter] = event.target.value;
           updateBoardResultsOnly();
         }
+        if (event.target.matches("[data-tag-search]")) {
+          updateTagPicker(event.target.closest("[data-tag-picker]"));
+        }
+        if (event.target.matches("[data-color-wheel]")) {
+          const name = event.target.dataset.colorWheel;
+          const hex = document.querySelector(`[data-color-hex="${cssEscape(name)}"]`);
+          if (hex) hex.value = event.target.value;
+        }
+        if (event.target.matches("[data-color-hex]")) {
+          const name = event.target.dataset.colorHex;
+          const wheel = document.querySelector(`[data-color-wheel="${cssEscape(name)}"]`);
+          if (wheel && /^#[0-9a-fA-F]{6}$/.test(event.target.value)) wheel.value = event.target.value;
+        }
       });
 
       document.addEventListener("change", async (event) => {
@@ -1563,6 +2019,7 @@
           render();
         }
         if (event.target.matches('[data-action="load-board-view"]')) {
+          state.selectedBoardViewId = event.target.value;
           const view = (state.data.boardViews || []).find((item) => item["Board View ID"] === event.target.value);
           if (view) {
             try {
@@ -1572,31 +2029,59 @@
             }
             state.boardGrouping = view.Grouping || "";
             render();
+          } else {
+            state.boardFilters = {};
+            state.boardGrouping = "";
+            render();
           }
         }
         if (event.target.matches("[data-pay-filter]")) {
           state.payFilters[event.target.dataset.payFilter] = event.target.value;
           try {
-            await refreshData({ message: "Pay summary refreshed." });
+            if (state.payFilters.rangeMode !== "custom" || (state.payFilters.startDate && state.payFilters.endDate)) {
+              await refreshPaySummaryData("Pay summary refreshed.");
+            } else {
+              render();
+            }
           } catch (error) {
             setStatus(error.message || String(error));
           }
         }
         if (event.target.name === "entryType") {
-          document.querySelector('[data-time-mode="task"]').classList.toggle("hidden", event.target.value !== "Task");
-          document.querySelector('[data-time-mode="general"]').classList.toggle("hidden", event.target.value !== "General Time");
-        }
-        if (event.target.closest('[data-form="time-entry"]') && (event.target.name === "userId" || event.target.name === "payPeriodId")) {
           const form = event.target.closest("form");
-          state.timeFilters.userId = form.userId?.value || state.data.context.userId;
-          state.timeFilters.payPeriodId = form.payPeriodId.value;
+          form?.querySelector('[data-time-mode="task"]')?.classList.toggle("hidden", event.target.value !== "Task");
+          form?.querySelector('[data-time-mode="general"]')?.classList.toggle("hidden", event.target.value !== "General Time");
+        }
+        if (event.target.matches("[data-time-filter]")) {
+          state.timeFilters[event.target.dataset.timeFilter] = event.target.value;
           try {
-            await refreshData({ message: "Time tracker refreshed." });
+            await refreshTrackerData("Time tracker refreshed.");
           } catch (error) {
             setStatus(error.message || String(error));
           }
         }
+        if (event.target.closest('[data-form="time-entry"], [data-form="time-modal"]') && event.target.name === "date") {
+          const form = event.target.closest("form");
+          const container = form.querySelector("[data-time-lock-fields]");
+          if (container && event.target.value) {
+            try {
+              const period = await callServer("getPayPeriodForDate", event.target.value);
+              container.innerHTML = renderTimeLockFields(period);
+            } catch (error) {
+              setStatus(error.message || String(error));
+            }
+          }
+        }
       });
+
+      function readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+      }
 
       document.addEventListener("submit", async (event) => {
         const form = event.target;
@@ -1606,7 +2091,7 @@
         try {
           if (formType === "task-modal") {
             const selectedAssignees = Array.from(form.querySelectorAll('[name="assigneeUserIds"]:checked')).map((option) => option.value);
-            const selectedTags = Array.from(form.tags?.selectedOptions || []).map((option) => option.value);
+            const selectedTags = selectedList(form.tags?.value || "");
             const payload = {
               taskId: form.taskId.value,
               title: form.title.value,
@@ -1619,13 +2104,12 @@
               tags: selectedTags
             };
             await callServer(payload.taskId ? "updateTask" : "createTask", payload);
-            document.getElementById("modal-root").innerHTML = "";
-            await refreshData({ message: "Task saved." });
+            clearModals();
+            await refreshBoardData("Task saved.");
           } else if (formType === "time-entry") {
             const entryType = form.entryType.value;
             const payload = {
-              userId: form.userId?.value || state.data.context.userId,
-              payPeriodId: form.payPeriodId.value,
+              userId: state.timeFilters.userId || state.data.context.userId,
               entryType: entryType,
               date: form.date.value,
               hours: form.hours.value,
@@ -1635,8 +2119,10 @@
               overrideReason: form.overrideReason?.value || "",
               requestReason: form.requestReason?.value || ""
             };
-            await callServer("createTimeEntry", payload);
-            await refreshData({ message: "Time saved or request created." });
+            const savedTime = await callServer("createTimeEntry", payload);
+            const savedPeriodId = savedTime["Pay Period ID"] || savedTime.request?.["Pay Period ID"];
+            if (savedPeriodId) state.timeFilters.payPeriodId = savedPeriodId;
+            await refreshTrackerData("Time saved or request created.");
           } else if (formType === "time-modal") {
             await callServer("updateTimeEntry", {
               timeEntryId: form.timeEntryId.value,
@@ -1651,26 +2137,34 @@
               overrideReason: form.overrideReason?.value || "",
               requestReason: form.requestReason?.value || ""
             });
-            document.getElementById("modal-root").innerHTML = "";
-            await refreshData({ message: "Time entry updated or request created." });
+            clearModals();
+            await refreshTrackerData("Time entry updated or request created.");
           } else if (formType === "board-view-modal") {
-            await callServer("saveBoardView", {
-              viewName: form.viewName.value,
-              visibility: form.visibility.value,
-              filters: state.boardFilters,
-              grouping: state.boardGrouping
-            });
-            document.getElementById("modal-root").innerHTML = "";
-            await refreshData({ message: "Board view saved." });
+            const saved = await callServer("saveBoardView", buildBoardViewPayload(form));
+            state.selectedBoardViewId = saved["Board View ID"];
+            clearModals();
+            await refreshBoardData("Board view saved.");
           } else if (formType === "profile") {
-            await callServer("updateProfile", {
+            const profilePayload = {
               firstName: form.firstName.value,
               lastName: form.lastName.value,
-              fullName: form.fullName.value
-            });
+              fullName: form.fullName.value,
+              themeMode: form.themeMode.value,
+              googleProfilePhotoUrl: form.googleProfilePhotoUrl.value
+            };
+            if (form.profileColor) profilePayload.profileColor = form.profileColor.value;
+            let savedProfile = await callServer("updateProfile", profilePayload);
+            if (form.profileImage?.files?.[0]) {
+              savedProfile = await callServer("uploadProfileImage", {
+                dataUrl: await readFileAsDataUrl(form.profileImage.files[0])
+              });
+            }
+            state.data.currentUser = savedProfile;
+            state.data.context.fullName = savedProfile["Full Name"];
+            applyUserPreferences();
             await refreshData({ message: "Profile saved." });
           } else if (formType === "user") {
-            await callServer("saveUser", {
+            const savedUser = await callServer("saveUser", {
               userId: form.userId.value,
               firstName: form.firstName.value,
               lastName: form.lastName.value,
@@ -1680,13 +2174,28 @@
               payType: form.payType.value,
               hourlyRate: form.hourlyRate.value,
               salaryAmount: form.salaryAmount.value,
+              themeMode: form.themeMode.value,
+              profileColor: form.profileColor.value,
               active: form.active.checked,
               "Track Time": form.trackTime.checked,
               "Track Pay": form.trackPay.checked
             });
+            const permissions = {};
+            Array.from(form.querySelectorAll('[name="permission"]')).forEach((input) => {
+              permissions[input.value] = input.checked;
+            });
+            if (Object.keys(permissions).length) {
+              await callServer("saveUserPermissions", {
+                userId: savedUser["User ID"],
+                permissions
+              });
+            }
             form.reset();
-            document.getElementById("modal-root").innerHTML = "";
-            await refreshData({ message: "User saved." });
+            clearModals();
+            const userMessage = state.data.userPermissions?.length
+              ? (savedUser.shareError ? `User saved. Spreadsheet share failed: ${savedUser.shareError}` : "User saved and spreadsheet shared.")
+              : "User saved.";
+            await refreshData({ message: userMessage });
           } else if (formType === "project") {
             await callServer("saveProject", {
               projectId: form.projectId.value,
@@ -1696,7 +2205,7 @@
               active: form.active.checked
             });
             form.reset();
-            document.getElementById("modal-root").innerHTML = "";
+            clearModals();
             await refreshData({ message: "Project saved." });
           } else if (formType === "category") {
             await callServer("saveCategory", {
@@ -1706,18 +2215,33 @@
               active: form.active.checked
             });
             form.reset();
-            document.getElementById("modal-root").innerHTML = "";
+            clearModals();
             await refreshData({ message: "Category saved." });
           } else if (formType === "tag") {
-            await callServer("saveTag", {
+            const savedTag = await callServer("saveTag", {
               tagId: form.tagId.value,
               tag: form.tag.value,
               color: form.color.value,
               description: form.description.value,
               active: form.active.checked
             });
-            document.getElementById("modal-root").innerHTML = "";
-            await refreshData({ message: "Tag saved." });
+            upsertLocalTag(savedTag);
+            if (form.dataset.returnToTask === "true") {
+              closeTopModal();
+              const picker = document.querySelector("[data-tag-picker]");
+              if (picker) {
+                const hidden = picker.querySelector('input[name="tags"]');
+                const selected = selectedList(hidden.value);
+                if (selected.indexOf(savedTag.Tag) === -1) selected.push(savedTag.Tag);
+                hidden.value = selected.join(", ");
+                updateTagPicker(picker);
+                picker.querySelector("[data-tag-search]")?.focus();
+              }
+              setStatus("Tag saved.");
+            } else {
+              clearModals();
+              await refreshData({ message: "Tag saved." });
+            }
           } else if (formType === "setting") {
             await callServer("saveSetting", {
               key: form.key.value,
@@ -1736,6 +2260,16 @@
               key: "DEFAULT_PAY_PERIOD_DAYS",
               value: form.periodDays.value,
               description: "Number of calendar days in each pay period."
+            });
+            const statusColors = {};
+            Array.from(form.querySelectorAll('[name^="statusColor__"]')).forEach((input) => {
+              const status = input.name.replace("statusColor__", "");
+              statusColors[status] = normalizeHex(input.value, "#647181");
+            });
+            await callServer("saveSetting", {
+              key: "TASK_STATUS_COLORS_JSON",
+              value: JSON.stringify(statusColors),
+              description: "Hex colors used for Assignment Board task status badges."
             });
             await refreshData({ message: "Settings saved." });
           }

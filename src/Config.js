@@ -33,6 +33,11 @@ var TrustOpsConfig = (function () {
       "Last Name",
       "Full Name",
       "Email",
+      "Profile Color",
+      "Theme Mode",
+      "Google Profile Photo URL",
+      "Profile Image URL",
+      "Profile Image File ID",
       "Role",
       "Active",
       "Pay Type",
@@ -232,7 +237,9 @@ var TrustOpsConfig = (function () {
       "Can Manage Projects",
       "Can Manage Time Categories",
       "Can Manage Tags",
+      "Can Manage Board Views",
       "Can Manage Settings",
+      "Can Change Profile Color",
       "Updated By User ID",
       "Updated At"
     ]
@@ -290,6 +297,16 @@ var TrustOpsConfig = (function () {
     ADMIN_LIKE: "Admin Like"
   };
 
+  var THEME_MODES = ["System", "Light", "Dark"];
+
+  var DEFAULT_TASK_STATUS_COLORS = {
+    "In Progress": "#647181",
+    "Complete": "#2f7351",
+    "Blocked": "#a23a3a",
+    "Waiting": "#9a6a16",
+    "Archived": "#647181"
+  };
+
   var DEFAULT_TIME_CATEGORIES = [
     "Drive Time",
     "Meeting",
@@ -318,6 +335,8 @@ var TrustOpsConfig = (function () {
     REQUEST_TYPES: REQUEST_TYPES,
     VIEW_VISIBILITY: VIEW_VISIBILITY,
     MANAGER_PRESETS: MANAGER_PRESETS,
+    THEME_MODES: THEME_MODES,
+    DEFAULT_TASK_STATUS_COLORS: DEFAULT_TASK_STATUS_COLORS,
     DEFAULT_TIME_CATEGORIES: DEFAULT_TIME_CATEGORIES,
     PAY_PERIOD_DAYS: 14,
     PAY_PERIOD_ANCHOR_DATE: "2026-04-26",

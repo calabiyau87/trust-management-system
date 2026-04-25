@@ -66,10 +66,12 @@ var TrustOpsTimeService = (function () {
       if (!isSameExistingTask && (task.Status === "Complete" || task.Status === "Archived")) {
         throw new Error("Time cannot be added to a completed or archived task.");
       }
-      TrustOpsPermissionService.requireAllowed(
-        TrustOpsPermissionService.canAddTimeToTask(context, task, targetUser["User ID"]),
-        "You cannot add time to this task."
-      );
+      if (!(payload._approvedRequest && TrustOpsPermissionService.canApproveTimeRequests(context))) {
+        TrustOpsPermissionService.requireAllowed(
+          TrustOpsPermissionService.canAddTimeToTask(context, task, targetUser["User ID"]),
+          "You cannot add time to this task."
+        );
+      }
       projectId = task["Project ID"];
       projectName = task["Project Name"];
       taskOrCategory = task.Title;
@@ -143,10 +145,12 @@ var TrustOpsTimeService = (function () {
     var entryId = payload["Time Entry ID"] || payload.timeEntryId;
     var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.TIME_ENTRIES, entryId);
     if (!existing || TrustOpsUtils.toBoolean(existing.Deleted)) throw new Error("Time entry not found.");
-    TrustOpsPermissionService.requireAllowed(
-      TrustOpsPermissionService.canEditTimeEntry(context, existing),
-      "You do not have permission to edit this time entry."
-    );
+    if (!(payload && payload._approvedRequest && TrustOpsPermissionService.canApproveTimeRequests(context))) {
+      TrustOpsPermissionService.requireAllowed(
+        TrustOpsPermissionService.canEditTimeEntry(context, existing),
+        "You do not have permission to edit this time entry."
+      );
+    }
     var oldPeriod = getPeriodByIdOrDate(existing["Pay Period ID"], existing.Date);
     var built = buildTimeRecord(context, payload || {}, existing);
     var oldDecision = lockedDecision(context, oldPeriod, payload || {});
@@ -182,10 +186,12 @@ var TrustOpsTimeService = (function () {
     var entryId = payload.timeEntryId || payload["Time Entry ID"];
     var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.TIME_ENTRIES, entryId);
     if (!existing || TrustOpsUtils.toBoolean(existing.Deleted)) throw new Error("Time entry not found.");
-    TrustOpsPermissionService.requireAllowed(
-      TrustOpsPermissionService.canDeleteTimeEntry(context, existing),
-      "You do not have permission to delete this time entry."
-    );
+    if (!(payload && payload._approvedRequest && TrustOpsPermissionService.canApproveTimeRequests(context))) {
+      TrustOpsPermissionService.requireAllowed(
+        TrustOpsPermissionService.canDeleteTimeEntry(context, existing),
+        "You do not have permission to delete this time entry."
+      );
+    }
     var period = getPeriodByIdOrDate(existing["Pay Period ID"], existing.Date);
     var decision = lockedDecision(context, period, payload || {});
     if (decision.request) {

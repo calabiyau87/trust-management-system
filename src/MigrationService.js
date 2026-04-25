@@ -29,6 +29,11 @@ var TrustOpsMigrationService = (function () {
       "Description": "Known start date for the repeating pay-period calendar.",
       "Updated At": TrustOpsUtils.nowIso()
     });
+    TrustOpsSheetService.upsertById(TrustOpsConfig.SHEETS.SETTINGS, "TASK_STATUS_COLORS_JSON", {
+      "Setting Value": TrustOpsUtils.safeJson(TrustOpsConfig.DEFAULT_TASK_STATUS_COLORS),
+      "Description": "Hex colors used for Assignment Board task status badges.",
+      "Updated At": TrustOpsUtils.nowIso()
+    });
   }
 
   function seedOwner(ownerEmail) {
@@ -41,6 +46,11 @@ var TrustOpsMigrationService = (function () {
       "Last Name": "",
       "Full Name": firstName,
       "Email": email,
+      "Profile Color": "#1f6f68",
+      "Theme Mode": "System",
+      "Google Profile Photo URL": "",
+      "Profile Image URL": "",
+      "Profile Image File ID": "",
       "Role": TrustOpsConfig.ROLES.OWNER,
       "Active": true,
       "Pay Type": "None",

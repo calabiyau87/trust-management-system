@@ -51,6 +51,7 @@ The manifest currently uses domain access. Tighten this in Apps Script deploymen
 - Unknown user is blocked.
 - Owner user loads the app.
 - Every test user can open the staging spreadsheet when the web app is deployed as `User accessing the web app`.
+- Owner/Admin user create/edit flows attempt to share the backing spreadsheet with the edited user.
 - Owner creates a project, category, user, and task.
 - Regular user can view all tasks.
 - Regular user can add time only to assigned tasks.
@@ -66,7 +67,11 @@ If a newly added user cannot enter:
 
 - Confirm their `Users.Email` value exactly matches the Google account shown by the app's Access Diagnostic.
 - Confirm `Users.Active` is true and `Archived` is not true.
-- Share the backing staging/production spreadsheet with that Google account. Editor access is currently required because user-executed Apps Script calls write to Sheets.
+- Share the backing staging/production spreadsheet with that Google account. Editor access is currently required because user-executed Apps Script calls write to Sheets. The app can attempt this from Owner/Admin user create/edit flows, but the acting account must have Drive permission to share the spreadsheet.
+
+## OAuth Scope Notes
+
+The manifest includes Drive and profile scopes for spreadsheet sharing, profile image upload, and current-user Google profile photo lookup. Staging users will need to reauthorize after these scopes are deployed.
 - Have the user reload the web app and accept the authorization prompt.
 - If `Active email` is blank in the diagnostic, Apps Script is not exposing the user's identity for that deployment/account context; redeploy and confirm the web app is still set to execute as `User accessing the web app`.
 

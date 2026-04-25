@@ -14,6 +14,39 @@ var TrustOpsSettingsService = (function () {
     return TrustOpsUtils.normalizeText(value) ? value : fallback;
   }
 
+  function parseJsonSetting(key, fallback) {
+    var value = getSetting(key, "");
+    if (!TrustOpsUtils.normalizeText(value)) return fallback;
+    try {
+      var parsed = JSON.parse(value);
+      return parsed || fallback;
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function normalizeHexColor(value, fallback) {
+    var text = TrustOpsUtils.normalizeText(value);
+    if (/^#[0-9a-fA-F]{6}$/.test(text)) return text.toLowerCase();
+    return fallback || "";
+  }
+
+  function getTaskStatusColors() {
+    var defaults = TrustOpsConfig.DEFAULT_TASK_STATUS_COLORS;
+    var configured = parseJsonSetting("TASK_STATUS_COLORS_JSON", {});
+    var colors = {};
+    TrustOpsConfig.TASK_STATUSES.forEach(function (status) {
+      colors[status] = normalizeHexColor(configured[status], defaults[status]);
+    });
+    return colors;
+  }
+
+  function getClientVisualSettings() {
+    return {
+      taskStatusColors: getTaskStatusColors()
+    };
+  }
+
   function saveSetting(context, payload) {
     TrustOpsPermissionService.requireAllowed(
       TrustOpsPermissionService.canManageSettings(context),
@@ -41,6 +74,8 @@ var TrustOpsSettingsService = (function () {
   return {
     listSettings: listSettings,
     getSetting: getSetting,
+    getClientVisualSettings: getClientVisualSettings,
+    getTaskStatusColors: getTaskStatusColors,
     saveSetting: saveSetting
   };
 })();
