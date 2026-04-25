@@ -50,9 +50,11 @@ Basic access:
 
 Users can be granted explicit capabilities, including creating their own tasks, managing tags, and changing their profile color. Tasks a user creates can be edited and deleted by that user unless a broader server-side rule blocks the mutation.
 
+If `Track Pay` is enabled for a user, `Track Time` is also enforced on the server so payroll users remain time-trackable.
+
 ## User Permission Overrides
 
-The `Manager Permissions` sheet now stores per-capability overrides for any user, not only Managers. Existing Manager rows remain valid. Owner/Admin users can edit these overrides from the Users settings modal, while the server continues to enforce owner protections.
+The `Manager Permissions` sheet now stores per-capability overrides for any user, not only Managers. Existing Manager rows remain valid. Owner/Admin users can edit these overrides from the Users settings modal, while the server continues to enforce owner protections. The Owner's effective permissions are implicit and the UI does not need to display a matrix for that row.
 
 ## Locked Pay Periods
 

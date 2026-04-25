@@ -51,6 +51,13 @@ var TrustOpsUserService = (function () {
     var lastName = TrustOpsUtils.normalizeText(payload["Last Name"] || payload.lastName);
     var fullName = TrustOpsUtils.normalizeText(payload["Full Name"] || payload.fullName || [firstName, lastName].filter(Boolean).join(" "));
     var email = TrustOpsUtils.normalizeEmail(payload.Email || payload.email);
+    var payType = payload["Pay Type"] || payload.payType || existing && existing["Pay Type"] || "None";
+    var hourlyRateValue = payload["Hourly Rate"] !== undefined ? payload["Hourly Rate"] : payload.hourlyRate !== undefined ? payload.hourlyRate : existing && existing["Hourly Rate"];
+    var salaryAmountValue = payload["Salary Amount"] !== undefined ? payload["Salary Amount"] : payload.salaryAmount !== undefined ? payload.salaryAmount : existing && existing["Salary Amount"];
+    var salaryFrequency = payload["Salary Frequency"] || payload.salaryFrequency || existing && existing["Salary Frequency"] || "";
+    var trackPay = payload["Track Pay"] === undefined ? existing ? TrustOpsUtils.toBoolean(existing["Track Pay"]) : false : TrustOpsUtils.toBoolean(payload["Track Pay"]);
+    var trackTime = payload["Track Time"] === undefined ? existing ? TrustOpsUtils.toBoolean(existing["Track Time"]) : true : TrustOpsUtils.toBoolean(payload["Track Time"]);
+    if (trackPay) trackTime = true;
     TrustOpsUtils.requireValue(firstName, "First name");
     TrustOpsUtils.requireValue(fullName, "Full name");
     TrustOpsUtils.requireValue(email, "Email");
@@ -66,12 +73,12 @@ var TrustOpsUserService = (function () {
       "Profile Image File ID": payload["Profile Image File ID"] || payload.profileImageFileId || existing && existing["Profile Image File ID"] || "",
       "Role": payload.Role || payload.role || TrustOpsConfig.ROLES.USER,
       "Active": payload.Active === undefined ? true : TrustOpsUtils.toBoolean(payload.Active),
-      "Pay Type": payload["Pay Type"] || payload.payType || "None",
-      "Hourly Rate": TrustOpsUtils.toNumber(payload["Hourly Rate"] || payload.hourlyRate),
-      "Salary Amount": TrustOpsUtils.toNumber(payload["Salary Amount"] || payload.salaryAmount),
-      "Salary Frequency": payload["Salary Frequency"] || payload.salaryFrequency || "",
-      "Track Time": payload["Track Time"] === undefined ? true : TrustOpsUtils.toBoolean(payload["Track Time"]),
-      "Track Pay": payload["Track Pay"] === undefined ? false : TrustOpsUtils.toBoolean(payload["Track Pay"]),
+      "Pay Type": payType,
+      "Hourly Rate": TrustOpsUtils.toNumber(hourlyRateValue),
+      "Salary Amount": TrustOpsUtils.toNumber(salaryAmountValue),
+      "Salary Frequency": salaryFrequency,
+      "Track Time": trackTime,
+      "Track Pay": trackPay,
       "Manager User ID": payload["Manager User ID"] || payload.managerUserId || "",
       "Created At": existing ? existing["Created At"] : now,
       "Updated At": now,
@@ -203,6 +210,31 @@ var TrustOpsUserService = (function () {
     return TrustOpsUtils.sanitizeForClient(saved);
   }
 
+  function removeProfileImage(context, userId) {
+    var targetUserId = userId || context.userId;
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.canEditProfile(context, targetUserId),
+      "You do not have permission to edit this profile."
+    );
+    var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.USERS, targetUserId);
+    if (!existing) throw new Error("User not found.");
+    var fileId = existing["Profile Image File ID"];
+    if (TrustOpsUtils.normalizeText(fileId)) {
+      try {
+        DriveApp.getFileById(fileId).setTrashed(true);
+      } catch (error) {
+        // Continue clearing the record even if the file is already gone.
+      }
+    }
+    var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.USERS, targetUserId, {
+      "Profile Image URL": "",
+      "Profile Image File ID": "",
+      "Updated At": TrustOpsUtils.nowIso()
+    });
+    TrustOpsAuditService.log(context, "PROFILE_IMAGE_REMOVED", "User", targetUserId, existing, saved, fileId || "");
+    return TrustOpsUtils.sanitizeForClient(saved);
+  }
+
   function archiveUser(context, userId) {
     TrustOpsPermissionService.requireAllowed(
       TrustOpsPermissionService.canManageUsers(context),
@@ -229,6 +261,7 @@ var TrustOpsUserService = (function () {
     updateProfile: updateProfile,
     shareSpreadsheetWithUser: shareSpreadsheetWithUser,
     uploadProfileImage: uploadProfileImage,
+    removeProfileImage: removeProfileImage,
     archiveUser: archiveUser
   };
 })();

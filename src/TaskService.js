@@ -119,6 +119,19 @@ var TrustOpsTaskService = (function () {
     };
   }
 
+  function refreshRelatedProjectStatuses(context, record, existing) {
+    var projectIds = [];
+    if (existing && TrustOpsUtils.normalizeText(existing["Project ID"])) {
+      projectIds.push(existing["Project ID"]);
+    }
+    if (record && TrustOpsUtils.normalizeText(record["Project ID"])) {
+      projectIds.push(record["Project ID"]);
+    }
+    if (projectIds.length) {
+      TrustOpsProjectService.recomputeProjectStatuses(context, projectIds);
+    }
+  }
+
   function createTask(context, payload) {
     TrustOpsPermissionService.requireAllowed(
       TrustOpsPermissionService.canCreateTask(context),
@@ -127,6 +140,7 @@ var TrustOpsTaskService = (function () {
     var record = buildTaskRecord(context, payload || {}, null);
     var saved = TrustOpsSheetService.appendRecord(TrustOpsConfig.SHEETS.TASKS, record);
     TrustOpsAuditService.log(context, "TASK_CREATED", "Task", saved["Task ID"], null, saved, "");
+    refreshRelatedProjectStatuses(context, saved, null);
     return decorateTask(context, saved);
   }
 
@@ -141,6 +155,7 @@ var TrustOpsTaskService = (function () {
     var record = buildTaskRecord(context, payload || {}, existing);
     var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.TASKS, taskId, record);
     TrustOpsAuditService.log(context, "TASK_UPDATED", "Task", taskId, existing, saved, "");
+    refreshRelatedProjectStatuses(context, saved, existing);
     return decorateTask(context, saved);
   }
 
@@ -158,6 +173,7 @@ var TrustOpsTaskService = (function () {
       "Updated At": TrustOpsUtils.nowIso()
     });
     TrustOpsAuditService.log(context, "TASK_COMPLETED", "Task", taskId, existing, saved, "");
+    refreshRelatedProjectStatuses(context, saved, existing);
     return decorateTask(context, saved);
   }
 
@@ -174,6 +190,7 @@ var TrustOpsTaskService = (function () {
       "Updated At": TrustOpsUtils.nowIso()
     });
     TrustOpsAuditService.log(context, "TASK_ARCHIVED", "Task", taskId, existing, saved, "");
+    refreshRelatedProjectStatuses(context, saved, existing);
     return decorateTask(context, saved);
   }
 

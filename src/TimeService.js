@@ -113,6 +113,61 @@ var TrustOpsTimeService = (function () {
     };
   }
 
+  function backfillCategoryDefaultProject(context, categoryId, oldProjectId, newProjectId) {
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.canManageTimeCategories(context),
+      "You do not have permission to manage time categories."
+    );
+    var normalizedCategoryId = TrustOpsUtils.requireValue(categoryId, "Category");
+    var normalizedNewProjectId = TrustOpsUtils.normalizeText(newProjectId);
+    var normalizedOldProjectId = TrustOpsUtils.normalizeText(oldProjectId);
+    var category = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.TIME_CATEGORIES, normalizedCategoryId);
+    if (!category) throw new Error("Time category not found.");
+    if (!normalizedNewProjectId) {
+      throw new Error("A new default project is required for backfill.");
+    }
+    var newProject = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.PROJECTS, normalizedNewProjectId);
+    if (!newProject) throw new Error("Project not found.");
+    var entries = TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.TIME_ENTRIES).filter(function (entry) {
+      if (TrustOpsUtils.toBoolean(entry.Deleted)) return false;
+      if (String(entry["Category ID"]) !== String(normalizedCategoryId)) return false;
+      return String(entry["Project ID"] || "") === String(normalizedOldProjectId || "");
+    });
+    var changed = [];
+    entries.forEach(function (entry) {
+      var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.TIME_ENTRIES, entry["Time Entry ID"], {
+        "Project ID": normalizedNewProjectId,
+        "Project Name": newProject["Project Name"],
+        "Updated By User ID": context.userId,
+        "Updated At": TrustOpsUtils.nowIso()
+      });
+      changed.push(saved);
+    });
+    TrustOpsAuditService.log(
+      context,
+      "CATEGORY_DEFAULT_PROJECT_BACKFILLED",
+      "Time Category",
+      normalizedCategoryId,
+      {
+        "Old Default Project ID": normalizedOldProjectId,
+        "New Default Project ID": normalizedNewProjectId,
+        "Time Entry Count": entries.length
+      },
+      {
+        "Old Default Project ID": normalizedOldProjectId,
+        "New Default Project ID": normalizedNewProjectId,
+        "Time Entry Count": changed.length
+      },
+      "Backfilled " + changed.length + " time entr" + (changed.length === 1 ? "y" : "ies") + "."
+    );
+    return {
+      updated: changed.length,
+      categoryId: normalizedCategoryId,
+      oldProjectId: normalizedOldProjectId,
+      newProjectId: normalizedNewProjectId
+    };
+  }
+
   function createTimeEntry(context, payload) {
     var built = buildTimeRecord(context, payload || {}, null);
     var decision = lockedDecision(context, built.payPeriod, payload || {});
@@ -296,6 +351,7 @@ var TrustOpsTimeService = (function () {
     deleteTimeEntry: deleteTimeEntry,
     listTimeEntries: listTimeEntries,
     getTrackerData: getTrackerData,
-    applyApprovedRequest: applyApprovedRequest
+    applyApprovedRequest: applyApprovedRequest,
+    backfillCategoryDefaultProject: backfillCategoryDefaultProject
   };
 })();

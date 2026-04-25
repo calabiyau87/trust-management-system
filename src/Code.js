@@ -32,6 +32,7 @@ function getInitialData() {
     constants: {
       roles: TrustOpsConfig.ROLES,
       taskStatuses: TrustOpsConfig.TASK_STATUSES,
+      projectStatuses: TrustOpsConfig.PROJECT_STATUSES,
       priorities: TrustOpsConfig.PRIORITIES,
       entryTypes: TrustOpsConfig.ENTRY_TYPES,
       themeModes: TrustOpsConfig.THEME_MODES,
@@ -58,6 +59,7 @@ function getInitialData() {
     tasks: TrustOpsTaskService.listTasks(context, {}),
     tracker: TrustOpsTimeService.getTrackerData(context, { userId: context.userId, payPeriodId: currentPayPeriod["Pay Period ID"] }),
     paySummary: TrustOpsPayService.getPaySummary(context, { userId: context.userId, payPeriodId: currentPayPeriod["Pay Period ID"] }),
+    projectDashboard: TrustOpsProjectService.getProjectDashboard(context, { rangeMode: "current" }),
     timeRequests: TrustOpsTimeRequestService.listRequests(context, { status: TrustOpsConfig.REQUEST_STATUS.PENDING }),
     settings: TrustOpsPermissionService.canManageSettings(context) ? TrustOpsSettingsService.listSettings(context) : [],
     visualSettings: TrustOpsSettingsService.getClientVisualSettings(),
@@ -89,6 +91,7 @@ function refreshAppData(filters) {
     projects: TrustOpsProjectService.listProjects(false),
     categories: TrustOpsProjectService.listCategories(false),
     tags: TrustOpsTagService.listTags(false),
+    projectDashboard: TrustOpsProjectService.getProjectDashboard(context, payload.projectFilters || { rangeMode: "current" }),
     boardViews: TrustOpsBoardViewService.listBoardViews(context),
     managerPermissions: TrustOpsPermissionService.isOwnerOrAdmin(context) ? TrustOpsManagerPermissionService.listManagerPermissions(context) : [],
     userPermissions: TrustOpsPermissionService.isOwnerOrAdmin(context) ? TrustOpsManagerPermissionService.listUserPermissions(context) : [],
@@ -107,6 +110,14 @@ function getBoardData(filters) {
     boardViews: TrustOpsBoardViewService.listBoardViews(context),
     visualSettings: TrustOpsSettingsService.getClientVisualSettings()
   };
+}
+
+function getProjectDashboard(filters) {
+  return TrustOpsProjectService.getProjectDashboard(requireTrustOpsContext_(), filters || {});
+}
+
+function getProjectDetail(projectId, filters) {
+  return TrustOpsProjectService.getProjectDetail(requireTrustOpsContext_(), projectId, filters || {});
 }
 
 function createTask(payload) {
@@ -178,6 +189,10 @@ function uploadProfileImage(payload) {
   return TrustOpsUserService.uploadProfileImage(requireTrustOpsContext_(), payload || {});
 }
 
+function removeProfileImage(userId) {
+  return TrustOpsUserService.removeProfileImage(requireTrustOpsContext_(), userId);
+}
+
 function shareSpreadsheetWithUser(userId) {
   return TrustOpsUserService.shareSpreadsheetWithUser(requireTrustOpsContext_(), userId);
 }
@@ -196,6 +211,10 @@ function saveCategory(payload) {
 
 function archiveProject(projectId) {
   return TrustOpsProjectService.archiveProject(requireTrustOpsContext_(), projectId);
+}
+
+function unarchiveProject(projectId) {
+  return TrustOpsProjectService.unarchiveProject(requireTrustOpsContext_(), projectId);
 }
 
 function archiveCategory(categoryId) {

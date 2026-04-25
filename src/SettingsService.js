@@ -41,9 +41,20 @@ var TrustOpsSettingsService = (function () {
     return colors;
   }
 
+  function getProjectStatusColors() {
+    var defaults = TrustOpsConfig.DEFAULT_PROJECT_STATUS_COLORS;
+    var configured = parseJsonSetting("PROJECT_STATUS_COLORS_JSON", {});
+    var colors = {};
+    TrustOpsConfig.PROJECT_STATUSES.forEach(function (status) {
+      colors[status] = normalizeHexColor(configured[status], defaults[status]);
+    });
+    return colors;
+  }
+
   function getClientVisualSettings() {
     return {
-      taskStatusColors: getTaskStatusColors()
+      taskStatusColors: getTaskStatusColors(),
+      projectStatusColors: getProjectStatusColors()
     };
   }
 
@@ -76,6 +87,7 @@ var TrustOpsSettingsService = (function () {
     getSetting: getSetting,
     getClientVisualSettings: getClientVisualSettings,
     getTaskStatusColors: getTaskStatusColors,
+    getProjectStatusColors: getProjectStatusColors,
     saveSetting: saveSetting
   };
 })();

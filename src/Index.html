@@ -269,14 +269,49 @@
         padding: 10px 9px;
         text-align: left;
         vertical-align: top;
+        word-break: break-word;
       }
 
       th {
-        color: var(--muted);
+        color: var(--text);
         font-size: 12px;
         font-weight: 800;
-        background: #fafbfc;
+        background: var(--surface-muted);
       }
+
+      table {
+        width: 100%;
+        table-layout: fixed;
+      }
+
+      .board-table th:nth-child(1) { width: 30%; }
+      .board-table th:nth-child(2) { width: 12%; }
+      .board-table th:nth-child(3) { width: 18%; }
+      .board-table th:nth-child(4) { width: 16%; }
+      .board-table th:nth-child(5) { width: 10%; }
+      .board-table th:nth-child(6) { width: 10%; }
+      .board-table th:nth-child(7) { width: 4%; }
+
+      .time-table th:nth-child(1) { width: 34%; }
+      .time-table th:nth-child(2) { width: 20%; }
+      .time-table th:nth-child(3) { width: 8%; }
+      .time-table th:nth-child(4) { width: 24%; }
+      .time-table th:nth-child(5) { width: 14%; }
+
+      .pay-table th:nth-child(1) { width: 22%; }
+      .pay-table th:nth-child(2) { width: 14%; }
+      .pay-table th:nth-child(3) { width: 16%; }
+      .pay-table th:nth-child(4) { width: 18%; }
+      .pay-table th:nth-child(5) { width: 15%; }
+      .pay-table th:nth-child(6) { width: 15%; }
+
+      .project-dashboard-table th:nth-child(1) { width: 20%; }
+      .project-dashboard-table th:nth-child(2) { width: 12%; }
+      .project-dashboard-table th:nth-child(3) { width: 12%; }
+      .project-dashboard-table th:nth-child(4) { width: 12%; }
+      .project-dashboard-table th:nth-child(5) { width: 12%; }
+      .project-dashboard-table th:nth-child(6) { width: 12%; }
+      .project-dashboard-table th:nth-child(7) { width: 20%; }
 
       tr:last-child td {
         border-bottom: 0;
@@ -295,9 +330,28 @@
         border: 1px solid var(--border);
         border-radius: 999px;
         padding: 2px 8px;
-        color: var(--muted);
-        background: #fff;
+        color: var(--text);
+        background: var(--surface-muted);
         font-size: 12px;
+      }
+
+      .person-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 2px 8px;
+        border: 1px solid transparent;
+        background: var(--surface-muted);
+        color: var(--text);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .person-chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
       }
 
       .badge.high,
@@ -506,6 +560,44 @@
         margin: 0;
       }
 
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .metric-card {
+        display: grid;
+        gap: 4px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      .metric-card strong {
+        font-size: 18px;
+      }
+
+      .project-dashboard-layout {
+        display: grid;
+        gap: 14px;
+      }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .project-summary-row {
+        cursor: pointer;
+      }
+
+      .project-summary-row:hover {
+        background: var(--surface-muted);
+      }
+
       .stack {
         display: grid;
         gap: 10px;
@@ -559,6 +651,11 @@
           grid-template-columns: 1fr;
         }
 
+        .metric-grid,
+        .detail-grid {
+          grid-template-columns: 1fr;
+        }
+
         table,
         thead,
         tbody,
@@ -576,7 +673,7 @@
           border: 1px solid var(--border);
           border-radius: 8px;
           margin-bottom: 10px;
-          background: #fff;
+          background: var(--surface);
         }
 
         td {
@@ -609,7 +706,9 @@
         selectedBoardViewId: "",
         timeFilters: {},
         payFilters: { rangeMode: "current" },
+        projectFilters: { rangeMode: "current", includeArchived: false, projectId: "" },
         settingsSection: "profile",
+        pendingCategorySave: null,
         status: ""
       };
 
@@ -660,8 +759,17 @@
         return state.data?.visualSettings?.taskStatusColors || {};
       }
 
+      function projectStatusColors() {
+        return state.data?.visualSettings?.projectStatusColors || {};
+      }
+
       function badgeStyleForStatus(status) {
         const color = taskStatusColors()[status];
+        return color ? ` style="color: ${escapeHtml(color)}; border-color: ${escapeHtml(color)}; background: ${escapeHtml(color)}18;"` : "";
+      }
+
+      function badgeStyleForProjectStatus(status) {
+        const color = projectStatusColors()[status];
         return color ? ` style="color: ${escapeHtml(color)}; border-color: ${escapeHtml(color)}; background: ${escapeHtml(color)}18;"` : "";
       }
 
@@ -686,6 +794,23 @@
           <input type="color" data-color-wheel="${escapeHtml(name)}" value="${escapeHtml(color)}" aria-label="${escapeHtml(name)} color">
           <input name="${escapeHtml(name)}" data-color-hex="${escapeHtml(name)}" value="${escapeHtml(color)}" pattern="^#[0-9a-fA-F]{6}$" maxlength="7">
         </div>`;
+      }
+
+      function renderAssigneeChips(task) {
+        const ids = selectedList(task["Assignee User IDs"]);
+        const names = selectedList(task.Assignees);
+        const chips = ids.length ? ids : names;
+        if (!chips.length) return '<span class="badge">Unassigned</span>';
+        return `<span class="person-chip-list">${chips.map((assigneeIdOrName, index) => {
+          const user = ids.length ? findUser(assigneeIdOrName) : null;
+          const label = user?.["Full Name"] || names[index] || assigneeIdOrName;
+          const color = normalizeHex(user?.["Profile Color"], "#1f6f68");
+          return `<span class="person-chip" style="color:${escapeHtml(color)}; border-color:${escapeHtml(color)}; background:${escapeHtml(color)}18;">${escapeHtml(label)}</span>`;
+        }).join("")}</span>`;
+      }
+
+      function renderProjectStatusBadge(status) {
+        return `<span class="badge ${escapeHtml(String(status || "").toLowerCase())}"${badgeStyleForProjectStatus(status)}>${escapeHtml(status || "")}</span>`;
       }
 
       function options(items, valueKey, labelKey, selectedValue, includeBlank) {
@@ -809,7 +934,8 @@
         const payload = {
           taskFilters: state.boardFilters,
           timeFilters: state.timeFilters,
-          payFilters: state.payFilters
+          payFilters: safePayFiltersForRefresh(),
+          projectFilters: safeProjectFiltersForRefresh()
         };
         const fresh = await callServer("refreshAppData", payload);
         Object.assign(state.data, fresh);
@@ -832,7 +958,13 @@
       }
 
       async function refreshPaySummaryData(message = "Pay summary refreshed.") {
-        state.data.paySummary = await callServer("getPaySummary", buildPayFilters());
+        state.data.paySummary = await callServer("getPaySummary", safePayFiltersForRefresh());
+        setStatus(message);
+        render();
+      }
+
+      async function refreshProjectDashboardData(message = "Project dashboard refreshed.") {
+        state.data.projectDashboard = await callServer("getProjectDashboard", safeProjectFiltersForRefresh());
         setStatus(message);
         render();
       }
@@ -852,6 +984,7 @@
         applyUserPreferences();
         const tabs = [
           ["board", "Assignment Board"],
+          ["projects", "Projects"],
           ["time", "Time Tracker"],
           ["pay", "Pay Summary"]
         ];
@@ -881,6 +1014,7 @@
       function renderActiveTab() {
         if (state.tab === "time") return renderTimeTracker();
         if (state.tab === "pay") return renderPaySummary();
+        if (state.tab === "projects") return renderProjectDashboard();
         if (state.tab === "settings") return renderSettings();
         return renderBoard();
       }
@@ -967,10 +1101,10 @@
               <p>${tasks.length} visible task${tasks.length === 1 ? "" : "s"}</p>
             </div>
             <div class="actions">
-              ${data.permissions.canCreateTask ? '<button class="primary" data-action="new-task">New Task</button>' : ""}
-              <button data-action="save-board-view">Save View</button>
+              ${data.permissions.canCreateTask ? renderIcon("new-task", "", "", "New Task", "&#10133;", false) : ""}
+              ${renderIcon("save-board-view", "", "", "Save View", "&#128190;")}
               ${canDeleteSelectedView ? renderIcon("delete-board-view", "", "", "Delete saved view", "&#128465;", true) : ""}
-              <button data-action="clear-board-filters">Clear Filters</button>
+              ${renderIcon("clear-board-filters", "", "", "Clear Filters", "&#128269;")}
             </div>
           </section>
           <section class="panel">
@@ -999,7 +1133,7 @@
       function renderTaskTable(tasks) {
         return `
           <div class="table-wrap">
-            <table>
+            <table class="board-table">
               <thead>
                 <tr>
                   <th>Task</th><th>Status</th><th>Assignees</th><th>Project</th><th>Priority</th><th>Due</th><th>Actions</th>
@@ -1014,7 +1148,7 @@
                       ${task.Tags ? `<span class="badge">${escapeHtml(task.Tags)}</span>` : ""}
                     </td>
                     <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}"${badgeStyleForStatus(task.Status)}>${escapeHtml(task.Status)}</span></td>
-                    <td data-label="Assignees">${escapeHtml(task.Assignees)}</td>
+                    <td data-label="Assignees">${renderAssigneeChips(task)}</td>
                     <td data-label="Project">${escapeHtml(task["Project Name"])}</td>
                     <td data-label="Priority"><span class="badge ${escapeHtml(String(task.Priority).toLowerCase())}">${escapeHtml(task.Priority)}</span></td>
                     <td data-label="Due">${escapeHtml(task["Due Date"])}</td>
@@ -1133,7 +1267,7 @@
             <div class="grouped-day">
               <div class="day-heading"><span>${escapeHtml(date)}</span><span>${total.toFixed(2)} hours</span></div>
               <div class="table-wrap">
-                <table>
+                <table class="time-table">
                   <thead><tr><th>Entry</th><th>Project</th><th>Hours</th><th>Pay Period</th><th>Actions</th></tr></thead>
                   <tbody>
                     ${dayEntries.map((entry) => `
@@ -1159,7 +1293,7 @@
       function renderTimeRequests(requests) {
         return `
           <div class="table-wrap">
-            <table>
+            <table class="time-table">
               <thead><tr><th>Request</th><th>User</th><th>Pay Period</th><th>Reason</th><th>Actions</th></tr></thead>
               <tbody>${requests.map((request) => `
                 <tr>
@@ -1177,8 +1311,7 @@
           </div>`;
       }
 
-      function payRangeOptions() {
-        const selected = state.payFilters.rangeMode || "current";
+      function rangeOptions(selected) {
         const fixed = [
           ["current", "Current Pay Period"],
           ["last", "Last Pay Period"]
@@ -1194,6 +1327,14 @@
         return fixed.concat(periods, ranges).map(([value, label]) => `<option value="${escapeHtml(value)}" ${String(value) === String(selected) ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
       }
 
+      function payRangeOptions() {
+        return rangeOptions(state.payFilters.rangeMode || "current");
+      }
+
+      function projectRangeOptions() {
+        return rangeOptions(state.projectFilters.rangeMode || "current");
+      }
+
       function buildPayFilters(extra = {}) {
         const rangeMode = state.payFilters.rangeMode || "current";
         const filters = {
@@ -1205,6 +1346,29 @@
           filters.endDate = state.payFilters.endDate || "";
         }
         return Object.assign(filters, extra);
+      }
+
+      function safePayFiltersForRefresh() {
+        const filters = buildPayFilters();
+        if (filters.rangeMode === "custom" && !(filters.startDate && filters.endDate)) {
+          return {
+            userId: state.payFilters.userId || "",
+            rangeMode: "current"
+          };
+        }
+        return filters;
+      }
+
+      function safeProjectFiltersForRefresh() {
+        const filters = Object.assign({}, state.projectFilters);
+        if (filters.rangeMode === "custom" && !(filters.startDate && filters.endDate)) {
+          return {
+            projectId: filters.projectId || "",
+            includeArchived: Boolean(filters.includeArchived),
+            rangeMode: "current"
+          };
+        }
+        return filters;
       }
 
       function renderPaySummary() {
@@ -1235,7 +1399,7 @@
           <section class="panel">
             ${summary.summaries?.length ? `
               <div class="table-wrap">
-                <table>
+                <table class="pay-table">
                   <thead><tr><th>User</th><th>Total Hours</th><th>Pay Type</th><th>Rate/Salary</th><th>Effective Hourly</th><th>Gross Pay</th></tr></thead>
                   <tbody>
                     ${summary.summaries.map((row) => `
@@ -1251,6 +1415,117 @@
                 </table>
               </div>` : '<div class="empty">No pay summary rows for this selection.</div>'}
           </section>
+        `;
+      }
+
+      function renderProjectDashboard() {
+        const data = state.data;
+        const dashboard = data.projectDashboard || { projects: [], summary: {} };
+        const range = dashboard.range || {};
+        const selectedProject = dashboard.selectedProject;
+        return `
+          <section class="toolbar">
+            <div>
+              <h2>Projects</h2>
+              <p>${escapeHtml(range.label || "Current pay period")} &middot; ${escapeHtml(dashboard.summary.projectCount || 0)} project${dashboard.summary.projectCount === 1 ? "" : "s"}</p>
+            </div>
+            <div class="actions">
+              ${renderIcon("refresh-project-dashboard", "", "", "Refresh dashboard", "&#8635;")}
+            </div>
+          </section>
+          <section class="panel">
+            <div class="filters">
+              <label>Project <select data-project-filter="projectId">
+                <option value="">All Projects</option>
+                ${(dashboard.projects || []).map((project) => `<option value="${escapeHtml(project["Project ID"])}" ${String(state.projectFilters.projectId || "") === String(project["Project ID"]) ? "selected" : ""}>${escapeHtml(project["Project Name"])}</option>`).join("")}
+              </select></label>
+              <label>Range <select data-project-filter="rangeMode">${projectRangeOptions()}</select></label>
+              <label class="checkbox-row"><input type="checkbox" data-project-filter="includeArchived" ${state.projectFilters.includeArchived ? "checked" : ""}> Include Archived</label>
+              ${state.projectFilters.rangeMode === "custom" ? `
+                <label>Start Date <input type="date" data-project-filter="startDate" value="${escapeHtml(state.projectFilters.startDate || "")}"></label>
+                <label>End Date <input type="date" data-project-filter="endDate" value="${escapeHtml(state.projectFilters.endDate || "")}"></label>` : ""}
+            </div>
+          </section>
+          <section class="panel">
+            <div class="metric-grid">
+              <div class="metric-card"><span>Projects</span><strong>${escapeHtml(dashboard.summary.projectCount || 0)}</strong></div>
+              <div class="metric-card"><span>Tasks</span><strong>${escapeHtml(dashboard.summary.taskCount || 0)}</strong></div>
+              <div class="metric-card"><span>Completion</span><strong>${escapeHtml(dashboard.summary.completionPercent || 0)}%</strong></div>
+              <div class="metric-card"><span>Hours</span><strong>${escapeHtml(dashboard.summary.totalHours || 0)}</strong></div>
+            </div>
+          </section>
+          <section class="panel">
+            ${(dashboard.projects || []).length ? `
+              <div class="table-wrap">
+                <table class="project-dashboard-table">
+                  <thead><tr><th>Project</th><th>Status</th><th>Tasks</th><th>Progress</th><th>Hours</th><th>Users</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    ${(dashboard.projects || []).map((project) => `
+                      <tr class="project-summary-row" data-project-id="${escapeHtml(project["Project ID"])}">
+                        <td data-label="Project"><strong>${escapeHtml(project["Project Name"])}</strong></td>
+                        <td data-label="Status">${renderProjectStatusBadge(project.Status)}</td>
+                        <td data-label="Tasks">${escapeHtml(project["Task Count"])} / ${escapeHtml(project["Completed Task Count"])}</td>
+                        <td data-label="Progress">${escapeHtml(project["Progress Percent"])}%</td>
+                        <td data-label="Hours">${escapeHtml(project["Total Hours"])}</td>
+                        <td data-label="Users">${escapeHtml(project["User Count"])}</td>
+                        <td data-label="Actions">
+                          <div class="actions">
+                            ${renderIcon("select-project-dashboard", "data-project-id", project["Project ID"], "View project details", "&#128065;")}
+                            ${data.permissions.canManageProjects ? (project.Archived ? renderIcon("unarchive-project", "data-project-id", project["Project ID"], "Restore project", "&#10133;") : renderIcon("archive-project-dashboard", "data-project-id", project["Project ID"], "Archive project", "&#128465;", true)) : ""}
+                          </div>
+                        </td>
+                      </tr>`).join("")}
+                  </tbody>
+                </table>
+              </div>` : '<div class="empty">No projects match this selection.</div>'}
+          </section>
+          ${selectedProject ? `
+            <section class="panel">
+              <div class="toolbar">
+                <div>
+                  <h3>${escapeHtml(selectedProject.project["Project Name"])}</h3>
+                  <p>${renderProjectStatusBadge(selectedProject.project.Status)} &middot; ${escapeHtml(selectedProject.summary["Progress Percent"])}% complete</p>
+                </div>
+                <div class="actions">
+                  ${data.permissions.canManageProjects ? (selectedProject.project.Archived ? renderIcon("unarchive-project", "data-project-id", selectedProject.project["Project ID"], "Restore project", "&#10133;") : renderIcon("archive-project-dashboard", "data-project-id", selectedProject.project["Project ID"], "Archive project", "&#128465;", true)) : ""}
+                  ${renderIcon("clear-project-filter", "", "", "Clear project selection", "&#10006;")}
+                </div>
+              </div>
+              <div class="metric-grid">
+                <div class="metric-card"><span>Total Hours</span><strong>${escapeHtml(selectedProject.metrics.totalHours)}</strong></div>
+                <div class="metric-card"><span>Avg / Week</span><strong>${escapeHtml(selectedProject.metrics.averageHoursPerWeek)}</strong></div>
+                <div class="metric-card"><span>Tasks</span><strong>${escapeHtml(selectedProject.metrics.taskCount)}</strong></div>
+                <div class="metric-card"><span>Users</span><strong>${escapeHtml(selectedProject.metrics.userCount)}</strong></div>
+              </div>
+              <h3>Related Tasks</h3>
+              ${selectedProject.tasks?.length ? `
+                <div class="table-wrap">
+                  <table class="board-table">
+                    <thead><tr><th>Task</th><th>Status</th><th>Assignees</th><th>Priority</th></tr></thead>
+                    <tbody>${selectedProject.tasks.map((task) => `
+                      <tr>
+                        <td data-label="Task"><strong>${escapeHtml(task.Title)}</strong><div>${escapeHtml(task.Notes || "")}</div></td>
+                        <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}"${badgeStyleForStatus(task.Status)}>${escapeHtml(task.Status)}</span></td>
+                        <td data-label="Assignees">${renderAssigneeChips(task)}</td>
+                        <td data-label="Priority"><span class="badge">${escapeHtml(task.Priority || "")}</span></td>
+                      </tr>`).join("")}</tbody>
+                  </table>
+                </div>` : '<div class="empty">No related tasks.</div>'}
+              <div class="detail-grid" style="margin-top: 12px;">
+                <div>
+                  <h3>Task Time</h3>
+                  ${renderHoursList(selectedProject.taskTotals, "No task time in this range.")}
+                </div>
+                <div>
+                  <h3>Users</h3>
+                  ${renderHoursList(selectedProject.userTotals, "No user time in this range.")}
+                </div>
+                <div>
+                  <h3>Categories</h3>
+                  ${renderHoursList(selectedProject.categoryTotals, "No category time in this range.")}
+                </div>
+              </div>
+            </section>` : ""}
         `;
       }
 
@@ -1307,7 +1582,10 @@
                 <label>Profile Image <input name="profileImage" type="file" accept="image/png,image/jpeg,image/gif,image/webp"></label>
               </div>
               <input type="hidden" name="googleProfilePhotoUrl" value="${escapeHtml(googlePhoto)}">
-              <button class="primary" type="submit">Save Profile</button>
+              <div class="actions">
+                <button class="primary" type="submit">Save Profile</button>
+                ${user["Profile Image URL"] ? '<button type="button" data-action="remove-profile-image">Remove Profile Image</button>' : ""}
+              </div>
             </form>
           </section>`;
       }
@@ -1350,7 +1628,7 @@
                 <tbody>${data.projects.map((project) => `
                   <tr>
                     <td data-label="Project">${escapeHtml(project["Project Name"])}</td>
-                    <td data-label="Status">${escapeHtml(project.Status)}</td>
+                    <td data-label="Status">${renderProjectStatusBadge(project.Status)}</td>
                     <td data-label="Active">${escapeHtml(project.Active)}</td>
                     <td data-label="Actions">
                       ${renderIcon("edit-project", "data-project-id", project["Project ID"], "Edit project", "&#9998;")}
@@ -1410,7 +1688,8 @@
 
       function renderAppSettings() {
         const settingMap = Object.fromEntries((state.data.settings || []).map((setting) => [setting["Setting Key"], setting["Setting Value"]]));
-        const colors = Object.assign({}, state.data.visualSettings?.taskStatusColors || {}, parseJson(settingMap.TASK_STATUS_COLORS_JSON, {}));
+        const taskColors = Object.assign({}, state.data.visualSettings?.taskStatusColors || {}, parseJson(settingMap.TASK_STATUS_COLORS_JSON, {}));
+        const projectColors = Object.assign({}, state.data.visualSettings?.projectStatusColors || {}, parseJson(settingMap.PROJECT_STATUS_COLORS_JSON, {}));
         return `
           <section class="panel">
             <h3>Application Settings</h3>
@@ -1421,7 +1700,11 @@
               </div>
               <h3>Task Status Colors</h3>
               <div class="form-grid two">
-                ${(state.data.constants.taskStatuses || []).map((status) => `<label>${escapeHtml(status)} ${renderColorField(`statusColor__${status}`, colors[status] || "#647181", "#647181")}</label>`).join("")}
+                ${(state.data.constants.taskStatuses || []).map((status) => `<label>${escapeHtml(status)} ${renderColorField(`statusColor__${status}`, taskColors[status] || "#647181", "#647181")}</label>`).join("")}
+              </div>
+              <h3>Project Status Colors</h3>
+              <div class="form-grid two">
+                ${(state.data.constants.projectStatuses || ["Not Started", "In Progress", "Holding", "Completed", "Archived"]).map((status) => `<label>${escapeHtml(status)} ${renderColorField(`projectStatusColor__${status}`, projectColors[status] || "#647181", "#647181")}</label>`).join("")}
               </div>
               <button class="primary" type="submit">Save Settings</button>
             </form>
@@ -1685,6 +1968,7 @@
       function renderUserPermissionControls(user) {
         if (!state.data.userPermissions?.length) return "";
         if (!user || !user["User ID"]) return "";
+        if (user.Role === "Owner") return "";
         const permissions = effectivePermissionsForUser(user?.["User ID"]);
         const capabilities = state.data.constants.permissionCapabilities || [];
         return `<section class="panel" style="box-shadow:none;margin:0;">
@@ -1700,6 +1984,25 @@
         </section>`;
       }
 
+      function syncUserPayFields(form) {
+        if (!form) return;
+        const payType = form.payType?.value || "None";
+        const hourlyRate = form.hourlyRate;
+        const salaryAmount = form.salaryAmount;
+        const salaryFrequency = form.salaryFrequency;
+        if (hourlyRate) hourlyRate.disabled = payType !== "Hourly";
+        if (salaryAmount) salaryAmount.disabled = payType !== "Salary";
+        if (salaryFrequency) salaryFrequency.disabled = payType !== "Salary";
+        if (form.trackPay && form.trackTime) {
+          if (form.trackPay.checked) {
+            form.trackTime.checked = true;
+            form.trackTime.disabled = true;
+          } else {
+            form.trackTime.disabled = false;
+          }
+        }
+      }
+
       function openUserModal(user = null) {
         const data = state.data;
         setModal(`
@@ -1713,9 +2016,12 @@
                 <label>Full Name <input name="fullName" value="${escapeHtml(user?.["Full Name"] || "")}" required></label>
                 <label>Email <input name="email" type="email" value="${escapeHtml(user?.Email || "")}" required></label>
                 <label>Role <select name="role">${constantOptions(Object.values(data.constants.roles), user?.Role || "User", false)}</select></label>
-                <label>Pay Type <select name="payType">${constantOptions(["None", "Hourly", "Salary"], user?.["Pay Type"] || "None", false)}</select></label>
-                <label>Hourly Rate <input name="hourlyRate" type="number" step="0.01" min="0" value="${escapeHtml(user?.["Hourly Rate"] || "")}"></label>
-                <label>Salary Amount <input name="salaryAmount" type="number" step="0.01" min="0" value="${escapeHtml(user?.["Salary Amount"] || "")}"></label>
+                <label>Pay Type <select name="payType" data-user-pay-type>${constantOptions(["None", "Hourly", "Salary"], user?.["Pay Type"] || "None", false)}</select></label>
+                <label>Hourly Rate <input name="hourlyRate" data-user-pay-field="hourlyRate" type="number" step="0.01" min="0" value="${escapeHtml(user?.["Hourly Rate"] || "")}"></label>
+                <label>Salary Amount <input name="salaryAmount" data-user-pay-field="salaryAmount" type="number" step="0.01" min="0" value="${escapeHtml(user?.["Salary Amount"] || "")}"></label>
+                <label>Salary Frequency <select name="salaryFrequency" data-user-pay-field="salaryFrequency">
+                  ${constantOptions(["Per Pay Period", "Monthly", "Annual"], user?.["Salary Frequency"] || "Per Pay Period", false)}
+                </select></label>
                 <label>Theme <select name="themeMode">${constantOptions(data.constants.themeModes || ["System", "Light", "Dark"], user?.["Theme Mode"] || "System", false)}</select></label>
                 <label>Profile Color ${renderColorField("profileColor", user?.["Profile Color"] || "#1f6f68")}</label>
               </div>
@@ -1726,6 +2032,7 @@
               <div class="actions"><button class="primary" type="submit">Save User</button></div>
             </form>
           </div>`);
+        setTimeout(() => syncUserPayFields(document.querySelector('#modal-root [data-form="user"]')), 0);
       }
 
       function openProjectModal(project = null) {
@@ -1736,7 +2043,7 @@
               <input type="hidden" name="projectId" value="${escapeHtml(project?.["Project ID"] || "")}">
               <label>Project Name <input name="projectName" value="${escapeHtml(project?.["Project Name"] || "")}" required></label>
               <label>Description <textarea name="description">${escapeHtml(project?.Description || "")}</textarea></label>
-              <label>Status <input name="status" value="${escapeHtml(project?.Status || "Active")}"></label>
+              <label>Status <select name="status">${constantOptions(state.data.constants.projectStatuses || ["Not Started", "In Progress", "Holding", "Completed"], project?.Status || "Not Started", false)}</select></label>
               <label class="checkbox-row"><input name="active" type="checkbox" ${String(project?.Active) !== "false" ? "checked" : ""}> Active</label>
               <div class="actions"><button class="primary" type="submit">Save Project</button></div>
             </form>
@@ -1784,6 +2091,20 @@
               <div class="actions">
                 <button type="button" data-action="${escapeHtml(action)}" ${payloadName}="${escapeHtml(payloadValue)}" class="danger">Delete</button>
                 <button type="button" data-action="close-modal">Cancel</button>
+              </div>
+            </div>
+          </div>`);
+      }
+
+      function openCategoryBackfillModal(info) {
+        setModal(`
+          <div class="modal-backdrop">
+            <div class="modal stack">
+              <div class="modal-header"><h3>Update Historical Time Entries?</h3><button type="button" data-action="close-modal">Close</button></div>
+              <p>${escapeHtml(info.historicalEntryCount)} prior time entr${info.historicalEntryCount === 1 ? "y" : "ies"} on "${escapeHtml(info.categoryName)}" still point at the previous project.</p>
+              <div class="actions">
+                <button type="button" data-action="confirm-category-backfill">Update Previous Entries</button>
+                <button type="button" data-action="confirm-category-future-only">Future Only</button>
               </div>
             </div>
           </div>`);
@@ -1839,9 +2160,10 @@
           return;
         }
         const action = event.target.closest("[data-action]")?.dataset.action;
-        if (!action) return;
+          if (!action) return;
         try {
           if (action === "close-modal") {
+            state.pendingCategorySave = null;
             closeTopModal();
           } else if (action === "new-task") {
             openTaskModal();
@@ -1860,6 +2182,23 @@
             state.selectedBoardViewId = "";
             clearModals();
             await refreshBoardData("Board view deleted.");
+          } else if (action === "refresh-project-dashboard") {
+            await refreshProjectDashboardData("Project dashboard refreshed.");
+          } else if (action === "select-project-dashboard") {
+            state.projectFilters.projectId = event.target.closest("[data-project-id]").dataset.projectId;
+            await refreshProjectDashboardData("Project selected.");
+          } else if (action === "clear-project-filter") {
+            state.projectFilters.projectId = "";
+            await refreshProjectDashboardData("Project selection cleared.");
+          } else if (action === "archive-project-dashboard") {
+            openConfirmModal("Archive this project?", "confirm-archive-project-dashboard", "data-project-id", event.target.closest("[data-project-id]").dataset.projectId);
+          } else if (action === "confirm-archive-project-dashboard") {
+            await callServer("archiveProject", event.target.closest("[data-project-id]").dataset.projectId);
+            clearModals();
+            await refreshData({ message: "Project archived." });
+          } else if (action === "unarchive-project") {
+            await callServer("unarchiveProject", event.target.closest("[data-project-id]").dataset.projectId);
+            await refreshData({ message: "Project restored." });
           } else if (action === "edit-task") {
             const task = state.data.tasks.find((item) => item["Task ID"] === event.target.closest("[data-task-id]").dataset.taskId);
             openTaskModal(task);
@@ -1908,6 +2247,9 @@
           } else if (action === "reject-time-request") {
             await callServer("rejectTimeEditRequest", event.target.closest("[data-request-id]").dataset.requestId, "Rejected in Time Tracker");
             await refreshTrackerData("Request rejected.");
+          } else if (action === "remove-profile-image") {
+            await callServer("removeProfileImage", state.data.currentUser["User ID"]);
+            await refreshData({ message: "Profile image removed." });
           } else if (action === "new-user") {
             openUserModal();
           } else if (action === "edit-user") {
@@ -1966,6 +2308,20 @@
             await callServer("archiveTag", event.target.closest("[data-tag-id]").dataset.tagId);
             clearModals();
             await refreshData({ message: "Tag archived." });
+          } else if (action === "confirm-category-backfill") {
+            const pending = state.pendingCategorySave;
+            if (!pending) return;
+            state.pendingCategorySave = null;
+            await callServer("saveCategory", Object.assign({}, pending, { backfillExistingEntries: true }));
+            clearModals();
+            await refreshData({ message: "Category saved and historical entries updated." });
+          } else if (action === "confirm-category-future-only") {
+            const pending = state.pendingCategorySave;
+            if (!pending) return;
+            state.pendingCategorySave = null;
+            await callServer("saveCategory", Object.assign({}, pending, { backfillExistingEntries: false }));
+            clearModals();
+            await refreshData({ message: "Category saved for future entries only." });
           } else if (action === "share-user-spreadsheet") {
             await callServer("shareSpreadsheetWithUser", event.target.closest("[data-user-id]").dataset.userId);
             setStatus("Spreadsheet shared with user.");
@@ -2014,6 +2370,9 @@
           state.boardFilters[event.target.dataset.filter] = event.target.value;
           render();
         }
+        if (event.target.matches("[data-user-pay-type], [name='trackPay']")) {
+          syncUserPayFields(event.target.closest('[data-form="user"]'));
+        }
         if (event.target.matches("[data-board-grouping]")) {
           state.boardGrouping = event.target.value;
           render();
@@ -2040,6 +2399,23 @@
           try {
             if (state.payFilters.rangeMode !== "custom" || (state.payFilters.startDate && state.payFilters.endDate)) {
               await refreshPaySummaryData("Pay summary refreshed.");
+            } else {
+              render();
+            }
+          } catch (error) {
+            setStatus(error.message || String(error));
+          }
+        }
+        if (event.target.matches("[data-project-filter]")) {
+          const key = event.target.dataset.projectFilter;
+          if (event.target.type === "checkbox") {
+            state.projectFilters[key] = event.target.checked;
+          } else {
+            state.projectFilters[key] = event.target.value;
+          }
+          try {
+            if (state.projectFilters.rangeMode !== "custom" || (state.projectFilters.startDate && state.projectFilters.endDate)) {
+              await refreshProjectDashboardData("Project dashboard refreshed.");
             } else {
               render();
             }
@@ -2079,6 +2455,33 @@
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
           reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function cropProfileImage(file, maxSize = 512) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const image = new Image();
+            image.onload = () => {
+              const size = Math.min(maxSize, image.width, image.height);
+              const canvas = document.createElement("canvas");
+              canvas.width = size;
+              canvas.height = size;
+              const context = canvas.getContext("2d");
+              const sourceSize = Math.min(image.width, image.height);
+              const sourceX = Math.floor((image.width - sourceSize) / 2);
+              const sourceY = Math.floor((image.height - sourceSize) / 2);
+              context.fillStyle = "#ffffff";
+              context.fillRect(0, 0, size, size);
+              context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+              resolve(canvas.toDataURL("image/jpeg", 0.9));
+            };
+            image.onerror = reject;
+            image.src = reader.result;
+          };
+          reader.onerror = reject;
           reader.readAsDataURL(file);
         });
       }
@@ -2156,7 +2559,7 @@
             let savedProfile = await callServer("updateProfile", profilePayload);
             if (form.profileImage?.files?.[0]) {
               savedProfile = await callServer("uploadProfileImage", {
-                dataUrl: await readFileAsDataUrl(form.profileImage.files[0])
+                dataUrl: await cropProfileImage(form.profileImage.files[0])
               });
             }
             state.data.currentUser = savedProfile;
@@ -2174,6 +2577,7 @@
               payType: form.payType.value,
               hourlyRate: form.hourlyRate.value,
               salaryAmount: form.salaryAmount.value,
+              salaryFrequency: form.salaryFrequency.value,
               themeMode: form.themeMode.value,
               profileColor: form.profileColor.value,
               active: form.active.checked,
@@ -2208,12 +2612,18 @@
             clearModals();
             await refreshData({ message: "Project saved." });
           } else if (formType === "category") {
-            await callServer("saveCategory", {
+            const payload = {
               categoryId: form.categoryId.value,
               category: form.category.value,
               defaultProjectId: form.defaultProjectId.value,
               active: form.active.checked
-            });
+            };
+            const preview = await callServer("saveCategory", Object.assign({}, payload, { previewOnly: true }));
+            if (preview.requiresBackfill) {
+              state.pendingCategorySave = payload;
+              openCategoryBackfillModal(preview);
+              return;
+            }
             form.reset();
             clearModals();
             await refreshData({ message: "Category saved." });
@@ -2270,6 +2680,16 @@
               key: "TASK_STATUS_COLORS_JSON",
               value: JSON.stringify(statusColors),
               description: "Hex colors used for Assignment Board task status badges."
+            });
+            const projectStatusColors = {};
+            Array.from(form.querySelectorAll('[name^="projectStatusColor__"]')).forEach((input) => {
+              const status = input.name.replace("projectStatusColor__", "");
+              projectStatusColors[status] = normalizeHex(input.value, "#647181");
+            });
+            await callServer("saveSetting", {
+              key: "PROJECT_STATUS_COLORS_JSON",
+              value: JSON.stringify(projectStatusColors),
+              description: "Hex colors used for project status badges."
             });
             await refreshData({ message: "Settings saved." });
           }

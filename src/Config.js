@@ -268,6 +268,7 @@ var TrustOpsConfig = (function () {
   };
 
   var TASK_STATUSES = ["In Progress", "Complete", "Blocked", "Waiting", "Archived"];
+  var PROJECT_STATUSES = ["Not Started", "In Progress", "Holding", "Completed", "Archived"];
   var PRIORITIES = ["Low", "Medium", "High", "Urgent"];
   var ENTRY_TYPES = {
     TASK: "Task",
@@ -307,6 +308,14 @@ var TrustOpsConfig = (function () {
     "Archived": "#647181"
   };
 
+  var DEFAULT_PROJECT_STATUS_COLORS = {
+    "Not Started": "#647181",
+    "In Progress": "#1f6f68",
+    "Holding": "#9a6a16",
+    "Completed": "#2f7351",
+    "Archived": "#647181"
+  };
+
   var DEFAULT_TIME_CATEGORIES = [
     "Drive Time",
     "Meeting",
@@ -328,6 +337,7 @@ var TrustOpsConfig = (function () {
     SHEETS: SHEETS,
     TABLES: TABLES,
     TASK_STATUSES: TASK_STATUSES,
+    PROJECT_STATUSES: PROJECT_STATUSES,
     PRIORITIES: PRIORITIES,
     ENTRY_TYPES: ENTRY_TYPES,
     PAY_PERIOD_STATUS: PAY_PERIOD_STATUS,
@@ -337,6 +347,7 @@ var TrustOpsConfig = (function () {
     MANAGER_PRESETS: MANAGER_PRESETS,
     THEME_MODES: THEME_MODES,
     DEFAULT_TASK_STATUS_COLORS: DEFAULT_TASK_STATUS_COLORS,
+    DEFAULT_PROJECT_STATUS_COLORS: DEFAULT_PROJECT_STATUS_COLORS,
     DEFAULT_TIME_CATEGORIES: DEFAULT_TIME_CATEGORIES,
     PAY_PERIOD_DAYS: 14,
     PAY_PERIOD_ANCHOR_DATE: "2026-04-26",

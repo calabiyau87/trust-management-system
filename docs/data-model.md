@@ -25,7 +25,15 @@ Pay types:
 
 Stable ID: `Project ID`
 
-Stores project name, description, status, active state, timestamps, and archive state.
+Stores project name, description, derived/manual status, active state, timestamps, and archive state.
+
+Project status rules:
+
+- `Not Started` when a project has no active tasks.
+- `In Progress` when active incomplete work exists.
+- `Completed` when all active tasks are complete.
+- `Holding` is a manual status.
+- `Archived` is separate from the project status field.
 
 ## Tasks
 
@@ -58,6 +66,8 @@ Entry types:
 
 - Task
 - General Time
+
+If a time category changes its default project, the app can optionally backfill earlier matching general-time entries from the previous default project to the new one.
 
 ## Pay Periods
 
@@ -114,4 +124,4 @@ Stable ID: `Setting Key`
 
 Stores non-sensitive configuration. Secrets and future webhook URLs should move to `PropertiesService`.
 
-Current visual settings include `TASK_STATUS_COLORS_JSON`, a status-to-hex-color map used by Assignment Board task badges.
+Current visual settings include `TASK_STATUS_COLORS_JSON` and `PROJECT_STATUS_COLORS_JSON`, status-to-hex-color maps used by Assignment Board and project dashboard badges.
