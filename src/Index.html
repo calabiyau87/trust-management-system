@@ -1,0 +1,1126 @@
+<!doctype html>
+<html>
+  <head>
+    <base target="_top">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      :root {
+        --bg: #f6f7f9;
+        --surface: #ffffff;
+        --surface-muted: #eef2f5;
+        --text: #17202a;
+        --muted: #647181;
+        --border: #d7dee6;
+        --accent: #1f6f68;
+        --accent-strong: #174f4a;
+        --danger: #a23a3a;
+        --warning: #9a6a16;
+        --ok: #2f7351;
+        --shadow: 0 8px 24px rgba(21, 34, 50, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.45 Arial, Helvetica, sans-serif;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--text);
+        cursor: pointer;
+        padding: 8px 11px;
+      }
+
+      button:hover {
+        border-color: #aab7c4;
+      }
+
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
+      button.primary:hover {
+        background: var(--accent-strong);
+      }
+
+      button.danger {
+        color: var(--danger);
+        border-color: #d9b6b6;
+      }
+
+      button.link {
+        border: 0;
+        background: transparent;
+        padding: 4px 6px;
+        color: var(--accent);
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        min-height: 38px;
+        border: 1px solid var(--border);
+        border-radius: 7px;
+        background: #fff;
+        padding: 8px 10px;
+      }
+
+      textarea {
+        min-height: 86px;
+        resize: vertical;
+      }
+
+      input[type="checkbox"] {
+        width: auto;
+        min-height: auto;
+      }
+
+      label {
+        display: grid;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .app-shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 22px;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 7px;
+        background: #173b36;
+        color: #fff;
+        font-weight: 800;
+      }
+
+      .brand h1 {
+        margin: 0;
+        font-size: 17px;
+      }
+
+      .brand p,
+      .user-chip {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      nav {
+        display: flex;
+        gap: 6px;
+        padding: 10px 22px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        overflow-x: auto;
+      }
+
+      nav button {
+        white-space: nowrap;
+        border-color: transparent;
+        background: transparent;
+      }
+
+      nav button.active {
+        background: var(--surface-muted);
+        border-color: var(--border);
+      }
+
+      main {
+        padding: 18px 22px 32px;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .toolbar h2 {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      .toolbar p {
+        margin: 3px 0 0;
+        color: var(--muted);
+      }
+
+      .filters,
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .form-grid.two {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        padding: 14px;
+        margin-bottom: 14px;
+      }
+
+      .panel h3 {
+        margin: 0 0 12px;
+        font-size: 15px;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--border);
+        padding: 10px 9px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        background: #fafbfc;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 2px 8px;
+        color: var(--muted);
+        background: #fff;
+        font-size: 12px;
+      }
+
+      .badge.high,
+      .badge.urgent {
+        color: var(--warning);
+        border-color: #ecd7a8;
+        background: #fff8e8;
+      }
+
+      .badge.complete {
+        color: var(--ok);
+        border-color: #bbdac9;
+        background: #edf8f2;
+      }
+
+      .empty,
+      .loading,
+      .error {
+        padding: 28px;
+        border: 1px dashed var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--muted);
+      }
+
+      .error {
+        color: var(--danger);
+        border-color: #dfb7b7;
+      }
+
+      .status-line {
+        min-height: 22px;
+        color: var(--muted);
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+        background: rgba(16, 24, 32, 0.38);
+        z-index: 20;
+      }
+
+      .modal {
+        width: min(760px, 100%);
+        max-height: 92vh;
+        overflow: auto;
+        background: var(--surface);
+        border-radius: 8px;
+        box-shadow: 0 18px 54px rgba(0, 0, 0, 0.22);
+        padding: 18px;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .modal-header h3 {
+        margin: 0;
+      }
+
+      .stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      .grouped-day {
+        border-top: 1px solid var(--border);
+        padding: 12px 0;
+      }
+
+      .grouped-day:first-child {
+        border-top: 0;
+      }
+
+      .day-heading {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+        font-weight: 800;
+      }
+
+      .admin-grid {
+        display: grid;
+        grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1.2fr);
+        gap: 14px;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      @media (max-width: 820px) {
+        header {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        main,
+        header,
+        nav {
+          padding-left: 14px;
+          padding-right: 14px;
+        }
+
+        .filters,
+        .form-grid,
+        .form-grid.two,
+        .admin-grid {
+          grid-template-columns: 1fr;
+        }
+
+        table,
+        thead,
+        tbody,
+        tr,
+        th,
+        td {
+          display: block;
+        }
+
+        thead {
+          display: none;
+        }
+
+        tr {
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          margin-bottom: 10px;
+          background: #fff;
+        }
+
+        td {
+          border: 0;
+          display: grid;
+          grid-template-columns: 110px 1fr;
+          gap: 8px;
+          padding: 8px 10px;
+        }
+
+        td::before {
+          content: attr(data-label);
+          color: var(--muted);
+          font-weight: 800;
+          font-size: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app" class="loading">Loading Trust Ops...</div>
+    <div id="modal-root"></div>
+
+    <script>
+      const state = {
+        tab: "board",
+        data: null,
+        boardFilters: {},
+        timeFilters: {},
+        payFilters: {},
+        status: ""
+      };
+
+      function callServer(name, ...args) {
+        return new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler((error) => reject(error))
+            [name](...args);
+        });
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function money(value) {
+        return Number(value || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
+      }
+
+      function options(items, valueKey, labelKey, selectedValue, includeBlank) {
+        const blank = includeBlank ? '<option value="">All</option>' : "";
+        return blank + (items || []).map((item) => {
+          const value = item[valueKey];
+          const selected = String(value) === String(selectedValue || "") ? "selected" : "";
+          return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(item[labelKey] || value)}</option>`;
+        }).join("");
+      }
+
+      function constantOptions(values, selectedValue, includeBlank) {
+        const blank = includeBlank ? '<option value="">All</option>' : "";
+        return blank + (values || []).map((value) => {
+          const selected = String(value) === String(selectedValue || "") ? "selected" : "";
+          return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(value)}</option>`;
+        }).join("");
+      }
+
+      function setStatus(message) {
+        state.status = message || "";
+        const line = document.querySelector("[data-status-line]");
+        if (line) line.textContent = state.status;
+      }
+
+      async function loadInitial() {
+        try {
+          state.data = await callServer("getInitialData");
+          state.timeFilters.userId = state.data.context.userId;
+          state.timeFilters.payPeriodId = state.data.currentPayPeriod["Pay Period ID"];
+          state.payFilters.userId = state.data.context.userId;
+          state.payFilters.payPeriodId = state.data.currentPayPeriod["Pay Period ID"];
+          render();
+        } catch (error) {
+          document.getElementById("app").innerHTML = `
+            <div class="error">
+              <strong>Unable to load Trust Ops.</strong><br>
+              ${escapeHtml(error.message || error)}
+            </div>`;
+        }
+      }
+
+      async function refreshData(parts = {}) {
+        setStatus("Saving...");
+        const payload = {
+          taskFilters: state.boardFilters,
+          timeFilters: state.timeFilters,
+          payFilters: state.payFilters
+        };
+        const fresh = await callServer("refreshAppData", payload);
+        Object.assign(state.data, fresh);
+        setStatus(parts.message || "Updated.");
+        render();
+      }
+
+      function render() {
+        const data = state.data;
+        if (!data) return;
+        const tabs = [
+          ["board", "Assignment Board"],
+          ["time", "Time Tracker"],
+          ["pay", "Pay Summary"]
+        ];
+        if (data.permissions.canManageUsers || data.permissions.canManageProjects || data.permissions.canManageSettings) {
+          tabs.push(["admin", "Admin"]);
+        }
+        document.getElementById("app").className = "app-shell";
+        document.getElementById("app").innerHTML = `
+          <header>
+            <div class="brand">
+              <div class="brand-mark">TO</div>
+              <div>
+                <h1>Trust Ops</h1>
+                <p>Tasks, time, pay periods, and administration</p>
+              </div>
+            </div>
+            <div class="user-chip">${escapeHtml(data.context.fullName)} · ${escapeHtml(data.context.role)}</div>
+          </header>
+          <nav>
+            ${tabs.map(([id, label]) => `<button class="${state.tab === id ? "active" : ""}" data-tab="${id}">${label}</button>`).join("")}
+          </nav>
+          <main>
+            <div class="status-line" data-status-line>${escapeHtml(state.status)}</div>
+            ${renderActiveTab()}
+          </main>
+        `;
+      }
+
+      function renderActiveTab() {
+        if (state.tab === "time") return renderTimeTracker();
+        if (state.tab === "pay") return renderPaySummary();
+        if (state.tab === "admin") return renderAdmin();
+        return renderBoard();
+      }
+
+      function applyBoardFilters(tasks) {
+        const filters = state.boardFilters;
+        const search = String(filters.search || "").toLowerCase();
+        return (tasks || []).filter((task) => {
+          if (filters.status && task.Status !== filters.status) return false;
+          if (filters.projectId && task["Project ID"] !== filters.projectId) return false;
+          if (filters.priority && task.Priority !== filters.priority) return false;
+          if (filters.assigneeUserId && !String(task["Assignee User IDs"] || "").split(",").map((id) => id.trim()).includes(filters.assigneeUserId)) return false;
+          if (search) {
+            const haystack = [task.Title, task.Notes, task.Status, task.Assignees, task["Project Name"], task.Priority, task.Tags].join(" ").toLowerCase();
+            if (!haystack.includes(search)) return false;
+          }
+          return true;
+        });
+      }
+
+      function renderBoard() {
+        const data = state.data;
+        const tasks = applyBoardFilters(data.tasks);
+        return `
+          <section class="toolbar">
+            <div>
+              <h2>Assignment Board</h2>
+              <p>${tasks.length} visible task${tasks.length === 1 ? "" : "s"}</p>
+            </div>
+            ${data.permissions.canCreateTask ? '<button class="primary" data-action="new-task">New Task</button>' : ""}
+          </section>
+          <section class="panel">
+            <div class="filters">
+              <label>Search <input data-filter="search" value="${escapeHtml(state.boardFilters.search || "")}" placeholder="Task, notes, tags"></label>
+              <label>Status <select data-filter="status">${constantOptions(data.constants.taskStatuses, state.boardFilters.status, true)}</select></label>
+              <label>Project <select data-filter="projectId">${options(data.projects, "Project ID", "Project Name", state.boardFilters.projectId, true)}</select></label>
+              <label>Assignee <select data-filter="assigneeUserId">${options(data.users, "User ID", "Full Name", state.boardFilters.assigneeUserId, true)}</select></label>
+              <label>Priority <select data-filter="priority">${constantOptions(data.constants.priorities, state.boardFilters.priority, true)}</select></label>
+            </div>
+          </section>
+          <section class="panel">
+            ${tasks.length ? renderTaskTable(tasks) : '<div class="empty">No tasks match the current filters.</div>'}
+          </section>
+        `;
+      }
+
+      function renderTaskTable(tasks) {
+        return `
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Task</th><th>Status</th><th>Assignees</th><th>Project</th><th>Priority</th><th>Due</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tasks.map((task) => `
+                  <tr>
+                    <td data-label="Task">
+                      <strong>${escapeHtml(task.Title)}</strong>
+                      <div>${escapeHtml(task.Notes || "")}</div>
+                      ${task.Tags ? `<span class="badge">${escapeHtml(task.Tags)}</span>` : ""}
+                    </td>
+                    <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}">${escapeHtml(task.Status)}</span></td>
+                    <td data-label="Assignees">${escapeHtml(task.Assignees)}</td>
+                    <td data-label="Project">${escapeHtml(task["Project Name"])}</td>
+                    <td data-label="Priority"><span class="badge ${escapeHtml(String(task.Priority).toLowerCase())}">${escapeHtml(task.Priority)}</span></td>
+                    <td data-label="Due">${escapeHtml(task["Due Date"])}</td>
+                    <td data-label="Actions">
+                      <div class="actions">
+                        ${task._permissions?.canAddTime ? `<button data-action="add-time" data-task-id="${escapeHtml(task["Task ID"])}">Add Time</button>` : ""}
+                        ${task._permissions?.canEdit ? `<button data-action="edit-task" data-task-id="${escapeHtml(task["Task ID"])}">Edit</button>` : ""}
+                        ${task._permissions?.canComplete && task.Status !== "Complete" ? `<button data-action="complete-task" data-task-id="${escapeHtml(task["Task ID"])}">Complete</button>` : ""}
+                      </div>
+                    </td>
+                  </tr>`).join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderTimeTracker() {
+        const data = state.data;
+        const tracker = data.tracker || {};
+        const targetUserId = tracker.targetUserId || state.timeFilters.userId || data.context.userId;
+        const canSelectUser = data.permissions.canCreateTimeForAnyUser;
+        const entries = tracker.entries || [];
+        const totalHours = entries.reduce((sum, entry) => sum + Number(entry.Hours || 0), 0);
+        return `
+          <section class="toolbar">
+            <div>
+              <h2>Time Tracker</h2>
+              <p>${entries.length} entry${entries.length === 1 ? "" : "ies"} · ${totalHours.toFixed(2)} selected-period hours</p>
+            </div>
+          </section>
+          <section class="panel">
+            <h3>Log Time</h3>
+            <form data-form="time-entry" class="stack">
+              <div class="form-grid">
+                ${canSelectUser ? `<label>User <select name="userId">${options(data.users, "User ID", "Full Name", targetUserId, false)}</select></label>` : ""}
+                <label>Pay Period <select name="payPeriodId">${options(data.payPeriods, "Pay Period ID", "Pay Period Label", state.timeFilters.payPeriodId, false)}</select></label>
+                <label>Entry Type <select name="entryType">
+                  <option value="Task">Task Time</option>
+                  <option value="General Time">General Time</option>
+                </select></label>
+                <label>Date <input name="date" type="date" value="${new Date().toISOString().slice(0, 10)}"></label>
+                <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" required></label>
+              </div>
+              <div class="form-grid two" data-time-mode="task">
+                <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Title", "", false)}</select></label>
+                <label>Notes <input name="notes" placeholder="Optional notes"></label>
+              </div>
+              <div class="form-grid two hidden" data-time-mode="general">
+                <label>Category <select name="categoryId">${options(tracker.categories || [], "Category ID", "Category", "", false)}</select></label>
+                <label>Notes <input name="generalNotes" placeholder="Optional notes"></label>
+              </div>
+              ${data.permissions.canOverrideLockedPeriod ? '<label>Override Reason <input name="overrideReason" placeholder="Required only when editing/creating in a locked period"></label>' : ""}
+              <div class="actions"><button class="primary" type="submit">Save Time</button></div>
+            </form>
+          </section>
+          <section class="panel">
+            <h3>Entries</h3>
+            ${entries.length ? renderEntries(entries) : '<div class="empty">No time entries for this selection.</div>'}
+          </section>
+        `;
+      }
+
+      function renderEntries(entries) {
+        const grouped = entries.reduce((acc, entry) => {
+          const key = entry.Date || "No date";
+          acc[key] = acc[key] || [];
+          acc[key].push(entry);
+          return acc;
+        }, {});
+        return Object.keys(grouped).sort().reverse().map((date) => {
+          const dayEntries = grouped[date];
+          const total = dayEntries.reduce((sum, entry) => sum + Number(entry.Hours || 0), 0);
+          return `
+            <div class="grouped-day">
+              <div class="day-heading"><span>${escapeHtml(date)}</span><span>${total.toFixed(2)} hours</span></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Entry</th><th>Project</th><th>Hours</th><th>Pay Period</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    ${dayEntries.map((entry) => `
+                      <tr>
+                        <td data-label="Entry"><strong>${escapeHtml(entry["Task / Category"])}</strong><div>${escapeHtml(entry.Notes || "")}</div></td>
+                        <td data-label="Project">${escapeHtml(entry["Project Name"])}</td>
+                        <td data-label="Hours">${escapeHtml(entry.Hours)}</td>
+                        <td data-label="Pay Period">${escapeHtml(entry["Pay Period Label"])}</td>
+                        <td data-label="Actions"><button data-action="edit-time" data-entry-id="${escapeHtml(entry["Time Entry ID"])}">Edit</button></td>
+                      </tr>`).join("")}
+                  </tbody>
+                </table>
+              </div>
+            </div>`;
+        }).join("");
+      }
+
+      function renderPaySummary() {
+        const data = state.data;
+        const summary = data.paySummary || { summaries: [] };
+        return `
+          <section class="toolbar">
+            <div>
+              <h2>Pay Summary</h2>
+              <p>${escapeHtml(summary.payPeriod?.["Pay Period Label"] || "")} ${summary.locked ? "· Locked" : "· Open"}</p>
+            </div>
+            ${data.permissions.canOverrideLockedPeriod && !summary.locked ? `<button data-action="lock-period" class="primary">Lock Pay Period</button>` : ""}
+          </section>
+          <section class="panel">
+            <div class="filters">
+              ${data.permissions.canViewAllPay ? `<label>User <select data-pay-filter="userId">${options(data.users, "User ID", "Full Name", state.payFilters.userId, true)}</select></label>` : ""}
+              <label>Pay Period <select data-pay-filter="payPeriodId">${options(data.payPeriods, "Pay Period ID", "Pay Period Label", state.payFilters.payPeriodId, false)}</select></label>
+            </div>
+          </section>
+          <section class="panel">
+            ${summary.summaries?.length ? `
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>User</th><th>Total Hours</th><th>Pay Type</th><th>Rate/Salary</th><th>Gross Pay</th></tr></thead>
+                  <tbody>
+                    ${summary.summaries.map((row) => `
+                      <tr>
+                        <td data-label="User">${escapeHtml(row["User Name"])}</td>
+                        <td data-label="Total Hours">${escapeHtml(row["Total Hours"])}</td>
+                        <td data-label="Pay Type">${escapeHtml(row["Pay Type"])}</td>
+                        <td data-label="Rate/Salary">${row["Pay Type"] === "Hourly" ? money(row["Hourly Rate"]) + "/hr" : money(row["Salary Amount"])}</td>
+                        <td data-label="Gross Pay"><strong>${money(row["Gross Pay"])}</strong></td>
+                      </tr>`).join("")}
+                  </tbody>
+                </table>
+              </div>` : '<div class="empty">No pay summary rows for this selection.</div>'}
+          </section>
+        `;
+      }
+
+      function renderAdmin() {
+        const data = state.data;
+        return `
+          <section class="toolbar">
+            <div>
+              <h2>Admin</h2>
+              <p>Users, projects, categories, settings, and staging migration tools</p>
+            </div>
+          </section>
+          ${data.permissions.canManageUsers ? renderUserAdmin() : ""}
+          ${data.permissions.canManageProjects ? renderProjectAdmin() : ""}
+          ${data.permissions.canManageSettings ? renderCategoryAdmin() + renderSettingsAdmin() + renderMigrationAdmin() : ""}
+        `;
+      }
+
+      function renderUserAdmin() {
+        const data = state.data;
+        return `
+          <section class="panel">
+            <h3>Users</h3>
+            <div class="admin-grid">
+              <form data-form="user" class="stack">
+                <input type="hidden" name="userId">
+                <div class="form-grid two">
+                  <label>First Name <input name="firstName" required></label>
+                  <label>Last Name <input name="lastName"></label>
+                  <label>Full Name <input name="fullName" required></label>
+                  <label>Email <input name="email" type="email" required></label>
+                  <label>Role <select name="role">${constantOptions(Object.values(data.constants.roles), "User", false)}</select></label>
+                  <label>Pay Type <select name="payType"><option>None</option><option>Hourly</option><option>Salary</option></select></label>
+                  <label>Hourly Rate <input name="hourlyRate" type="number" step="0.01" min="0"></label>
+                  <label>Salary Amount <input name="salaryAmount" type="number" step="0.01" min="0"></label>
+                </div>
+                <label><input name="active" type="checkbox" checked> Active</label>
+                <label><input name="trackTime" type="checkbox" checked> Track Time</label>
+                <label><input name="trackPay" type="checkbox"> Track Pay</label>
+                <button class="primary" type="submit">Save User</button>
+              </form>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tracking</th></tr></thead>
+                  <tbody>${data.users.map((user) => `
+                    <tr>
+                      <td data-label="Name">${escapeHtml(user["Full Name"])}</td>
+                      <td data-label="Email">${escapeHtml(user.Email)}</td>
+                      <td data-label="Role">${escapeHtml(user.Role)}</td>
+                      <td data-label="Tracking">Time: ${escapeHtml(user["Track Time"])} · Pay: ${escapeHtml(user["Track Pay"])}</td>
+                    </tr>`).join("")}</tbody>
+                </table>
+              </div>
+            </div>
+          </section>`;
+      }
+
+      function renderProjectAdmin() {
+        const data = state.data;
+        return `
+          <section class="panel">
+            <h3>Projects</h3>
+            <div class="admin-grid">
+              <form data-form="project" class="stack">
+                <input type="hidden" name="projectId">
+                <label>Project Name <input name="projectName" required></label>
+                <label>Description <textarea name="description"></textarea></label>
+                <label>Status <input name="status" value="Active"></label>
+                <label><input name="active" type="checkbox" checked> Active</label>
+                <button class="primary" type="submit">Save Project</button>
+              </form>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Project</th><th>Status</th><th>Active</th></tr></thead>
+                  <tbody>${data.projects.map((project) => `
+                    <tr>
+                      <td data-label="Project">${escapeHtml(project["Project Name"])}</td>
+                      <td data-label="Status">${escapeHtml(project.Status)}</td>
+                      <td data-label="Active">${escapeHtml(project.Active)}</td>
+                    </tr>`).join("")}</tbody>
+                </table>
+              </div>
+            </div>
+          </section>`;
+      }
+
+      function renderCategoryAdmin() {
+        const data = state.data;
+        return `
+          <section class="panel">
+            <h3>Time Categories</h3>
+            <div class="admin-grid">
+              <form data-form="category" class="stack">
+                <input type="hidden" name="categoryId">
+                <label>Category <input name="category" required></label>
+                <label>Default Project <select name="defaultProjectId">${options(data.projects, "Project ID", "Project Name", "", true)}</select></label>
+                <label><input name="active" type="checkbox" checked> Active</label>
+                <button class="primary" type="submit">Save Category</button>
+              </form>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Category</th><th>Default Project</th><th>Active</th></tr></thead>
+                  <tbody>${data.categories.map((category) => `
+                    <tr>
+                      <td data-label="Category">${escapeHtml(category.Category)}</td>
+                      <td data-label="Default Project">${escapeHtml(category["Default Project"])}</td>
+                      <td data-label="Active">${escapeHtml(category.Active)}</td>
+                    </tr>`).join("")}</tbody>
+                </table>
+              </div>
+            </div>
+          </section>`;
+      }
+
+      function renderSettingsAdmin() {
+        const data = state.data;
+        return `
+          <section class="panel">
+            <h3>Settings</h3>
+            <div class="admin-grid">
+              <form data-form="setting" class="stack">
+                <label>Setting Key <input name="key" required></label>
+                <label>Setting Value <input name="value"></label>
+                <label>Description <input name="description"></label>
+                <button class="primary" type="submit">Save Setting</button>
+              </form>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Key</th><th>Value</th><th>Description</th></tr></thead>
+                  <tbody>${data.settings.map((setting) => `
+                    <tr>
+                      <td data-label="Key">${escapeHtml(setting["Setting Key"])}</td>
+                      <td data-label="Value">${escapeHtml(setting["Setting Value"])}</td>
+                      <td data-label="Description">${escapeHtml(setting.Description)}</td>
+                    </tr>`).join("")}</tbody>
+                </table>
+              </div>
+            </div>
+          </section>`;
+      }
+
+      function renderMigrationAdmin() {
+        return `
+          <section class="panel">
+            <h3>Staging Migration Tools</h3>
+            <div class="actions">
+              <button data-action="migration-preview">Preview Prototype Rows</button>
+              <button data-action="migration-tasks">Migrate Assignment Board Tasks</button>
+            </div>
+          </section>`;
+      }
+
+      function openTaskModal(task = null) {
+        const data = state.data;
+        const isEdit = Boolean(task);
+        document.getElementById("modal-root").innerHTML = `
+          <div class="modal-backdrop">
+            <form class="modal stack" data-form="task-modal">
+              <div class="modal-header">
+                <h3>${isEdit ? "Edit Task" : "New Task"}</h3>
+                <button type="button" data-action="close-modal">Close</button>
+              </div>
+              <input type="hidden" name="taskId" value="${escapeHtml(task?.["Task ID"] || "")}">
+              <label>Title <input name="title" required value="${escapeHtml(task?.Title || "")}"></label>
+              <label>Notes <textarea name="notes">${escapeHtml(task?.Notes || "")}</textarea></label>
+              <div class="form-grid two">
+                <label>Status <select name="status">${constantOptions(data.constants.taskStatuses, task?.Status || "In Progress", false)}</select></label>
+                <label>Due Date <input name="dueDate" type="date" value="${escapeHtml(task?.["Due Date"] || "")}"></label>
+                <label>Project <select name="projectId">${options(data.projects, "Project ID", "Project Name", task?.["Project ID"], true)}</select></label>
+                <label>Priority <select name="priority">${constantOptions(data.constants.priorities, task?.Priority || "Medium", false)}</select></label>
+              </div>
+              <label>Assignees <select name="assigneeUserIds" multiple size="5">
+                ${(data.users || []).map((user) => {
+                  const selected = String(task?.["Assignee User IDs"] || "").split(",").map((id) => id.trim()).includes(user["User ID"]) ? "selected" : "";
+                  return `<option value="${escapeHtml(user["User ID"])}" ${selected}>${escapeHtml(user["Full Name"])}</option>`;
+                }).join("")}
+              </select></label>
+              <label>Tags <input name="tags" value="${escapeHtml(task?.Tags || "")}"></label>
+              <div class="actions"><button class="primary" type="submit">${isEdit ? "Save Task" : "Create Task"}</button></div>
+            </form>
+          </div>`;
+      }
+
+      function openTimeModal(entry) {
+        const data = state.data;
+        document.getElementById("modal-root").innerHTML = `
+          <div class="modal-backdrop">
+            <form class="modal stack" data-form="time-modal">
+              <div class="modal-header">
+                <h3>Edit Time Entry</h3>
+                <button type="button" data-action="close-modal">Close</button>
+              </div>
+              <input type="hidden" name="timeEntryId" value="${escapeHtml(entry["Time Entry ID"])}">
+              <div class="form-grid two">
+                <label>Date <input name="date" type="date" value="${escapeHtml(entry.Date)}"></label>
+                <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" value="${escapeHtml(entry.Hours)}"></label>
+              </div>
+              <label>Notes <textarea name="notes">${escapeHtml(entry.Notes || "")}</textarea></label>
+              ${data.permissions.canOverrideLockedPeriod ? '<label>Override Reason <input name="overrideReason" placeholder="Required if this period is locked"></label>' : ""}
+              <div class="actions"><button class="primary" type="submit">Save Entry</button></div>
+            </form>
+          </div>`;
+      }
+
+      document.addEventListener("click", async (event) => {
+        const tabButton = event.target.closest("[data-tab]");
+        if (tabButton) {
+          state.tab = tabButton.dataset.tab;
+          state.status = "";
+          render();
+          return;
+        }
+        const action = event.target.closest("[data-action]")?.dataset.action;
+        if (!action) return;
+        try {
+          if (action === "close-modal") {
+            document.getElementById("modal-root").innerHTML = "";
+          } else if (action === "new-task") {
+            openTaskModal();
+          } else if (action === "edit-task") {
+            const task = state.data.tasks.find((item) => item["Task ID"] === event.target.closest("[data-task-id]").dataset.taskId);
+            openTaskModal(task);
+          } else if (action === "complete-task") {
+            await callServer("completeTask", event.target.closest("[data-task-id]").dataset.taskId);
+            await refreshData({ message: "Task completed." });
+          } else if (action === "add-time") {
+            const taskId = event.target.closest("[data-task-id]").dataset.taskId;
+            state.tab = "time";
+            render();
+            const taskSelect = document.querySelector('[name="taskId"]');
+            if (taskSelect) taskSelect.value = taskId;
+          } else if (action === "edit-time") {
+            const entryId = event.target.closest("[data-entry-id]").dataset.entryId;
+            const entry = (state.data.tracker.entries || []).find((item) => item["Time Entry ID"] === entryId);
+            openTimeModal(entry);
+          } else if (action === "lock-period") {
+            await callServer("lockPayPeriod", state.payFilters.payPeriodId || state.data.currentPayPeriod["Pay Period ID"]);
+            await refreshData({ message: "Pay period locked." });
+          } else if (action === "migration-preview") {
+            const preview = await callServer("getMigrationPreview");
+            setStatus(`Prototype rows: Assignment Board ${preview.assignmentBoardRows}, Imported Tasks ${preview.importedTaskRows}.`);
+          } else if (action === "migration-tasks") {
+            const result = await callServer("migrateAssignmentBoardTasks");
+            await refreshData({ message: `Migrated ${result.migrated} task(s).` });
+          }
+        } catch (error) {
+          setStatus(error.message || String(error));
+        }
+      });
+
+      document.addEventListener("input", async (event) => {
+        if (event.target.matches("[data-filter]")) {
+          state.boardFilters[event.target.dataset.filter] = event.target.value;
+          render();
+        }
+      });
+
+      document.addEventListener("change", async (event) => {
+        if (event.target.matches("[data-filter]")) {
+          state.boardFilters[event.target.dataset.filter] = event.target.value;
+          render();
+        }
+        if (event.target.matches("[data-pay-filter]")) {
+          state.payFilters[event.target.dataset.payFilter] = event.target.value;
+          try {
+            await refreshData({ message: "Pay summary refreshed." });
+          } catch (error) {
+            setStatus(error.message || String(error));
+          }
+        }
+        if (event.target.name === "entryType") {
+          document.querySelector('[data-time-mode="task"]').classList.toggle("hidden", event.target.value !== "Task");
+          document.querySelector('[data-time-mode="general"]').classList.toggle("hidden", event.target.value !== "General Time");
+        }
+        if (event.target.closest('[data-form="time-entry"]') && (event.target.name === "userId" || event.target.name === "payPeriodId")) {
+          const form = event.target.closest("form");
+          state.timeFilters.userId = form.userId?.value || state.data.context.userId;
+          state.timeFilters.payPeriodId = form.payPeriodId.value;
+          try {
+            await refreshData({ message: "Time tracker refreshed." });
+          } catch (error) {
+            setStatus(error.message || String(error));
+          }
+        }
+      });
+
+      document.addEventListener("submit", async (event) => {
+        const form = event.target;
+        const formType = form.dataset.form;
+        if (!formType) return;
+        event.preventDefault();
+        try {
+          if (formType === "task-modal") {
+            const selectedAssignees = Array.from(form.assigneeUserIds.selectedOptions).map((option) => option.value);
+            const payload = {
+              taskId: form.taskId.value,
+              title: form.title.value,
+              notes: form.notes.value,
+              status: form.status.value,
+              dueDate: form.dueDate.value,
+              projectId: form.projectId.value,
+              priority: form.priority.value,
+              assigneeUserIds: selectedAssignees,
+              tags: form.tags.value
+            };
+            await callServer(payload.taskId ? "updateTask" : "createTask", payload);
+            document.getElementById("modal-root").innerHTML = "";
+            await refreshData({ message: "Task saved." });
+          } else if (formType === "time-entry") {
+            const entryType = form.entryType.value;
+            const payload = {
+              userId: form.userId?.value || state.data.context.userId,
+              payPeriodId: form.payPeriodId.value,
+              entryType: entryType,
+              date: form.date.value,
+              hours: form.hours.value,
+              taskId: form.taskId?.value || "",
+              categoryId: form.categoryId?.value || "",
+              notes: entryType === "Task" ? form.notes.value : form.generalNotes.value,
+              overrideReason: form.overrideReason?.value || ""
+            };
+            await callServer("createTimeEntry", payload);
+            await refreshData({ message: "Time saved." });
+          } else if (formType === "time-modal") {
+            await callServer("updateTimeEntry", {
+              timeEntryId: form.timeEntryId.value,
+              date: form.date.value,
+              hours: form.hours.value,
+              notes: form.notes.value,
+              overrideReason: form.overrideReason?.value || ""
+            });
+            document.getElementById("modal-root").innerHTML = "";
+            await refreshData({ message: "Time entry updated." });
+          } else if (formType === "user") {
+            await callServer("saveUser", {
+              userId: form.userId.value,
+              firstName: form.firstName.value,
+              lastName: form.lastName.value,
+              fullName: form.fullName.value,
+              email: form.email.value,
+              role: form.role.value,
+              payType: form.payType.value,
+              hourlyRate: form.hourlyRate.value,
+              salaryAmount: form.salaryAmount.value,
+              active: form.active.checked,
+              "Track Time": form.trackTime.checked,
+              "Track Pay": form.trackPay.checked
+            });
+            form.reset();
+            await refreshData({ message: "User saved." });
+          } else if (formType === "project") {
+            await callServer("saveProject", {
+              projectId: form.projectId.value,
+              projectName: form.projectName.value,
+              description: form.description.value,
+              status: form.status.value,
+              active: form.active.checked
+            });
+            form.reset();
+            await refreshData({ message: "Project saved." });
+          } else if (formType === "category") {
+            await callServer("saveCategory", {
+              categoryId: form.categoryId.value,
+              category: form.category.value,
+              defaultProjectId: form.defaultProjectId.value,
+              active: form.active.checked
+            });
+            form.reset();
+            await refreshData({ message: "Category saved." });
+          } else if (formType === "setting") {
+            await callServer("saveSetting", {
+              key: form.key.value,
+              value: form.value.value,
+              description: form.description.value
+            });
+            form.reset();
+            await refreshData({ message: "Setting saved." });
+          }
+        } catch (error) {
+          setStatus(error.message || String(error));
+        }
+      });
+
+      loadInitial();
+    </script>
+  </body>
+</html>

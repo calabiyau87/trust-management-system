@@ -1,0 +1,16 @@
+{
+  "name": "trust-management-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Google Apps Script and Google Sheets MVP for internal trust operations management.",
+  "scripts": {
+    "check": "node scripts/static-check.js",
+    "clasp:login": "npx @google/clasp login",
+    "clasp:push": "npx @google/clasp push",
+    "clasp:pull": "npx @google/clasp pull",
+    "clasp:deploy": "npx @google/clasp deploy"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
