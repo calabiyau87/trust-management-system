@@ -17,7 +17,8 @@ var TrustOpsManagerPermissionService = (function () {
     "Can Manage Tags",
     "Can Manage Board Views",
     "Can Manage Settings",
-    "Can Change Profile Color"
+    "Can Change Profile Color",
+    "Can Import Legacy Data"
   ];
 
   function defaultPermissions(preset, role) {

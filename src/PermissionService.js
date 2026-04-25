@@ -163,6 +163,10 @@ var TrustOpsPermissionService = (function () {
     return isOwnerOrAdmin(context) || managerCan(context, "Can Manage Settings");
   }
 
+  function canImportLegacyData(context) {
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Import Legacy Data");
+  }
+
   function canManageBoardViews(context) {
     return isOwnerOrAdmin(context) || managerCan(context, "Can Manage Board Views") || managerCan(context, "Can Manage Settings");
   }
@@ -196,6 +200,7 @@ var TrustOpsPermissionService = (function () {
       canManageTimeCategories: canManageTimeCategories(context),
       canManageTags: canManageTags(context),
       canManageSettings: canManageSettings(context),
+      canImportLegacyData: canImportLegacyData(context),
       canManageBoardViews: canManageBoardViews(context),
       canChangeProfileColor: canChangeProfileColor(context, context.userId),
       canLockPayPeriod: canLockPayPeriod(context),
@@ -242,6 +247,7 @@ var TrustOpsPermissionService = (function () {
     canManageTimeCategories: canManageTimeCategories,
     canManageTags: canManageTags,
     canManageSettings: canManageSettings,
+    canImportLegacyData: canImportLegacyData,
     canManageBoardViews: canManageBoardViews,
     canChangeProfileColor: canChangeProfileColor,
     canEditProfile: canEditProfile,

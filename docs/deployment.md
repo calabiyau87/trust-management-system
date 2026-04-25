@@ -59,6 +59,16 @@ The manifest currently uses domain access. Tighten this in Apps Script deploymen
 - Owner/Admin can view and edit all time.
 - Locked pay-period override requires a reason and writes audit.
 
+## Legacy Data Migration
+
+The admin Settings area includes a legacy import panel for moving older data into the canonical sheets.
+
+- Preferred source: a Google Sheet copy of the legacy workbook, or a bundle of CSV exports.
+- CSV files should use the legacy sheet names, for example `Users.csv`, `Projects.csv`, `Time Log.csv`, `Pay Summary.csv`, `Assignment Board.csv`, `Imported Tasks.csv`, `Time Categories.csv`, and `Tags.csv`.
+- CSV imports can be piecemeal. You can import `Users.csv` first, then come back later and import `Tasks.csv`, `Time Log.csv`, or any other remaining files.
+- Imported users are normalized into the current user schema, projects and categories are matched by name, tasks are deduplicated by natural key where practical, and time/pay data is written as historical records.
+- Historical pay periods are imported as locked snapshots so the pay summary screens stay consistent with archived data.
+
 ## User Access Troubleshooting
 
 When the web app is deployed as `User accessing the web app`, Google runs server calls as the signed-in user. That user must have access to the backing spreadsheet, not just a row in the `Users` table.

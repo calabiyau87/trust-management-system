@@ -265,10 +265,18 @@ function saveSetting(payload) {
   return TrustOpsSettingsService.saveSetting(requireTrustOpsContext_(), payload || {});
 }
 
-function getMigrationPreview() {
-  return TrustOpsMigrationService.getMigrationPreview(requireTrustOpsContext_());
+function getMigrationPreview(payload) {
+  return TrustOpsMigrationService.getLegacyMigrationPreview(requireTrustOpsContext_(), payload || {});
+}
+
+function getLegacyMigrationPreview(payload) {
+  return TrustOpsMigrationService.getLegacyMigrationPreview(requireTrustOpsContext_(), payload || {});
 }
 
 function migrateAssignmentBoardTasks() {
   return TrustOpsMigrationService.migrateAssignmentBoardTasks(requireTrustOpsContext_());
+}
+
+function importLegacyWorkbook(payload) {
+  return TrustOpsMigrationService.importLegacyWorkbook(requireTrustOpsContext_(), payload || {});
 }

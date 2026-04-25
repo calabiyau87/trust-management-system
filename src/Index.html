@@ -9,6 +9,7 @@
         --bg: #f6f7f9;
         --surface: #ffffff;
         --surface-muted: #eef2f5;
+        --table-head: #e8edf2;
         --text: #17202a;
         --muted: #647181;
         --border: #d7dee6;
@@ -24,6 +25,7 @@
         --bg: #101417;
         --surface: #171d22;
         --surface-muted: #222b31;
+        --table-head: #202930;
         --text: #edf2f7;
         --muted: #a4b0bd;
         --border: #34414b;
@@ -276,7 +278,7 @@
         color: var(--text);
         font-size: 12px;
         font-weight: 800;
-        background: var(--surface-muted);
+        background: var(--table-head);
       }
 
       table {
@@ -365,6 +367,17 @@
         color: var(--ok);
         border-color: #bbdac9;
         background: #edf8f2;
+      }
+
+      body[data-theme="dark"] .badge.high,
+      body[data-theme="dark"] .badge.urgent {
+        border-color: rgba(231, 189, 99, 0.34);
+        background: rgba(231, 189, 99, 0.12);
+      }
+
+      body[data-theme="dark"] .badge.complete {
+        border-color: rgba(118, 199, 155, 0.34);
+        background: rgba(118, 199, 155, 0.12);
       }
 
       .chip-list,
@@ -802,7 +815,12 @@
         const chips = ids.length ? ids : names;
         if (!chips.length) return '<span class="badge">Unassigned</span>';
         return `<span class="person-chip-list">${chips.map((assigneeIdOrName, index) => {
-          const user = ids.length ? findUser(assigneeIdOrName) : null;
+          const user = ids.length
+            ? findUser(assigneeIdOrName)
+            : (state.data.users || []).find((item) =>
+                String(item["Full Name"] || "").toLowerCase() === String(assigneeIdOrName || "").toLowerCase() ||
+                String(item.Email || "").toLowerCase() === String(assigneeIdOrName || "").toLowerCase()
+              ) || null;
           const label = user?.["Full Name"] || names[index] || assigneeIdOrName;
           const color = normalizeHex(user?.["Profile Color"], "#1f6f68");
           return `<span class="person-chip" style="color:${escapeHtml(color)}; border-color:${escapeHtml(color)}; background:${escapeHtml(color)}18;">${escapeHtml(label)}</span>`;
@@ -844,7 +862,7 @@
       }
 
       function renderIcon(action, idName, idValue, label, symbol, danger = false) {
-        return `<button class="icon-button ${danger ? "danger" : ""}" data-action="${escapeHtml(action)}" ${idName ? `${idName}="${escapeHtml(idValue)}"` : ""} title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${symbol}</button>`;
+        return `<button type="button" class="icon-button ${danger ? "danger" : ""}" data-action="${escapeHtml(action)}" ${idName ? `${idName}="${escapeHtml(idValue)}"` : ""} title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${symbol}</button>`;
       }
 
       function setModal(html) {
@@ -1537,7 +1555,8 @@
           ["projects", "Projects", data.permissions.canManageProjects],
           ["categories", "Time Categories", data.permissions.canManageTimeCategories],
           ["tags", "Tags", data.permissions.canManageTags],
-          ["settings", "Settings", data.permissions.canManageSettings]
+          ["settings", "Settings", data.permissions.canManageSettings],
+          ["migration", "Import", data.permissions.canImportLegacyData]
         ].filter((section) => section[2]);
         return `
           <section class="toolbar">
@@ -1560,6 +1579,7 @@
         if (state.settingsSection === "projects") return renderProjectsSettings();
         if (state.settingsSection === "categories") return renderCategoriesSettings();
         if (state.settingsSection === "tags") return renderTagsSettings();
+        if (state.settingsSection === "migration") return renderMigrationAdmin();
         if (state.settingsSection === "settings") return renderAppSettings();
         return renderProfileSettings();
       }
@@ -1838,11 +1858,30 @@
       function renderMigrationAdmin() {
         return `
           <section class="panel">
-            <h3>Staging Migration Tools</h3>
-            <div class="actions">
-              <button data-action="migration-preview">Preview Prototype Rows</button>
-              <button data-action="migration-tasks">Migrate Assignment Board Tasks</button>
-            </div>
+            <h3>Legacy Data Migration</h3>
+            <form data-form="migration" class="stack">
+              <div class="form-grid two">
+                <label>Source Mode
+                  <select name="sourceType">
+                    <option value="sheet">Google Sheet</option>
+                    <option value="csv">CSV Files</option>
+                  </select>
+                </label>
+                <label>Google Sheet URL or ID <input name="spreadsheetId" placeholder="Optional when using CSV files"></label>
+                <label>Import Behavior
+                  <select name="importMode">
+                    <option value="append">Append to existing data</option>
+                    <option value="overwrite">Overwrite existing data</option>
+                  </select>
+                </label>
+              </div>
+              <label>Legacy CSV Files <input name="legacyFiles" type="file" multiple accept=".csv,text/csv"></label>
+              <p class="help">For CSV imports, use file names that match the legacy sheet names, such as Users.csv, Projects.csv, Time Log.csv, Pay Summary.csv, Assignment Board.csv, Imported Tasks.csv, Time Categories.csv, and Tags.csv. You can import any subset now and return later for the rest.</p>
+              <div class="actions">
+                <button type="button" data-action="migration-preview">Preview Legacy Data</button>
+                <button class="primary" type="submit">Import Legacy Data</button>
+              </div>
+            </form>
           </section>`;
       }
 
@@ -2334,11 +2373,14 @@
             const result = await callServer("diagnoseUserAccess", email);
             setStatus(result.issue || `User ${result.normalizedEmail} is active as ${result.role}.`);
           } else if (action === "migration-preview") {
-            const preview = await callServer("getMigrationPreview");
-            setStatus(`Prototype rows: Assignment Board ${preview.assignmentBoardRows}, Imported Tasks ${preview.importedTaskRows}.`);
-          } else if (action === "migration-tasks") {
-            const result = await callServer("migrateAssignmentBoardTasks");
-            await refreshData({ message: `Migrated ${result.migrated} task(s).` });
+            const form = event.target.closest('form[data-form="migration"]');
+            const payload = await buildLegacyMigrationPayload(form);
+            const preview = await callServer("getMigrationPreview", payload);
+            if (preview.sourceType === "current") {
+              setStatus(`Prototype rows: Assignment Board ${preview.assignmentBoardRows}, Imported Tasks ${preview.importedTaskRows}.`);
+            } else {
+              setStatus(`Legacy source rows: Projects ${preview.rows.projects}, Users ${preview.rows.users}, Tasks ${preview.rows.assignmentBoard + preview.rows.importedTasks}, Time logs ${preview.rows.timeLog}, Pay summaries ${preview.rows.paySummary}.`);
+            }
           }
         } catch (error) {
           setStatus(error.message || String(error));
@@ -2486,6 +2528,106 @@
         });
       }
 
+      function readFileAsText(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsText(file);
+        });
+      }
+
+      function parseLegacyCsv(text) {
+        const rows = [];
+        const currentRow = [];
+        let currentValue = "";
+        let inQuotes = false;
+        const source = String(text || "").replace(/\uFEFF/g, "");
+        for (let index = 0; index < source.length; index += 1) {
+          const char = source[index];
+          const next = source[index + 1];
+          if (inQuotes) {
+            if (char === '"' && next === '"') {
+              currentValue += '"';
+              index += 1;
+            } else if (char === '"') {
+              inQuotes = false;
+            } else {
+              currentValue += char;
+            }
+            continue;
+          }
+          if (char === '"') {
+            inQuotes = true;
+          } else if (char === ',') {
+            currentRow.push(currentValue);
+            currentValue = "";
+          } else if (char === '\n') {
+            currentRow.push(currentValue);
+            if (currentRow.some((cell) => String(cell || "").trim())) rows.push(currentRow.slice());
+            currentRow.length = 0;
+            currentValue = "";
+          } else if (char !== '\r') {
+            currentValue += char;
+          }
+        }
+        currentRow.push(currentValue);
+        if (currentRow.some((cell) => String(cell || "").trim())) rows.push(currentRow.slice());
+        if (!rows.length) return [];
+        const headers = rows.shift().map((header) => String(header || "").trim());
+        return rows
+          .filter((row) => row.some((cell) => String(cell || "").trim()))
+          .map((row, index) => {
+            const record = { _rowNumber: index + 2 };
+            headers.forEach((header, headerIndex) => {
+              if (!header) return;
+              record[header] = row[headerIndex] !== undefined ? row[headerIndex] : "";
+            });
+            return record;
+          });
+      }
+
+      function normalizeLegacySheetName(name) {
+        const key = String(name || "").toLowerCase().replace(/[^a-z]/g, "");
+        const map = {
+          assignmentboard: "Assignment Board",
+          timelog: "Time Log",
+          paysummary: "Pay Summary",
+          projects: "Projects",
+          users: "Users",
+          timecategories: "Time Categories",
+          prioritylist: "Priority List",
+          tags: "Tags",
+          importedtasks: "Imported Tasks"
+        };
+        return map[key] || String(name || "").replace(/\.csv$/i, "").trim();
+      }
+
+      async function buildLegacyMigrationPayload(form) {
+        const sourceType = form.sourceType.value;
+        if (sourceType === "sheet") {
+          return {
+            sourceType: "sheet",
+            spreadsheetId: String(form.spreadsheetId.value || "").trim(),
+            importMode: form.importMode.value
+          };
+        }
+        const files = Array.from(form.legacyFiles?.files || []);
+        if (!files.length) {
+          throw new Error("Select at least one CSV file.");
+        }
+        const tables = {};
+        for (const file of files) {
+          const rows = parseLegacyCsv(await readFileAsText(file));
+          tables[normalizeLegacySheetName(file.name)] = rows;
+        }
+        return {
+          sourceType: "csv",
+          tables,
+          importMode: form.importMode.value
+        };
+      }
+
       document.addEventListener("submit", async (event) => {
         const form = event.target;
         const formType = form.dataset.form;
@@ -2627,6 +2769,11 @@
             form.reset();
             clearModals();
             await refreshData({ message: "Category saved." });
+          } else if (formType === "migration") {
+            const payload = await buildLegacyMigrationPayload(form);
+            const result = await callServer("importLegacyWorkbook", payload);
+            const summary = `Imported legacy data: ${result.projects.created + result.projects.updated} projects, ${result.users.created + result.users.updated} users, ${result.tasks.created + result.tasks.updated} tasks, ${result.timeEntries.created + result.timeEntries.updated} time entries, ${result.paySummaries.created + result.paySummaries.updated} pay summaries.`;
+            await refreshData({ message: summary });
           } else if (formType === "tag") {
             const savedTag = await callServer("saveTag", {
               tagId: form.tagId.value,
