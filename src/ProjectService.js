@@ -325,7 +325,11 @@ var TrustOpsProjectService = (function () {
     return {
       project: TrustOpsUtils.sanitizeForClient(project),
       range: range,
-      tasks: TrustOpsUtils.recordsForClient(projectTasks),
+      tasks: projectTasks.map(function (task) {
+        var output = TrustOpsUtils.sanitizeForClient(task);
+        output._permissions = task._permissions || {};
+        return output;
+      }),
       entries: TrustOpsUtils.recordsForClient(projectEntries),
       summary: buildProjectSummary(project, tasks, entries),
       taskTotals: groupHours(

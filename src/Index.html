@@ -262,6 +262,19 @@
         font-size: 15px;
       }
 
+      .side-layout,
+      .settings-layout {
+        display: grid;
+        grid-template-columns: 250px minmax(0, 1fr);
+        gap: 14px;
+        align-items: start;
+      }
+
+      .side-layout[data-sidebar-collapsed="true"],
+      .settings-layout[data-sidebar-collapsed="true"] {
+        grid-template-columns: 68px minmax(0, 1fr);
+      }
+
       .table-wrap {
         overflow-x: auto;
       }
@@ -329,6 +342,100 @@
       .project-dashboard-table th:nth-child(5) { width: 12%; }
       .project-dashboard-table th:nth-child(6) { width: 12%; }
       .project-dashboard-table th:nth-child(7) { width: 20%; }
+
+      .project-task-table th:nth-child(1) { width: 34%; }
+      .project-task-table th:nth-child(2) { width: 14%; }
+      .project-task-table th:nth-child(3) { width: 24%; }
+      .project-task-table th:nth-child(4) { width: 14%; }
+      .project-task-table th:nth-child(5) { width: 14%; }
+
+      .task-title-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .task-note-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 1px solid var(--border);
+        background: var(--surface-muted);
+        color: var(--muted);
+        padding: 0;
+        font-size: 12px;
+        line-height: 1;
+        display: inline-grid;
+        place-items: center;
+      }
+
+      .task-note-icon:hover,
+      .task-note-icon:focus-visible {
+        color: var(--text);
+        border-color: var(--accent);
+      }
+
+      .action-popover {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-end;
+      }
+
+      .action-popover::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 100%;
+        height: 8px;
+      }
+
+      .action-popover-trigger {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        display: inline-grid;
+        place-items: center;
+        font-size: 17px;
+        line-height: 1;
+      }
+
+      .action-popover-menu {
+        position: absolute;
+        right: 0;
+        top: calc(100% + 6px);
+        z-index: 12;
+        display: none;
+        min-width: 170px;
+        padding: 6px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .action-popover:hover .action-popover-menu,
+      .action-popover:focus-within .action-popover-menu,
+      .action-popover[data-hover-open="true"] .action-popover-menu,
+      .action-popover[data-open="true"] .action-popover-menu {
+        display: grid;
+        gap: 4px;
+      }
+
+      .action-popover-menu button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        text-align: left;
+        white-space: nowrap;
+      }
+
+      .action-popover-menu .danger {
+        color: var(--danger);
+      }
 
       tr:last-child td {
         border-bottom: 0;
@@ -511,16 +618,6 @@
         font-weight: 800;
       }
 
-      .settings-layout {
-        display: grid;
-        grid-template-columns: 220px minmax(0, 1fr);
-        gap: 14px;
-      }
-
-      .settings-layout[data-sidebar-collapsed="true"] {
-        grid-template-columns: 68px minmax(0, 1fr);
-      }
-
       .side-pane {
         display: grid;
         gap: 6px;
@@ -529,6 +626,18 @@
         top: 124px;
         max-height: calc(100vh - 140px);
         overflow: auto;
+      }
+
+      .side-pane .sidebar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .side-pane .sidebar-body {
+        display: grid;
+        gap: 6px;
       }
 
       .side-pane button {
@@ -549,26 +658,44 @@
         letter-spacing: 0;
       }
 
+      .side-layout[data-sidebar-collapsed="true"] .side-pane,
       .settings-layout[data-sidebar-collapsed="true"] .side-pane {
-        width: 68px;
-        padding: 10px 8px;
+        width: 42px;
+        padding: 8px 5px;
+        overflow: hidden;
+        align-items: center;
+        justify-items: center;
       }
 
+      .side-layout[data-sidebar-collapsed="true"] .side-pane button,
       .settings-layout[data-sidebar-collapsed="true"] .side-pane button {
         text-align: center;
-        padding-left: 8px;
-        padding-right: 8px;
+        padding-left: 6px;
+        padding-right: 6px;
       }
 
+      .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-text,
+      .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-body,
+      .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-group .sidebar-children,
+      .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-short,
+      .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-head strong,
       .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-text,
+      .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-body,
       .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-group .sidebar-children,
       .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-short,
-      .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-group .sidebar-children {
+      .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-head strong {
         display: none;
       }
 
+      .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-short,
       .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-short {
         display: inline-flex;
+      }
+
+      .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-head,
+      .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-head {
+        justify-content: center;
+        width: 100%;
       }
 
       .side-pane .sidebar-group {
@@ -759,6 +886,7 @@
         .form-grid,
         .form-grid.two,
         .admin-grid,
+        .side-layout,
         .settings-layout {
           grid-template-columns: 1fr;
         }
@@ -768,6 +896,7 @@
           grid-template-columns: 1fr;
         }
 
+        .side-layout[data-sidebar-collapsed="true"],
         .settings-layout[data-sidebar-collapsed="true"],
         .settings-layout {
           grid-template-columns: 1fr;
@@ -826,9 +955,13 @@
         boardFilters: {},
         boardGrouping: "",
         selectedBoardViewId: "",
+        boardSidebarCollapsed: false,
         timeFilters: {},
+        timeSidebarCollapsed: false,
         payFilters: { rangeMode: "current" },
+        paySidebarCollapsed: false,
         projectFilters: { rangeMode: "current", includeArchived: false, projectId: "" },
+        projectSidebarCollapsed: false,
         settingsSection: "profile",
         settingsSidebarCollapsed: false,
         settingsGroupOpen: true,
@@ -854,6 +987,15 @@
 
       function saveStoredBool(name, value) {
         localStorage.setItem(storageKey(name), String(Boolean(value)));
+      }
+
+      function loadStoredString(name, fallback = "") {
+        const value = localStorage.getItem(storageKey(name));
+        return value === null ? fallback : value;
+      }
+
+      function saveStoredString(name, value) {
+        localStorage.setItem(storageKey(name), String(value ?? ""));
       }
 
       function busyLabelForMethod(name) {
@@ -1039,6 +1181,57 @@
         return `<span class="sidebar-label"><span class="sidebar-short">${escapeHtml(shortLabel)}</span><span class="sidebar-text">${escapeHtml(fullLabel)}</span></span>`;
       }
 
+      function renderSidebarToggle(key) {
+        const collapsed = Boolean(state[key]);
+        return `<button type="button" class="icon-button" data-action="toggle-sidebar" data-sidebar-key="${escapeHtml(key)}" title="${collapsed ? "Expand sidebar" : "Collapse sidebar"}" aria-label="${collapsed ? "Expand sidebar" : "Collapse sidebar"}">${collapsed ? "&#9654;" : "&#9664;"}</button>`;
+      }
+
+      function renderLayoutSidebar(title, key, innerHtml) {
+        return `
+          <aside class="panel side-pane">
+            <div class="sidebar-head">
+              <strong>${escapeHtml(title)}</strong>
+              ${renderSidebarToggle(key)}
+            </div>
+            <div class="sidebar-body">${innerHtml}</div>
+          </aside>`;
+      }
+
+      function renderTaskNoteIcon(note) {
+        const text = String(note || "").trim();
+        if (!text) return "";
+        return `<button type="button" class="task-note-icon" title="${escapeHtml(text)}" aria-label="Task note">&#128221;</button>`;
+      }
+
+      function renderTaskActionMenu(task) {
+        const taskId = escapeHtml(task["Task ID"]);
+        const actions = [];
+        if (task._permissions?.canComplete && task.Status !== "Complete") {
+          actions.push(["complete-task", "&#10003;", "Complete task", false]);
+        }
+        if (task._permissions?.canAddTime) {
+          actions.push(["add-time", "&#128336;", "Add time", false]);
+        }
+        if (task._permissions?.canEdit) {
+          actions.push(["edit-task", "&#9998;", "Edit task", false]);
+        }
+        if (task._permissions?.canDelete) {
+          actions.push(["delete-task", "&#128465;", "Delete task", true]);
+        }
+        if (!actions.length) return "";
+        return `
+          <div class="action-popover" data-action-popover>
+            <button type="button" class="icon-button action-popover-trigger" data-action-menu-trigger aria-label="Task actions" title="Task actions">&#8250;</button>
+            <div class="action-popover-menu">
+              ${actions.map(([action, symbol, label, danger]) => `
+                <button type="button" class="${danger ? "danger" : ""}" data-action="${escapeHtml(action)}" data-task-id="${taskId}">
+                  <span>${symbol}</span><span>${escapeHtml(label)}</span>
+                </button>
+              `).join("")}
+            </div>
+          </div>`;
+      }
+
       function setModal(html) {
         document.getElementById("modal-root").innerHTML = html;
       }
@@ -1061,6 +1254,12 @@
         document.getElementById("modal-root").innerHTML = "";
       }
 
+      function closeActionMenus() {
+        document.querySelectorAll("[data-action-popover][data-open='true']").forEach((menu) => {
+          menu.dataset.open = "false";
+        });
+      }
+
       function setStatus(message) {
         state.status = message || "";
         const line = document.querySelector("[data-status-line]");
@@ -1078,6 +1277,12 @@
         try {
           state.data = await callServer("getInitialData");
           state.settingsSidebarCollapsed = loadStoredBool("settingsSidebarCollapsed", false);
+          state.settingsGroupOpen = loadStoredBool("settingsGroupOpen", true);
+          state.boardSidebarCollapsed = loadStoredBool("boardSidebarCollapsed", false);
+          state.timeSidebarCollapsed = loadStoredBool("timeSidebarCollapsed", false);
+          state.paySidebarCollapsed = loadStoredBool("paySidebarCollapsed", false);
+          state.projectSidebarCollapsed = loadStoredBool("projectSidebarCollapsed", false);
+          state.settingsSection = loadStoredString("settingsSection", state.settingsSection);
           state.timeFilters.userId = state.data.context.userId;
           state.timeFilters.payPeriodId = state.data.currentPayPeriod["Pay Period ID"];
           state.payFilters.userId = state.data.context.userId;
@@ -1181,9 +1386,6 @@
           ["time", "Time Tracker"],
           ["pay", "Pay Summary"]
         ];
-        if (data.permissions.canImportLegacyData) {
-          tabs.push(["import", "Import"]);
-        }
         tabs.push(["settings", "Settings"]);
         document.getElementById("app").className = "app-shell";
         document.getElementById("app").innerHTML = `
@@ -1215,7 +1417,6 @@
         if (state.tab === "time") return renderTimeTracker();
         if (state.tab === "pay") return renderPaySummary();
         if (state.tab === "projects") return renderProjectDashboard();
-        if (state.tab === "import") return renderImportAdmin();
         if (state.tab === "settings") return renderSettings();
         return renderBoard();
       }
@@ -1285,6 +1486,9 @@
       }
 
       function updateBoardResultsOnly() {
+        const count = applyBoardFilters(state.data.tasks).length;
+        const toolbarCount = document.querySelector('section.toolbar p');
+        if (toolbarCount) toolbarCount.textContent = `${count} visible task${count === 1 ? "" : "s"}`;
         const container = document.getElementById("board-results");
         if (!container) return;
         container.innerHTML = renderBoardResults(applyBoardFilters(state.data.tasks));
@@ -1308,8 +1512,8 @@
               ${renderIcon("clear-board-filters", "", "", "Clear Filters", "&#128269;")}
             </div>
           </section>
-          <section class="panel">
-            <div class="filters">
+          <section class="side-layout" data-sidebar-collapsed="${state.boardSidebarCollapsed ? "true" : "false"}">
+            ${renderLayoutSidebar("Filters", "boardSidebarCollapsed", `
               <label>Saved View <select data-action="load-board-view">
                 <option value="">Select view</option>
                 ${(data.boardViews || []).map((item) => `<option value="${escapeHtml(item["Board View ID"])}" ${String(item["Board View ID"]) === String(state.selectedBoardViewId) ? "selected" : ""}>${escapeHtml(item["View Name"])} (${escapeHtml(item.Visibility)})</option>`).join("")}
@@ -1323,10 +1527,12 @@
               <label>Group By <select data-board-grouping>
                 ${constantOptions(["", "Status", "Project", "Assignee", "Priority", "Due Week", "Tag"], state.boardGrouping, false)}
               </select></label>
+            `)}
+            <div>
+              <section class="panel" id="board-results">
+                ${renderBoardResults(tasks)}
+              </section>
             </div>
-          </section>
-          <section class="panel" id="board-results">
-            ${renderBoardResults(tasks)}
           </section>
         `;
       }
@@ -1344,8 +1550,10 @@
                 ${tasks.map((task) => `
                   <tr>
                     <td data-label="Task">
-                      <strong>${escapeHtml(task.Title)}</strong>
-                      <div>${escapeHtml(task.Notes || "")}</div>
+                      <div class="task-title-row">
+                        <strong>${escapeHtml(task.Title)}</strong>
+                        ${renderTaskNoteIcon(task.Notes)}
+                      </div>
                       ${task.Tags ? `<span class="badge">${escapeHtml(task.Tags)}</span>` : ""}
                     </td>
                     <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}"${badgeStyleForStatus(task.Status)}>${escapeHtml(task.Status)}</span></td>
@@ -1354,12 +1562,7 @@
                     <td data-label="Priority"><span class="badge ${escapeHtml(String(task.Priority).toLowerCase())}">${escapeHtml(task.Priority)}</span></td>
                     <td data-label="Due">${escapeHtml(task["Due Date"])}</td>
                     <td data-label="Actions">
-                      <div class="actions">
-                        ${task._permissions?.canComplete && task.Status !== "Complete" ? renderIcon("complete-task", "data-task-id", task["Task ID"], "Complete task", "&#10003;") : ""}
-                        ${task._permissions?.canAddTime ? renderIcon("add-time", "data-task-id", task["Task ID"], "Add time", "&#128336;") : ""}
-                        ${task._permissions?.canEdit ? renderIcon("edit-task", "data-task-id", task["Task ID"], "Edit task", "&#9998;") : ""}
-                        ${task._permissions?.canDelete ? renderIcon("delete-task", "data-task-id", task["Task ID"], "Delete task", "&#128465;", true) : ""}
-                      </div>
+                      ${renderTaskActionMenu(task)}
                     </td>
                   </tr>`).join("")}
               </tbody>
@@ -1400,40 +1603,42 @@
               <p>${entries.length === 1 ? "1 entry" : `${entries.length} entries`} &middot; ${totalHours.toFixed(2)} selected-period hours</p>
             </div>
           </section>
-          <section class="panel">
-            <div class="filters">
+          <section class="side-layout" data-sidebar-collapsed="${state.timeSidebarCollapsed ? "true" : "false"}">
+            ${renderLayoutSidebar("Filters", "timeSidebarCollapsed", `
               ${canSelectUser ? `<label>User <select data-time-filter="userId">${options(data.users, "User ID", "Full Name", targetUserId, false)}</select></label>` : `<label>User <input value="${escapeHtml(selectedUser["Full Name"] || data.context.fullName)}" disabled></label>`}
               <label>Entries Period <select data-time-filter="payPeriodId">${options(data.payPeriods, "Pay Period ID", "Pay Period Label", state.timeFilters.payPeriodId, false)}</select></label>
+            `)}
+            <div class="stack">
+              <section class="panel">
+                <h3>Log Time</h3>
+                <form data-form="time-entry" class="stack">
+                  <div class="form-grid">
+                    <label>User <input value="${escapeHtml(selectedUser["Full Name"] || data.context.fullName)}" disabled></label>
+                    <label>Entry Type <select name="entryType">
+                      <option value="Task">Task Time</option>
+                      <option value="General Time">General Time</option>
+                    </select></label>
+                    <label>Date <input name="date" type="date" value="${escapeHtml(defaultEntryDate)}"></label>
+                    <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" required></label>
+                  </div>
+                  <div class="form-grid two" data-time-mode="task">
+                    <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Title", "", false)}</select></label>
+                    <label>Notes <input name="notes" placeholder="Optional notes"></label>
+                  </div>
+                  <div class="form-grid two hidden" data-time-mode="general">
+                    <label>Category <select name="categoryId">${options(tracker.categories || [], "Category ID", "Category", "", false)}</select></label>
+                    <label>Notes <input name="generalNotes" placeholder="Optional notes"></label>
+                  </div>
+                  <div data-time-lock-fields>${renderTimeLockFields(periodLocked ? selectedPeriod : null)}</div>
+                  <div class="actions"><button class="primary" type="submit">Save Time</button></div>
+                </form>
+              </section>
+              <section class="panel">
+                <h3>Entries</h3>
+                ${entries.length ? renderEntries(entries) : '<div class="empty">No time entries for this selection.</div>'}
+                ${tracker.requests?.length ? `<h3>Pending Requests</h3>${renderTimeRequests(tracker.requests)}` : ""}
+              </section>
             </div>
-          </section>
-          <section class="panel">
-            <h3>Log Time</h3>
-            <form data-form="time-entry" class="stack">
-              <div class="form-grid">
-                <label>User <input value="${escapeHtml(selectedUser["Full Name"] || data.context.fullName)}" disabled></label>
-                <label>Entry Type <select name="entryType">
-                  <option value="Task">Task Time</option>
-                  <option value="General Time">General Time</option>
-                </select></label>
-                <label>Date <input name="date" type="date" value="${escapeHtml(defaultEntryDate)}"></label>
-                <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" required></label>
-              </div>
-              <div class="form-grid two" data-time-mode="task">
-                <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Title", "", false)}</select></label>
-                <label>Notes <input name="notes" placeholder="Optional notes"></label>
-              </div>
-              <div class="form-grid two hidden" data-time-mode="general">
-                <label>Category <select name="categoryId">${options(tracker.categories || [], "Category ID", "Category", "", false)}</select></label>
-                <label>Notes <input name="generalNotes" placeholder="Optional notes"></label>
-              </div>
-              <div data-time-lock-fields>${renderTimeLockFields(periodLocked ? selectedPeriod : null)}</div>
-              <div class="actions"><button class="primary" type="submit">Save Time</button></div>
-            </form>
-          </section>
-          <section class="panel">
-            <h3>Entries</h3>
-            ${entries.length ? renderEntries(entries) : '<div class="empty">No time entries for this selection.</div>'}
-            ${tracker.requests?.length ? `<h3>Pending Requests</h3>${renderTimeRequests(tracker.requests)}` : ""}
           </section>
         `;
       }
@@ -1473,7 +1678,7 @@
                   <tbody>
                     ${dayEntries.map((entry) => `
                       <tr>
-                        <td data-label="Entry"><strong>${escapeHtml(entry["Task / Category"])}</strong><div>${escapeHtml(entry.Notes || "")}</div></td>
+                        <td data-label="Entry"><strong>${escapeHtml(entry["Task / Category"])}</strong></td>
                         <td data-label="Project">${escapeHtml(entry["Project Name"])}</td>
                         <td data-label="Hours">${escapeHtml(entry.Hours)}</td>
                         <td data-label="Pay Period">${escapeHtml(entry["Pay Period Label"])}</td>
@@ -1577,6 +1782,7 @@
         const summary = data.paySummary || { summaries: [] };
         const range = summary.range || {};
         const selectedPeriodId = summary.payPeriod?.["Pay Period ID"] || "";
+        const totalSummaryHours = (summary.summaries || []).reduce((sum, row) => sum + Number(row["Total Hours"] || 0), 0).toFixed(2);
         return `
           <section class="toolbar">
             <div>
@@ -1588,33 +1794,43 @@
               ${selectedPeriodId && data.permissions.canUnlockPayPeriod && summary.locked ? renderIcon("unlock-period", "", "", "Unlock period", "&#128275;") : ""}
             </div>
           </section>
-          <section class="panel">
-            <div class="filters">
+          <section class="side-layout" data-sidebar-collapsed="${state.paySidebarCollapsed ? "true" : "false"}">
+            ${renderLayoutSidebar("Filters", "paySidebarCollapsed", `
               ${data.permissions.canViewAllPay ? `<label>User <select data-pay-filter="userId">${options(data.users, "User ID", "Full Name", state.payFilters.userId, true)}</select></label>` : ""}
               <label>Range <select data-pay-filter="rangeMode">${payRangeOptions()}</select></label>
               ${state.payFilters.rangeMode === "custom" ? `
                 <label>Start Date <input type="date" data-pay-filter="startDate" value="${escapeHtml(state.payFilters.startDate || "")}"></label>
                 <label>End Date <input type="date" data-pay-filter="endDate" value="${escapeHtml(state.payFilters.endDate || "")}"></label>` : ""}
+            `)}
+            <div class="stack">
+              <section class="panel">
+                <div class="metric-grid">
+                  <div class="metric-card"><span>Users</span><strong>${escapeHtml(summary.summaries?.length || 0)}</strong></div>
+                  <div class="metric-card"><span>Total Hours</span><strong>${escapeHtml(totalSummaryHours)}</strong></div>
+                  <div class="metric-card"><span>Locked</span><strong>${summary.locked ? "Yes" : "No"}</strong></div>
+                  <div class="metric-card"><span>Range</span><strong>${escapeHtml(range.label || summary.payPeriod?.["Pay Period Label"] || "")}</strong></div>
+                </div>
+              </section>
+              <section class="panel">
+                ${summary.summaries?.length ? `
+                  <div class="table-wrap">
+                    <table class="pay-table">
+                      <thead><tr><th>User</th><th>Total Hours</th><th>Pay Type</th><th>Rate/Salary</th><th>Effective Hourly</th><th>Gross Pay</th></tr></thead>
+                      <tbody>
+                        ${summary.summaries.map((row) => `
+                          <tr class="pay-row" data-action="open-pay-detail" data-user-id="${escapeHtml(row["User ID"])}">
+                            <td data-label="User"><span class="user-cell">${avatarForUser(findUser(row["User ID"]) || row)}${escapeHtml(row["User Name"])}</span></td>
+                            <td data-label="Total Hours">${escapeHtml(row["Total Hours"])}</td>
+                            <td data-label="Pay Type">${escapeHtml(row["Pay Type"])}</td>
+                            <td data-label="Rate/Salary">${row["Pay Type"] === "Hourly" ? money(row["Hourly Rate"]) + "/hr" : money(row["Salary Amount"])}</td>
+                            <td data-label="Effective Hourly">${row["Effective Hourly Rate"] ? money(row["Effective Hourly Rate"]) + "/hr" : "N/A"}</td>
+                            <td data-label="Gross Pay"><strong>${money(row["Gross Pay"])}</strong></td>
+                          </tr>`).join("")}
+                      </tbody>
+                    </table>
+                  </div>` : '<div class="empty">No pay summary rows for this selection.</div>'}
+              </section>
             </div>
-          </section>
-          <section class="panel">
-            ${summary.summaries?.length ? `
-              <div class="table-wrap">
-                <table class="pay-table">
-                  <thead><tr><th>User</th><th>Total Hours</th><th>Pay Type</th><th>Rate/Salary</th><th>Effective Hourly</th><th>Gross Pay</th></tr></thead>
-                  <tbody>
-                    ${summary.summaries.map((row) => `
-                      <tr class="pay-row" data-action="open-pay-detail" data-user-id="${escapeHtml(row["User ID"])}">
-                        <td data-label="User"><span class="user-cell">${avatarForUser(findUser(row["User ID"]) || row)}${escapeHtml(row["User Name"])}</span></td>
-                        <td data-label="Total Hours">${escapeHtml(row["Total Hours"])}</td>
-                        <td data-label="Pay Type">${escapeHtml(row["Pay Type"])}</td>
-                        <td data-label="Rate/Salary">${row["Pay Type"] === "Hourly" ? money(row["Hourly Rate"]) + "/hr" : money(row["Salary Amount"])}</td>
-                        <td data-label="Effective Hourly">${row["Effective Hourly Rate"] ? money(row["Effective Hourly Rate"]) + "/hr" : "N/A"}</td>
-                        <td data-label="Gross Pay"><strong>${money(row["Gross Pay"])}</strong></td>
-                      </tr>`).join("")}
-                  </tbody>
-                </table>
-              </div>` : '<div class="empty">No pay summary rows for this selection.</div>'}
           </section>
         `;
       }
@@ -1634,8 +1850,8 @@
               ${renderIcon("refresh-project-dashboard", "", "", "Refresh dashboard", "&#8635;")}
             </div>
           </section>
-          <section class="panel">
-            <div class="filters">
+          <section class="side-layout" data-sidebar-collapsed="${state.projectSidebarCollapsed ? "true" : "false"}">
+            ${renderLayoutSidebar("Filters", "projectSidebarCollapsed", `
               <label>Project <select data-project-filter="projectId">
                 <option value="">All Projects</option>
                 ${(dashboard.projects || []).map((project) => `<option value="${escapeHtml(project["Project ID"])}" ${String(state.projectFilters.projectId || "") === String(project["Project ID"]) ? "selected" : ""}>${escapeHtml(project["Project Name"])}</option>`).join("")}
@@ -1643,90 +1859,95 @@
               <label>Range <select data-project-filter="rangeMode">${projectRangeOptions()}</select></label>
               <label class="checkbox-row"><input type="checkbox" data-project-filter="includeArchived" ${state.projectFilters.includeArchived ? "checked" : ""}> Include Archived</label>
               ${state.projectFilters.rangeMode === "custom" ? `
-                <label>Start Date <input type="date" data-project-filter="startDate" value="${escapeHtml(state.projectFilters.startDate || "")}"></label>
-                <label>End Date <input type="date" data-project-filter="endDate" value="${escapeHtml(state.projectFilters.endDate || "")}"></label>` : ""}
+                <div class="form-grid two" style="margin:0;">
+                  <label>Start Date <input type="date" data-project-filter="startDate" value="${escapeHtml(state.projectFilters.startDate || "")}"></label>
+                  <label>End Date <input type="date" data-project-filter="endDate" value="${escapeHtml(state.projectFilters.endDate || "")}"></label>
+                </div>` : ""}
+            `)}
+            <div class="stack">
+              <section class="panel">
+                <div class="metric-grid">
+                  <div class="metric-card"><span>Projects</span><strong>${escapeHtml(dashboard.summary.projectCount || 0)}</strong></div>
+                  <div class="metric-card"><span>Tasks</span><strong>${escapeHtml(dashboard.summary.taskCount || 0)}</strong></div>
+                  <div class="metric-card"><span>Completion</span><strong>${escapeHtml(dashboard.summary.completionPercent || 0)}%</strong></div>
+                  <div class="metric-card"><span>Hours</span><strong>${escapeHtml(dashboard.summary.totalHours || 0)}</strong></div>
+                </div>
+              </section>
+              <section class="panel">
+                ${(dashboard.projects || []).length ? `
+                  <div class="table-wrap">
+                    <table class="project-dashboard-table">
+                      <thead><tr><th>Project</th><th>Status</th><th>Tasks</th><th>Progress</th><th>Hours</th><th>Users</th><th>Actions</th></tr></thead>
+                      <tbody>
+                        ${(dashboard.projects || []).map((project) => `
+                          <tr class="project-summary-row" data-project-id="${escapeHtml(project["Project ID"])}">
+                            <td data-label="Project"><strong>${escapeHtml(project["Project Name"])}</strong></td>
+                            <td data-label="Status">${renderProjectStatusBadge(project.Status)}</td>
+                            <td data-label="Tasks">${escapeHtml(project["Completed Task Count"])} / ${escapeHtml(project["Task Count"])}</td>
+                            <td data-label="Progress">${escapeHtml(project["Progress Percent"])}%</td>
+                            <td data-label="Hours">${escapeHtml(project["Total Hours"])}</td>
+                            <td data-label="Users">${escapeHtml(project["User Count"])}</td>
+                            <td data-label="Actions">
+                              <div class="actions">
+                                ${renderIcon("select-project-dashboard", "data-project-id", project["Project ID"], "View project details", "&#128065;")}
+                                ${data.permissions.canManageProjects ? (project.Archived ? renderIcon("unarchive-project", "data-project-id", project["Project ID"], "Restore project", "&#10133;") : renderIcon("archive-project-dashboard", "data-project-id", project["Project ID"], "Archive project", "&#128465;", true)) : ""}
+                              </div>
+                            </td>
+                          </tr>`).join("")}
+                      </tbody>
+                    </table>
+                  </div>` : '<div class="empty">No projects match this selection.</div>'}
+              </section>
+              ${selectedProject ? `
+                <section class="panel">
+                  <div class="toolbar">
+                    <div>
+                      <h3>${escapeHtml(selectedProject.project["Project Name"])}</h3>
+                      <p>${renderProjectStatusBadge(selectedProject.project.Status)} &middot; ${escapeHtml(selectedProject.summary["Progress Percent"])}% complete</p>
+                    </div>
+                    <div class="actions">
+                      ${data.permissions.canManageProjects ? (selectedProject.project.Archived ? renderIcon("unarchive-project", "data-project-id", selectedProject.project["Project ID"], "Restore project", "&#10133;") : renderIcon("archive-project-dashboard", "data-project-id", selectedProject.project["Project ID"], "Archive project", "&#128465;", true)) : ""}
+                      ${renderIcon("clear-project-filter", "", "", "Clear project selection", "&#10006;")}
+                    </div>
+                  </div>
+                  <div class="metric-grid">
+                    <div class="metric-card"><span>Total Hours</span><strong>${escapeHtml(selectedProject.metrics.totalHours)}</strong></div>
+                    <div class="metric-card"><span>Avg / Week</span><strong>${escapeHtml(selectedProject.metrics.averageHoursPerWeek)}</strong></div>
+                    <div class="metric-card"><span>Tasks</span><strong>${escapeHtml(selectedProject.metrics.taskCount)}</strong></div>
+                    <div class="metric-card"><span>Users</span><strong>${escapeHtml(selectedProject.metrics.userCount)}</strong></div>
+                  </div>
+                  <h3>Related Tasks</h3>
+                  ${selectedProject.tasks?.length ? `
+                    <div class="table-wrap">
+                      <table class="project-task-table">
+                        <thead><tr><th>Task</th><th>Status</th><th>Assignees</th><th>Priority</th><th>Actions</th></tr></thead>
+                        <tbody>${selectedProject.tasks.map((task) => `
+                          <tr>
+                            <td data-label="Task"><strong>${escapeHtml(task.Title)}</strong></td>
+                            <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}"${badgeStyleForStatus(task.Status)}>${escapeHtml(task.Status)}</span></td>
+                            <td data-label="Assignees">${renderAssigneeChips(task)}</td>
+                            <td data-label="Priority"><span class="badge">${escapeHtml(task.Priority || "")}</span></td>
+                            <td data-label="Actions">${task._permissions?.canEdit ? renderIcon("edit-project-task", "data-task-id", task["Task ID"], "Edit task", "&#9998;") : ""}</td>
+                          </tr>`).join("")}</tbody>
+                      </table>
+                    </div>` : '<div class="empty">No related tasks.</div>'}
+                  <div class="detail-grid" style="margin-top: 12px;">
+                    <div>
+                      <h3>Task Time</h3>
+                      ${renderHoursList(selectedProject.taskTotals, "No task time in this range.")}
+                    </div>
+                    <div>
+                      <h3>Users</h3>
+                      ${renderHoursList(selectedProject.userTotals, "No user time in this range.")}
+                    </div>
+                    <div>
+                      <h3>Categories</h3>
+                      ${renderHoursList(selectedProject.categoryTotals, "No category time in this range.")}
+                    </div>
+                  </div>
+                </section>` : ""}
             </div>
           </section>
-          <section class="panel">
-            <div class="metric-grid">
-              <div class="metric-card"><span>Projects</span><strong>${escapeHtml(dashboard.summary.projectCount || 0)}</strong></div>
-              <div class="metric-card"><span>Tasks</span><strong>${escapeHtml(dashboard.summary.taskCount || 0)}</strong></div>
-              <div class="metric-card"><span>Completion</span><strong>${escapeHtml(dashboard.summary.completionPercent || 0)}%</strong></div>
-              <div class="metric-card"><span>Hours</span><strong>${escapeHtml(dashboard.summary.totalHours || 0)}</strong></div>
-            </div>
-          </section>
-          <section class="panel">
-            ${(dashboard.projects || []).length ? `
-              <div class="table-wrap">
-                <table class="project-dashboard-table">
-                  <thead><tr><th>Project</th><th>Status</th><th>Tasks</th><th>Progress</th><th>Hours</th><th>Users</th><th>Actions</th></tr></thead>
-                  <tbody>
-                    ${(dashboard.projects || []).map((project) => `
-                      <tr class="project-summary-row" data-project-id="${escapeHtml(project["Project ID"])}">
-                        <td data-label="Project"><strong>${escapeHtml(project["Project Name"])}</strong></td>
-                        <td data-label="Status">${renderProjectStatusBadge(project.Status)}</td>
-                        <td data-label="Tasks">${escapeHtml(project["Task Count"])} / ${escapeHtml(project["Completed Task Count"])}</td>
-                        <td data-label="Progress">${escapeHtml(project["Progress Percent"])}%</td>
-                        <td data-label="Hours">${escapeHtml(project["Total Hours"])}</td>
-                        <td data-label="Users">${escapeHtml(project["User Count"])}</td>
-                        <td data-label="Actions">
-                          <div class="actions">
-                            ${renderIcon("select-project-dashboard", "data-project-id", project["Project ID"], "View project details", "&#128065;")}
-                            ${data.permissions.canManageProjects ? (project.Archived ? renderIcon("unarchive-project", "data-project-id", project["Project ID"], "Restore project", "&#10133;") : renderIcon("archive-project-dashboard", "data-project-id", project["Project ID"], "Archive project", "&#128465;", true)) : ""}
-                          </div>
-                        </td>
-                      </tr>`).join("")}
-                  </tbody>
-                </table>
-              </div>` : '<div class="empty">No projects match this selection.</div>'}
-          </section>
-          ${selectedProject ? `
-            <section class="panel">
-              <div class="toolbar">
-                <div>
-                  <h3>${escapeHtml(selectedProject.project["Project Name"])}</h3>
-                  <p>${renderProjectStatusBadge(selectedProject.project.Status)} &middot; ${escapeHtml(selectedProject.summary["Progress Percent"])}% complete</p>
-                </div>
-                <div class="actions">
-                  ${data.permissions.canManageProjects ? (selectedProject.project.Archived ? renderIcon("unarchive-project", "data-project-id", selectedProject.project["Project ID"], "Restore project", "&#10133;") : renderIcon("archive-project-dashboard", "data-project-id", selectedProject.project["Project ID"], "Archive project", "&#128465;", true)) : ""}
-                  ${renderIcon("clear-project-filter", "", "", "Clear project selection", "&#10006;")}
-                </div>
-              </div>
-              <div class="metric-grid">
-                <div class="metric-card"><span>Total Hours</span><strong>${escapeHtml(selectedProject.metrics.totalHours)}</strong></div>
-                <div class="metric-card"><span>Avg / Week</span><strong>${escapeHtml(selectedProject.metrics.averageHoursPerWeek)}</strong></div>
-                <div class="metric-card"><span>Tasks</span><strong>${escapeHtml(selectedProject.metrics.taskCount)}</strong></div>
-                <div class="metric-card"><span>Users</span><strong>${escapeHtml(selectedProject.metrics.userCount)}</strong></div>
-              </div>
-              <h3>Related Tasks</h3>
-              ${selectedProject.tasks?.length ? `
-                <div class="table-wrap">
-                  <table class="board-table">
-                    <thead><tr><th>Task</th><th>Status</th><th>Assignees</th><th>Priority</th></tr></thead>
-                    <tbody>${selectedProject.tasks.map((task) => `
-                      <tr>
-                        <td data-label="Task"><strong>${escapeHtml(task.Title)}</strong><div>${escapeHtml(task.Notes || "")}</div></td>
-                        <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}"${badgeStyleForStatus(task.Status)}>${escapeHtml(task.Status)}</span></td>
-                        <td data-label="Assignees">${renderAssigneeChips(task)}</td>
-                        <td data-label="Priority"><span class="badge">${escapeHtml(task.Priority || "")}</span></td>
-                      </tr>`).join("")}</tbody>
-                  </table>
-                </div>` : '<div class="empty">No related tasks.</div>'}
-              <div class="detail-grid" style="margin-top: 12px;">
-                <div>
-                  <h3>Task Time</h3>
-                  ${renderHoursList(selectedProject.taskTotals, "No task time in this range.")}
-                </div>
-                <div>
-                  <h3>Users</h3>
-                  ${renderHoursList(selectedProject.userTotals, "No user time in this range.")}
-                </div>
-                <div>
-                  <h3>Categories</h3>
-                  ${renderHoursList(selectedProject.categoryTotals, "No category time in this range.")}
-                </div>
-              </div>
-            </section>` : ""}
         `;
       }
 
@@ -1742,13 +1963,19 @@
         const sections = [
           ["profile", "Profile", true],
           ["organization-group", "Organization", organizationChildren.length],
-          ["settings", "Settings", data.permissions.canManageSettings]
+          ["settings", "App Settings", data.permissions.canManageSettings],
+          ["import", "Import", data.permissions.canImportLegacyData]
         ].filter((section) => section[2]);
+        const availableSections = new Set(["profile", "organization", "users", "projects", "categories", "tags", "settings"].concat(data.permissions.canImportLegacyData ? ["import"] : []));
+        if (!availableSections.has(state.settingsSection)) {
+          state.settingsSection = "profile";
+          saveStoredString("settingsSection", state.settingsSection);
+        }
         return `
           <section class="toolbar">
             <div>
               <h2>Settings</h2>
-              <p>Profile, organization settings, and application settings</p>
+              <p>Profile, organization settings, application settings, and imports</p>
             </div>
           </section>
           <section class="settings-layout" data-sidebar-collapsed="${state.settingsSidebarCollapsed ? "true" : "false"}">
@@ -1779,6 +2006,7 @@
         if (state.settingsSection === "categories") return renderCategoriesSettings();
         if (state.settingsSection === "tags") return renderTagsSettings();
         if (state.settingsSection === "settings") return renderAppSettings();
+        if (state.settingsSection === "import") return renderImportAdmin();
         return renderProfileSettings();
       }
 
@@ -1925,7 +2153,7 @@
         const projectColors = Object.assign({}, state.data.visualSettings?.projectStatusColors || {}, parseJson(settingMap.PROJECT_STATUS_COLORS_JSON, {}));
         return `
           <section class="panel">
-            <h3>Application Settings</h3>
+            <h3>App Settings</h3>
             <form data-form="explicit-settings" class="stack">
               <div class="form-grid two">
                 <label>Pay Period Anchor Date <input name="anchorDate" type="date" value="${escapeHtml(settingMap.PAY_PERIOD_ANCHOR_DATE || "")}"></label>
@@ -2549,12 +2777,27 @@
         const settingsButton = event.target.closest("[data-settings-section]");
         if (settingsButton) {
           state.settingsSection = settingsButton.dataset.settingsSection;
+          saveStoredString("settingsSection", state.settingsSection);
           render();
           return;
+        }
+        const actionMenuTrigger = event.target.closest("[data-action-menu-trigger]");
+        if (actionMenuTrigger) {
+          const menu = actionMenuTrigger.closest("[data-action-popover]");
+          if (menu) {
+            const isOpen = menu.dataset.open === "true";
+            closeActionMenus();
+            menu.dataset.open = isOpen ? "false" : "true";
+          }
+          return;
+        }
+        if (!event.target.closest("[data-action-popover]")) {
+          closeActionMenus();
         }
         const action = event.target.closest("[data-action]")?.dataset.action;
           if (!action) return;
         try {
+          closeActionMenus();
           if (action === "close-modal") {
             state.pendingCategorySave = null;
             state.pendingMigrationImport = null;
@@ -2563,8 +2806,16 @@
             state.settingsSidebarCollapsed = !state.settingsSidebarCollapsed;
             saveStoredBool("settingsSidebarCollapsed", state.settingsSidebarCollapsed);
             render();
+          } else if (action === "toggle-sidebar") {
+            const key = event.target.closest("[data-sidebar-key]")?.dataset.sidebarKey;
+            if (key && key in state) {
+              state[key] = !state[key];
+              saveStoredBool(key, state[key]);
+              render();
+            }
           } else if (action === "toggle-organization-group") {
             state.settingsGroupOpen = !state.settingsGroupOpen;
+            saveStoredBool("settingsGroupOpen", state.settingsGroupOpen);
             render();
           } else if (action === "new-task") {
             openTaskModal();
@@ -2668,6 +2919,11 @@
             openProjectModal();
           } else if (action === "edit-project") {
             openProjectModal(state.data.projects.find((project) => project["Project ID"] === event.target.closest("[data-project-id]").dataset.projectId));
+          } else if (action === "edit-project-task") {
+            const taskId = event.target.closest("[data-task-id]").dataset.taskId;
+            const selectedProject = state.data.projectDashboard?.selectedProject;
+            const task = (selectedProject?.tasks || []).find((item) => item["Task ID"] === taskId) || state.data.tasks.find((item) => item["Task ID"] === taskId);
+            if (task) openTaskModal(task);
           } else if (action === "delete-project") {
             openConfirmModal("Archive this project?", "confirm-delete-project", "data-project-id", event.target.closest("[data-project-id]").dataset.projectId);
           } else if (action === "confirm-delete-project") {
@@ -2800,7 +3056,7 @@
       document.addEventListener("change", async (event) => {
         if (event.target.matches("[data-filter]")) {
           state.boardFilters[event.target.dataset.filter] = event.target.value;
-          render();
+          updateBoardResultsOnly();
         }
         if (event.target.closest('[data-form="migration"]') && event.target.name === "importMode") {
           state.migrationImportMode = event.target.value;
