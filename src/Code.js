@@ -1,7 +1,17 @@
-function doGet() {
+function doGet(e) {
   var template = HtmlService.createTemplateFromFile("Index");
   template.googleClientId = TrustOpsAuthService.getGoogleClientId();
   template.githubAuthUrl = TrustOpsAuthService.getGithubPagesAuthUrl();
+  template.initialAuthToken = "";
+  if (e && e.parameter) {
+    template.initialAuthToken = TrustOpsUtils.normalizeText(
+      e.parameter.trust_ops_token ||
+      e.parameter.id_token ||
+      e.parameter.auth_token ||
+      e.parameter.token ||
+      ""
+    );
+  }
   return template.evaluate()
     .setTitle("Trust Ops")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);

@@ -6,6 +6,7 @@
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="google-oauth-client-id" content="<?= googleClientId ?>">
       <meta name="trust-ops-github-auth-url" content="<?= githubAuthUrl ?>">
+      <meta name="trust-ops-initial-auth-token" content="<?= initialAuthToken ?>">
       <style>
       :root {
         --bg: #eef2f5;
@@ -1373,7 +1374,8 @@
     <script>
       const AUTH_CONFIG = {
         clientId: document.querySelector('meta[name="google-oauth-client-id"]')?.content || "",
-        githubAuthUrl: document.querySelector('meta[name="trust-ops-github-auth-url"]')?.content || ""
+        githubAuthUrl: document.querySelector('meta[name="trust-ops-github-auth-url"]')?.content || "",
+        initialAuthToken: document.querySelector('meta[name="trust-ops-initial-auth-token"]')?.content || ""
       };
 
       const state = {
@@ -1915,15 +1917,20 @@
       }
 
       async function loadInitial() {
-        const windowNameToken = readAuthTokenFromWindowName();
-        if (windowNameToken) {
-          persistAuthToken(windowNameToken);
+        const serverToken = AUTH_CONFIG.initialAuthToken || "";
+        if (serverToken) {
+          persistAuthToken(serverToken);
         } else {
-          const locationToken = readAuthTokenFromLocation();
-          if (locationToken) {
-            persistAuthToken(locationToken);
+          const windowNameToken = readAuthTokenFromWindowName();
+          if (windowNameToken) {
+            persistAuthToken(windowNameToken);
           } else {
-            state.auth.idToken = loadStoredAuthToken();
+            const locationToken = readAuthTokenFromLocation();
+            if (locationToken) {
+              persistAuthToken(locationToken);
+            } else {
+              state.auth.idToken = loadStoredAuthToken();
+            }
           }
         }
         if (!state.auth.idToken) {
@@ -4395,7 +4402,7 @@
       });
       window.setTimeout(() => {
         if (state.auth.loading && !state.data) {
-          showFatalError("Trust Ops is still waiting for the Apps Script backend. Check the browser console and redeploy the latest Apps Script version.");
+          showFatalError("Trust Ops is still waiting for the Apps Script backend.");
         }
       }, 10000);
       loadInitial().catch((error) => {
