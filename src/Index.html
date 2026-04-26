@@ -627,6 +627,79 @@
         gap: 6px;
       }
 
+      .hierarchy-cell {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .hierarchy-toggle,
+      .hierarchy-toggle-spacer {
+        width: 24px;
+        height: 24px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+      }
+
+      .hierarchy-toggle {
+        display: inline-grid;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--border);
+        background: var(--surface-muted);
+        color: var(--text);
+        line-height: 1;
+      }
+
+      .hierarchy-toggle-spacer {
+        display: inline-block;
+      }
+
+      .hierarchy-main {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .hierarchy-subtitle {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .hierarchy-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .hierarchy-summary {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .hierarchy-child-row td:first-child,
+      .hierarchy-parent-row td:first-child {
+        background: transparent;
+      }
+
+      .hierarchy-child-row td:first-child {
+        color: var(--text);
+      }
+
+      .hierarchy-child-row:hover td {
+        background: rgba(127, 143, 156, 0.04);
+      }
+
+      .help {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.4;
+        margin-top: -2px;
+      }
+
       .badge {
         display: inline-flex;
         align-items: center;
@@ -1404,6 +1477,8 @@
         projectSidebarCollapsed: false,
         tableSorts: {},
         boardGroupExpanded: {},
+        taskTreeExpanded: {},
+        projectTreeExpanded: {},
         settingsSection: "profile",
         settingsSidebarCollapsed: false,
         settingsGroupOpen: true,
@@ -1706,8 +1781,75 @@
         return `<span class="badge ${escapeHtml(String(status || "").toLowerCase())}"${badgeStyleForProjectStatus(status)}>${escapeHtml(status || "")}</span>`;
       }
 
-      function options(items, valueKey, labelKey, selectedValue, includeBlank) {
-        const blank = includeBlank ? '<option value="">All</option>' : "";
+      function projectDisplayName(project) {
+        return project?.["Display Name"] || project?.["Project Name"] || "";
+      }
+
+      function taskDisplayName(task) {
+        return task?.["Display Name"] || task?.Title || "";
+      }
+
+      function projectTreeStateKey(projectId) {
+        return String(projectId || "");
+      }
+
+      function isProjectNodeExpanded(projectId) {
+        return Boolean(state.projectTreeExpanded?.[projectTreeStateKey(projectId)]);
+      }
+
+      function setProjectNodeExpanded(projectId, expanded) {
+        state.projectTreeExpanded = Object.assign({}, state.projectTreeExpanded, {
+          [projectTreeStateKey(projectId)]: Boolean(expanded)
+        });
+      }
+
+      function taskTreeStateKey(taskId) {
+        return String(taskId || "");
+      }
+
+      function isTaskNodeExpanded(taskId) {
+        return Boolean(state.taskTreeExpanded?.[taskTreeStateKey(taskId)]);
+      }
+
+      function setTaskNodeExpanded(taskId, expanded) {
+        state.taskTreeExpanded = Object.assign({}, state.taskTreeExpanded, {
+          [taskTreeStateKey(taskId)]: Boolean(expanded)
+        });
+      }
+
+      function taskProjectMatchesFilter(task, projectId, projectsById) {
+        const selectedProjectId = String(projectId || "");
+        if (!selectedProjectId) return true;
+        if (String(task["Project ID"] || "") === selectedProjectId) return true;
+        const project = (projectsById || {})[String(task["Project ID"] || "")];
+        return Boolean(project && String(project["Parent Project ID"] || "") === selectedProjectId);
+      }
+
+      function rootProjectOptions(excludeProjectId = "") {
+        return (state.data.projects || []).filter((project) => !String(project["Parent Project ID"] || "") && String(project["Project ID"]) !== String(excludeProjectId || ""));
+      }
+
+      function rootTaskOptions(excludeTaskId = "") {
+        return (state.data.tasks || []).filter((task) => !String(task["Parent Task ID"] || "") && String(task["Task ID"]) !== String(excludeTaskId || ""));
+      }
+
+      function syncTaskParentFields(form) {
+        if (!form) return;
+        const parentTaskId = form.parentTaskId?.value || "";
+        const projectSelect = form.projectId;
+        const parentTask = (state.data.tasks || []).find((task) => String(task["Task ID"]) === String(parentTaskId));
+        if (projectSelect) {
+          if (parentTask) {
+            projectSelect.value = parentTask["Project ID"] || "";
+            projectSelect.disabled = true;
+          } else {
+            projectSelect.disabled = false;
+          }
+        }
+      }
+
+      function options(items, valueKey, labelKey, selectedValue, includeBlank, blankLabel = "All") {
+        const blank = includeBlank ? `<option value="">${escapeHtml(blankLabel)}</option>` : "";
         return blank + (items || []).map((item) => {
           const value = item[valueKey];
           const selected = String(value) === String(selectedValue || "") ? "selected" : "";
@@ -1853,6 +1995,9 @@
         }
         if (task._permissions?.canAddTime) {
           actions.push(["add-time", "&#128336;", "Add time", false]);
+        }
+        if (state.data.permissions.canCreateTask && !String(task["Parent Task ID"] || "")) {
+          actions.push(["new-subtask", "&#10133;", "Add subtask", false]);
         }
         if (task._permissions?.canEdit) {
           actions.push(["edit-task", "&#9998;", "Edit task", false]);
@@ -2175,14 +2320,18 @@
       function applyBoardFilters(tasks) {
         const filters = state.boardFilters;
         const search = String(filters.search || "").toLowerCase();
+        const projectsById = (state.data.projects || []).reduce((acc, project) => {
+          acc[String(project["Project ID"] || "")] = project;
+          return acc;
+        }, {});
         return (tasks || []).filter((task) => {
           if (filters.status && task.Status !== filters.status) return false;
-          if (filters.projectId && task["Project ID"] !== filters.projectId) return false;
+          if (filters.projectId && !taskProjectMatchesFilter(task, filters.projectId, projectsById)) return false;
           if (filters.priority && task.Priority !== filters.priority) return false;
           if (filters.assigneeUserId && !String(task["Assignee User IDs"] || "").split(",").map((id) => id.trim()).includes(filters.assigneeUserId)) return false;
           if (filters.tag && selectedList(task.Tags).indexOf(filters.tag) === -1) return false;
           if (search) {
-            const haystack = [task.Title, task.Notes, task.Status, task.Assignees, task["Project Name"], task.Priority, task.Tags].join(" ").toLowerCase();
+            const haystack = [task.Title, task["Display Name"], task.Notes, task.Status, task.Assignees, task["Project Display Name"], task["Project Name"], task.Priority, task.Tags].join(" ").toLowerCase();
             if (!haystack.includes(search)) return false;
           }
           return true;
@@ -2213,7 +2362,7 @@
       function groupTaskKey(task) {
         const grouping = state.boardGrouping || "";
         if (grouping === "Status") return task.Status || "No status";
-        if (grouping === "Project") return task["Project Name"] || "No project";
+        if (grouping === "Project") return task["Project Display Name"] || task["Project Name"] || "No project";
         if (grouping === "Assignee") return task.Assignees || "Unassigned";
         if (grouping === "Priority") return task.Priority || "No priority";
         if (grouping === "Tag") return task.Tags || "No tag";
@@ -2254,6 +2403,25 @@
         container.innerHTML = renderBoardResults(applyBoardFilters(state.data.tasks));
       }
 
+      function hierarchyRoots(rows, parentKey, idKey) {
+        const byId = (rows || []).reduce((acc, row) => {
+          acc[String(row[idKey] || "")] = row;
+          return acc;
+        }, {});
+        return (rows || []).filter((row) => {
+          const parentId = String(row[parentKey] || "");
+          return !parentId || !byId[parentId];
+        });
+      }
+
+      function hierarchyChildren(rows, parentKey, parentId) {
+        return (rows || []).filter((row) => String(row[parentKey] || "") === String(parentId || ""));
+      }
+
+      function hierarchyLevelStyle(level) {
+        return ` style="--hierarchy-level:${Number(level || 0)};"`;
+      }
+
       function renderBoard() {
         const data = state.data;
         const tasks = applyBoardFilters(data.tasks);
@@ -2282,7 +2450,7 @@
               </select></label>
               <label>Search <input data-filter="search" value="${escapeHtml(state.boardFilters.search || "")}" placeholder="Task, notes, tags"></label>
               <label>Status <select data-filter="status">${constantOptions(data.constants.taskStatuses, state.boardFilters.status, true)}</select></label>
-              <label>Project <select data-filter="projectId">${options(data.projects, "Project ID", "Project Name", state.boardFilters.projectId, true)}</select></label>
+              <label>Project <select data-filter="projectId">${options(data.projects, "Project ID", "Display Name", state.boardFilters.projectId, true)}</select></label>
               <label>Assignee <select data-filter="assigneeUserId">${options(data.users, "User ID", "Full Name", state.boardFilters.assigneeUserId, true)}</select></label>
               <label>Priority <select data-filter="priority">${constantOptions(data.constants.priorities, state.boardFilters.priority, true)}</select></label>
               <label>Tag <select data-filter="tag">${options(data.tags || [], "Tag", "Tag", state.boardFilters.tag, true)}</select></label>
@@ -2301,20 +2469,54 @@
 
       function renderTaskTable(tasks, tableKey = "board") {
         const sortColumns = tableKey === "projectTasks" ? {
-          task: (task) => task.Title,
+          task: (task) => taskDisplayName(task),
           status: (task) => task.Status,
           assignees: (task) => task.Assignees || selectedList(task["Assignee User IDs"]).join(", "),
           priority: (task) => task.Priority
         } : {
-          task: (task) => task.Title,
+          task: (task) => taskDisplayName(task),
           status: (task) => task.Status,
           assignees: (task) => task.Assignees || selectedList(task["Assignee User IDs"]).join(", "),
-          project: (task) => task["Project Name"],
+          project: (task) => task["Project Display Name"] || task["Project Name"],
           priority: (task) => task.Priority,
           due: (task) => task["Due Date"]
         };
-        const sortedTasks = sortTableRows(tasks, tableKey, sortColumns);
         const isProjectTaskTable = tableKey === "projectTasks";
+        const rootTasks = hierarchyRoots(tasks, "Parent Task ID", "Task ID");
+        function renderTaskNode(task, level = 0) {
+          const hasChildren = Number(task["Child Task Count"] || 0) > 0 && !String(task["Parent Task ID"] || "");
+          const expanded = isTaskNodeExpanded(task["Task ID"]);
+          const childTasks = hasChildren ? sortTableRows(hierarchyChildren(tasks, "Parent Task ID", task["Task ID"]), tableKey, sortColumns) : [];
+          return `
+            <tr class="${level ? "hierarchy-child-row" : "hierarchy-parent-row"}" data-task-id="${escapeHtml(task["Task ID"])}" data-task-level="${escapeHtml(level)}">
+              <td data-label="Task">
+                <div class="hierarchy-cell"${hierarchyLevelStyle(level)}>
+                  ${hasChildren ? `<button type="button" class="hierarchy-toggle" data-action="toggle-task-node" data-task-id="${escapeHtml(task["Task ID"])}" aria-label="${expanded ? "Collapse" : "Expand"} subtasks">${expanded ? "&#9660;" : "&#9654;"}</button>` : `<span class="hierarchy-toggle-spacer"></span>`}
+                  <div class="hierarchy-main">
+                    <div class="task-title-row">
+                      <strong>${escapeHtml(taskDisplayName(task))}</strong>
+                      ${renderTaskNoteIcon(task.Notes)}
+                    </div>
+                    ${task["Parent Task ID"] && !level ? `<div class="hierarchy-subtitle">Parent: ${escapeHtml(task["Parent Task Title"] || task["Parent Task ID"])}</div>` : ""}
+                    <div class="hierarchy-meta">
+                      ${task["Child Task Count"] ? `<span class="badge">${escapeHtml(task["Child Task Count"])} subtask${task["Child Task Count"] === 1 ? "" : "s"}</span>` : ""}
+                      ${task["Child Task Count"] ? `<span class="badge">${escapeHtml(task["Progress Percent"])}%</span>` : ""}
+                      ${task.Tags ? `<span class="badge">${escapeHtml(task.Tags)}</span>` : ""}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}"${badgeStyleForStatus(task.Status)}>${escapeHtml(task.Status)}</span></td>
+              <td data-label="Assignees">${renderAssigneeChips(task)}</td>
+              ${isProjectTaskTable ? "" : `<td data-label="Project">${escapeHtml(task["Project Display Name"] || task["Project Name"])}</td>`}
+              <td data-label="Priority"><span class="badge ${escapeHtml(String(task.Priority).toLowerCase())}">${escapeHtml(task.Priority)}</span></td>
+              ${isProjectTaskTable ? "" : `<td data-label="Due">${escapeHtml(task["Due Date"])}</td>`}
+              <td data-label="Actions">
+                ${renderTaskActionMenu(task)}
+              </td>
+            </tr>
+            ${expanded ? childTasks.map((child) => renderTaskNode(child, level + 1)).join("") : ""}`;
+        }
         return `
           <div class="table-wrap">
             <table class="${isProjectTaskTable ? "project-task-table" : "board-table"}">
@@ -2330,24 +2532,7 @@
                 </tr>
               </thead>
               <tbody>
-                ${sortedTasks.map((task) => `
-                  <tr>
-                    <td data-label="Task">
-                      <div class="task-title-row">
-                        <strong>${escapeHtml(task.Title)}</strong>
-                        ${renderTaskNoteIcon(task.Notes)}
-                      </div>
-                      ${task.Tags ? `<span class="badge">${escapeHtml(task.Tags)}</span>` : ""}
-                    </td>
-                    <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}"${badgeStyleForStatus(task.Status)}>${escapeHtml(task.Status)}</span></td>
-                    <td data-label="Assignees">${renderAssigneeChips(task)}</td>
-                    ${isProjectTaskTable ? "" : `<td data-label="Project">${escapeHtml(task["Project Name"])}</td>`}
-                    <td data-label="Priority"><span class="badge ${escapeHtml(String(task.Priority).toLowerCase())}">${escapeHtml(task.Priority)}</span></td>
-                    ${isProjectTaskTable ? "" : `<td data-label="Due">${escapeHtml(task["Due Date"])}</td>`}
-                    <td data-label="Actions">
-                      ${renderTaskActionMenu(task)}
-                    </td>
-                  </tr>`).join("")}
+                ${sortTableRows(rootTasks, tableKey, sortColumns).map((task) => renderTaskNode(task, 0)).join("")}
               </tbody>
             </table>
           </div>
@@ -2405,7 +2590,7 @@
                     <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" required></label>
                   </div>
                   <div class="form-grid two" data-time-mode="task">
-                    <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Title", "", false)}</select></label>
+                    <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Display Name", "", false)}</select></label>
                     <label>Notes <input name="notes" placeholder="Optional notes"></label>
                   </div>
                   <div class="form-grid two hidden" data-time-mode="general">
@@ -2651,13 +2836,54 @@
         const range = dashboard.range || {};
         const selectedProject = dashboard.selectedProject;
         const sortedProjects = sortTableRows(dashboard.projects || [], "projects", {
-          project: (project) => project["Project Name"],
+          project: (project) => projectDisplayName(project),
           status: (project) => project.Status,
           tasks: (project) => project["Task Count"],
           progress: (project) => project["Progress Percent"],
           hours: (project) => project["Total Hours"],
           users: (project) => project["User Count"]
         });
+        function renderProjectNode(project, level = 0) {
+          const hasChildren = Number(project["Child Project Count"] || 0) > 0 && !String(project["Parent Project ID"] || "");
+          const expanded = isProjectNodeExpanded(project["Project ID"]);
+          const childProjects = hasChildren ? sortTableRows(hierarchyChildren(dashboard.projects, "Parent Project ID", project["Project ID"]), "projects", {
+            project: (item) => projectDisplayName(item),
+            status: (item) => item.Status,
+            tasks: (item) => item["Task Count"],
+            progress: (item) => item["Progress Percent"],
+            hours: (item) => item["Total Hours"],
+            users: (item) => item["User Count"]
+          }) : [];
+          return `
+            <tr class="${level ? "hierarchy-child-row" : "hierarchy-parent-row"}" data-project-id="${escapeHtml(project["Project ID"])}" data-project-level="${escapeHtml(level)}">
+              <td data-label="Project">
+                  <div class="hierarchy-cell"${hierarchyLevelStyle(level)}>
+                  ${hasChildren ? `<button type="button" class="hierarchy-toggle" data-action="toggle-project-node" data-project-id="${escapeHtml(project["Project ID"])}" aria-label="${expanded ? "Collapse" : "Expand"} subprojects">${expanded ? "&#9660;" : "&#9654;"}</button>` : `<span class="hierarchy-toggle-spacer"></span>`}
+                  <div class="hierarchy-main">
+                    <strong>${escapeHtml(projectDisplayName(project))}</strong>
+                    ${project["Parent Project ID"] && !level ? `<div class="hierarchy-subtitle">Parent: ${escapeHtml(project["Parent Project Name"] || project["Parent Project ID"])}</div>` : ""}
+                    <div class="hierarchy-meta">
+                      ${project["Child Project Count"] ? `<span class="badge">${escapeHtml(project["Child Project Count"])} subproject${project["Child Project Count"] === 1 ? "" : "s"}</span>` : ""}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td data-label="Status">${renderProjectStatusBadge(project.Status)}</td>
+              <td data-label="Tasks">${escapeHtml(project["Completed Task Count"])} / ${escapeHtml(project["Task Count"])}</td>
+              <td data-label="Progress">${escapeHtml(project["Progress Percent"])}%</td>
+              <td data-label="Hours">${escapeHtml(project["Total Hours"])}</td>
+              <td data-label="Users">${escapeHtml(project["User Count"])}</td>
+              <td data-label="Actions">
+                <div class="actions">
+                  ${renderIcon("select-project-dashboard", "data-project-id", project["Project ID"], "View project details", "&#128065;")}
+                  ${data.permissions.canManageProjects ? renderIcon("edit-project-dashboard", "data-project-id", project["Project ID"], "Edit project", "&#9998;") : ""}
+                  ${data.permissions.canManageProjects && !String(project["Parent Project ID"] || "") ? renderIcon("new-subproject", "data-project-id", project["Project ID"], "Add subproject", "&#10133;") : ""}
+                  ${data.permissions.canManageProjects ? (project.Archived ? renderIcon("unarchive-project", "data-project-id", project["Project ID"], "Restore project", "&#10133;") : renderIcon("archive-project-dashboard", "data-project-id", project["Project ID"], "Archive project", "&#128465;", true)) : ""}
+                </div>
+              </td>
+            </tr>
+            ${expanded ? childProjects.map((childProject) => renderProjectNode(childProject, level + 1)).join("") : ""}`;
+        }
         return `
           <div class="sticky-region">
             <section class="toolbar">
@@ -2682,7 +2908,7 @@
             ${renderLayoutSidebar("Filters", "projectSidebarCollapsed", `
               <label>Project <select data-project-filter="projectId">
                 <option value="">All Projects</option>
-                ${(dashboard.projects || []).map((project) => `<option value="${escapeHtml(project["Project ID"])}" ${String(state.projectFilters.projectId || "") === String(project["Project ID"]) ? "selected" : ""}>${escapeHtml(project["Project Name"])}</option>`).join("")}
+                ${(dashboard.projects || []).map((project) => `<option value="${escapeHtml(project["Project ID"])}" ${String(state.projectFilters.projectId || "") === String(project["Project ID"]) ? "selected" : ""}>${escapeHtml(projectDisplayName(project))}</option>`).join("")}
               </select></label>
               <label>Range <select data-project-filter="rangeMode">${projectRangeOptions()}</select></label>
               <label class="checkbox-row"><input type="checkbox" data-project-filter="includeArchived" ${state.projectFilters.includeArchived ? "checked" : ""}> Include Archived</label>
@@ -2694,26 +2920,12 @@
             `)}
             <div class="stack">
               <section class="panel">
-                ${(dashboard.projects || []).length ? `
+              ${(dashboard.projects || []).length ? `
                   <div class="table-wrap">
                     <table class="project-dashboard-table">
                       <thead><tr>${renderSortHeader("projects", "project", "Project")}${renderSortHeader("projects", "status", "Status")}${renderSortHeader("projects", "tasks", "Tasks")}${renderSortHeader("projects", "progress", "Progress")}${renderSortHeader("projects", "hours", "Hours")}${renderSortHeader("projects", "users", "Users")}<th>Actions</th></tr></thead>
                       <tbody>
-                        ${sortedProjects.map((project) => `
-                          <tr class="project-summary-row" data-project-id="${escapeHtml(project["Project ID"])}">
-                            <td data-label="Project"><strong>${escapeHtml(project["Project Name"])}</strong></td>
-                            <td data-label="Status">${renderProjectStatusBadge(project.Status)}</td>
-                            <td data-label="Tasks">${escapeHtml(project["Completed Task Count"])} / ${escapeHtml(project["Task Count"])}</td>
-                            <td data-label="Progress">${escapeHtml(project["Progress Percent"])}%</td>
-                            <td data-label="Hours">${escapeHtml(project["Total Hours"])}</td>
-                            <td data-label="Users">${escapeHtml(project["User Count"])}</td>
-                            <td data-label="Actions">
-                              <div class="actions">
-                                ${renderIcon("select-project-dashboard", "data-project-id", project["Project ID"], "View project details", "&#128065;")}
-                                ${data.permissions.canManageProjects ? (project.Archived ? renderIcon("unarchive-project", "data-project-id", project["Project ID"], "Restore project", "&#10133;") : renderIcon("archive-project-dashboard", "data-project-id", project["Project ID"], "Archive project", "&#128465;", true)) : ""}
-                              </div>
-                            </td>
-                          </tr>`).join("")}
+                        ${sortedProjects.filter((project) => !String(project["Parent Project ID"] || "") || !sortedProjects.some((candidate) => String(candidate["Project ID"]) === String(project["Parent Project ID"]))).map((project) => renderProjectNode(project, 0)).join("")}
                       </tbody>
                     </table>
                   </div>` : '<div class="empty">No projects match this selection.</div>'}
@@ -2722,10 +2934,12 @@
                 <section class="panel">
                   <div class="toolbar">
                     <div>
-                      <h3>${escapeHtml(selectedProject.project["Project Name"])}</h3>
-                      <p>${renderProjectStatusBadge(selectedProject.project.Status)} &middot; ${escapeHtml(selectedProject.summary["Progress Percent"])}% complete</p>
+                      <h3>${escapeHtml(projectDisplayName(selectedProject.project))}</h3>
+                      <p>${renderProjectStatusBadge(selectedProject.project.Status)} &middot; ${escapeHtml(selectedProject.summary["Progress Percent"])}% complete${selectedProject.summary["Child Project Count"] ? ` &middot; ${escapeHtml(selectedProject.summary["Child Project Count"])} subproject${selectedProject.summary["Child Project Count"] === 1 ? "" : "s"}` : ""}</p>
                     </div>
                     <div class="actions">
+                      ${data.permissions.canManageProjects && !String(selectedProject.project["Parent Project ID"] || "") ? renderIcon("new-subproject", "data-project-id", selectedProject.project["Project ID"], "Add subproject", "&#10133;") : ""}
+                      ${data.permissions.canManageProjects ? renderIcon("edit-project-dashboard", "data-project-id", selectedProject.project["Project ID"], "Edit project", "&#9998;") : ""}
                       ${data.permissions.canManageProjects ? (selectedProject.project.Archived ? renderIcon("unarchive-project", "data-project-id", selectedProject.project["Project ID"], "Restore project", "&#10133;") : renderIcon("archive-project-dashboard", "data-project-id", selectedProject.project["Project ID"], "Archive project", "&#128465;", true)) : ""}
                       ${renderIcon("clear-project-filter", "", "", "Clear project selection", "&#10006;")}
                     </div>
@@ -2733,31 +2947,31 @@
                   <div class="metric-grid">
                     <div class="metric-card"><span>Total Hours</span><strong>${escapeHtml(selectedProject.metrics.totalHours)}</strong></div>
                     <div class="metric-card"><span>Avg / Week</span><strong>${escapeHtml(selectedProject.metrics.averageHoursPerWeek)}</strong></div>
-                    <div class="metric-card"><span>Tasks</span><strong>${escapeHtml(selectedProject.metrics.taskCount)}</strong></div>
+                    <div class="metric-card"><span>Tasks</span><strong>${escapeHtml(selectedProject.summary["Task Count"])}</strong></div>
                     <div class="metric-card"><span>Users</span><strong>${escapeHtml(selectedProject.metrics.userCount)}</strong></div>
                   </div>
-                  <h3>Related Tasks</h3>
+                  <h3>Tasks</h3>
                   ${selectedProject.tasks?.length ? `
-                    <div class="table-wrap">
-                      <table class="project-task-table">
-                        <thead><tr>${renderSortHeader("projectTasks", "task", "Task")}${renderSortHeader("projectTasks", "status", "Status")}${renderSortHeader("projectTasks", "assignees", "Assignees")}${renderSortHeader("projectTasks", "priority", "Priority")}<th>Actions</th></tr></thead>
-                        <tbody>
-                          ${sortTableRows(selectedProject.tasks, "projectTasks", {
-                            task: (task) => task.Title,
-                            status: (task) => task.Status,
-                            assignees: (task) => task.Assignees || selectedList(task["Assignee User IDs"]).join(", "),
-                            priority: (task) => task.Priority
-                          }).map((task) => `
-                            <tr>
-                              <td data-label="Task"><strong>${escapeHtml(task.Title)}</strong></td>
-                              <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}"${badgeStyleForStatus(task.Status)}>${escapeHtml(task.Status)}</span></td>
-                              <td data-label="Assignees">${renderAssigneeChips(task)}</td>
-                              <td data-label="Priority"><span class="badge">${escapeHtml(task.Priority || "")}</span></td>
-                              <td data-label="Actions">${task._permissions?.canEdit ? renderIcon("edit-project-task", "data-task-id", task["Task ID"], "Edit task", "&#9998;") : ""}</td>
-                            </tr>`).join("")}
-                        </tbody>
-                      </table>
-                    </div>` : '<div class="empty">No related tasks.</div>'}
+                    ${renderTaskTable(selectedProject.tasks, "projectTasks")}` : '<div class="empty">No related tasks.</div>'}
+                  ${selectedProject.childProjects?.length ? `
+                    <h3>Subprojects</h3>
+                    <div class="stack">
+                      ${selectedProject.childProjects.map((childProject) => renderCollapsibleSection(
+                        `<div class="hierarchy-summary"><strong>${escapeHtml(projectDisplayName(childProject.project))}</strong> ${renderProjectStatusBadge(childProject.summary.Status)} <span class="badge">${escapeHtml(childProject.summary["Progress Percent"])}%</span></div>`,
+                        `
+                          <div class="metric-grid">
+                            <div class="metric-card"><span>Tasks</span><strong>${escapeHtml(childProject.summary["Task Count"])}</strong></div>
+                            <div class="metric-card"><span>Hours</span><strong>${escapeHtml(childProject.metrics.totalHours)}</strong></div>
+                            <div class="metric-card"><span>Users</span><strong>${escapeHtml(childProject.metrics.userCount)}</strong></div>
+                            <div class="metric-card"><span>Progress</span><strong>${escapeHtml(childProject.summary["Progress Percent"])}%</strong></div>
+                          </div>
+                          <h4>Tasks</h4>
+                          ${childProject.tasks?.length ? renderTaskTable(childProject.tasks, "projectTasks") : '<div class="empty">No related tasks.</div>'}
+                        `,
+                        `${childProject.summary["Task Count"]} leaf task${childProject.summary["Task Count"] === 1 ? "" : "s"}`,
+                        false
+                      )).join("")}
+                    </div>` : ""}
                   <div class="detail-grid" style="margin-top: 12px;">
                     <div>
                       <h3>Task Time</h3>
@@ -2915,7 +3129,7 @@
                 <thead><tr><th>Project</th><th>Status</th><th>Active</th><th>Actions</th></tr></thead>
                 <tbody>${data.projects.map((project) => `
                   <tr>
-                    <td data-label="Project">${escapeHtml(project["Project Name"])}</td>
+                    <td data-label="Project">${escapeHtml(projectDisplayName(project))}</td>
                     <td data-label="Status">${renderProjectStatusBadge(project.Status)}</td>
                     <td data-label="Active">${escapeHtml(project.Active)}</td>
                     <td data-label="Actions">
@@ -3062,7 +3276,7 @@
                   <thead><tr><th>Project</th><th>Status</th><th>Active</th></tr></thead>
                   <tbody>${data.projects.map((project) => `
                     <tr>
-                      <td data-label="Project">${escapeHtml(project["Project Name"])}</td>
+                      <td data-label="Project">${escapeHtml(projectDisplayName(project))}</td>
                       <td data-label="Status">${escapeHtml(project.Status)}</td>
                       <td data-label="Active">${escapeHtml(project.Active)}</td>
                     </tr>`).join("")}</tbody>
@@ -3081,7 +3295,7 @@
               <form data-form="category" class="stack">
                 <input type="hidden" name="categoryId">
                 <label>Category <input name="category" required></label>
-                <label>Default Project <select name="defaultProjectId">${options(data.projects, "Project ID", "Project Name", "", true)}</select></label>
+                <label>Default Project <select name="defaultProjectId">${options(data.projects, "Project ID", "Display Name", "", true)}</select></label>
                 <label><input name="active" type="checkbox" checked> Active</label>
                 <button class="primary" type="submit">Save Category</button>
               </form>
@@ -3331,9 +3545,19 @@
         document.querySelectorAll("[data-tag-picker]").forEach(updateTagPicker);
       }
 
-      function openTaskModal(task = null) {
+      function openTaskModal(task = null, preset = {}) {
         const data = state.data;
         const isEdit = Boolean(task);
+        const canManageHierarchy = Boolean(data.permissions.canManageProjects);
+        const taskId = task?.["Task ID"] || "";
+        const parentTaskId = preset.parentTaskId || task?.["Parent Task ID"] || "";
+        const canReparent = canManageHierarchy && (!task || Number(task?.["Child Task Count"] || 0) === 0);
+        const taskOptions = options(rootTaskOptions(taskId), "Task ID", "Display Name", parentTaskId, true, "None");
+        const inheritedProject = parentTaskId ? (state.data.tasks || []).find((item) => String(item["Task ID"]) === String(parentTaskId))?.["Project ID"] || "" : "";
+        const initialProjectId = inheritedProject || task?.["Project ID"] || preset.projectId || "";
+        const parentField = canManageHierarchy
+          ? `<label>Parent Task <select name="parentTaskId"${canReparent ? "" : " disabled"}>${taskOptions}</select></label>`
+          : `<label>Parent Task <input value="${escapeHtml(task?.["Parent Task Title"] || (task?.["Parent Task ID"] ? task["Parent Task ID"] : "None"))}" disabled></label>`;
         setModal(`
           <div class="modal-backdrop">
             <form class="modal stack" data-form="task-modal">
@@ -3347,8 +3571,12 @@
               <div class="form-grid two">
                 <label>Status <select name="status">${constantOptions(data.constants.taskStatuses, task?.Status || "In Progress", false)}</select></label>
                 <label>Due Date <input name="dueDate" type="date" value="${escapeHtml(task?.["Due Date"] || "")}"></label>
-                <label>Project <select name="projectId">${options(data.projects, "Project ID", "Project Name", task?.["Project ID"], true)}</select></label>
+                <label>Project <select name="projectId">${options(data.projects, "Project ID", "Display Name", initialProjectId, true)}</select></label>
                 <label>Priority <select name="priority">${constantOptions(data.constants.priorities, task?.Priority || "Medium", false)}</select></label>
+              </div>
+              <div class="form-grid two">
+                ${parentField}
+                <div class="help">Subtasks inherit the parent task project and stay at one nesting level.</div>
               </div>
               <label>Assignees ${renderCheckboxList("assigneeUserIds", data.users || [], "User ID", "Full Name", selectedList(task?.["Assignee User IDs"]))}</label>
               <label>Tags ${renderTagPicker(selectedList(task?.Tags))}</label>
@@ -3356,6 +3584,7 @@
             </form>
           </div>`);
         updateAllTagPickers();
+        setTimeout(() => syncTaskParentFields(document.querySelector('#modal-root [data-form="task-modal"]')), 0);
       }
 
       function openTimeModal(entry) {
@@ -3381,9 +3610,9 @@
                 <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" value="${escapeHtml(entry.Hours)}"></label>
               </div>
               <div class="form-grid two">
-                <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Title", entry["Task ID"], true)}</select></label>
+                <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Display Name", entry["Task ID"], true)}</select></label>
                 <label>Category <select name="categoryId">${options(tracker.categories || [], "Category ID", "Category", entry["Category ID"], true)}</select></label>
-                <label>Project <select name="projectId">${options(data.projects || [], "Project ID", "Project Name", entry["Project ID"], true)}</select></label>
+                <label>Project <select name="projectId">${options(data.projects || [], "Project ID", "Display Name", entry["Project ID"], true)}</select></label>
               </div>
               <label>Notes <textarea name="notes">${escapeHtml(entry.Notes || "")}</textarea></label>
               <div data-time-lock-fields>${renderTimeLockFields(selectedPeriod)}</div>
@@ -3483,7 +3712,9 @@
         setTimeout(() => syncUserPayFields(document.querySelector('#modal-root [data-form="user"]')), 0);
       }
 
-      function openProjectModal(project = null) {
+      function openProjectModal(project = null, preset = {}) {
+        const canManageHierarchy = Boolean(state.data.permissions.canManageProjects);
+        const canReparent = canManageHierarchy && (!project || Number(project?.["Child Project Count"] || 0) === 0);
         setModal(`
           <div class="modal-backdrop">
             <form class="modal stack" data-form="project">
@@ -3491,8 +3722,14 @@
               <input type="hidden" name="projectId" value="${escapeHtml(project?.["Project ID"] || "")}">
               <label>Project Name <input name="projectName" value="${escapeHtml(project?.["Project Name"] || "")}" required></label>
               <label>Description <textarea name="description">${escapeHtml(project?.Description || "")}</textarea></label>
-              <label>Status <select name="status">${constantOptions(state.data.constants.projectStatuses || ["Not Started", "In Progress", "Holding", "Completed"], project?.Status || "Not Started", false)}</select></label>
+              <div class="form-grid two">
+                <label>Status <select name="status">${constantOptions(state.data.constants.projectStatuses || ["Not Started", "In Progress", "Holding", "Completed"], project?.Status || "Not Started", false)}</select></label>
+                ${canManageHierarchy
+                  ? `<label>Parent Project <select name="parentProjectId"${canReparent ? "" : " disabled"}>${options(rootProjectOptions(project?.["Project ID"]), "Project ID", "Display Name", preset.parentProjectId || project?.["Parent Project ID"] || "", true, "None")}</select></label>`
+                  : `<label>Parent Project <input value="${escapeHtml(project?.["Parent Project Name"] || "None")}" disabled></label>`}
+              </div>
               <label class="checkbox-row"><input name="active" type="checkbox" ${String(project?.Active) !== "false" ? "checked" : ""}> Active</label>
+              <div class="help">Subprojects stay one level deep. A project with child projects cannot be nested under another project.</div>
               <div class="actions"><button class="primary" type="submit">Save Project</button></div>
             </form>
           </div>`);
@@ -3506,7 +3743,7 @@
               <div class="modal-header"><h3>${category ? "Edit Category" : "Create Category"}</h3><button type="button" data-action="close-modal">Close</button></div>
               <input type="hidden" name="categoryId" value="${escapeHtml(category?.["Category ID"] || "")}">
               <label>Category <input name="category" value="${escapeHtml(category?.Category || "")}" required></label>
-              <label>Default Project <select name="defaultProjectId">${options(data.projects, "Project ID", "Project Name", category?.["Default Project ID"], true)}</select></label>
+              <label>Default Project <select name="defaultProjectId">${options(data.projects, "Project ID", "Display Name", category?.["Default Project ID"], true)}</select></label>
               <label class="checkbox-row"><input name="active" type="checkbox" ${String(category?.Active) !== "false" ? "checked" : ""}> Active</label>
               <div class="actions"><button class="primary" type="submit">Save Category</button></div>
             </form>
@@ -3647,6 +3884,22 @@
           render();
           return;
         }
+        const projectNodeToggle = event.target.closest("[data-project-id][data-action='toggle-project-node']");
+        if (projectNodeToggle) {
+          closeActionMenus();
+          const projectId = projectNodeToggle.dataset.projectId;
+          setProjectNodeExpanded(projectId, !isProjectNodeExpanded(projectId));
+          render();
+          return;
+        }
+        const taskNodeToggle = event.target.closest("[data-task-id][data-action='toggle-task-node']");
+        if (taskNodeToggle) {
+          closeActionMenus();
+          const taskId = taskNodeToggle.dataset.taskId;
+          setTaskNodeExpanded(taskId, !isTaskNodeExpanded(taskId));
+          render();
+          return;
+        }
         const actionMenuTrigger = event.target.closest("[data-action-menu-trigger]");
         if (actionMenuTrigger) {
           const menu = actionMenuTrigger.closest("[data-action-popover]");
@@ -3690,6 +3943,8 @@
             render();
           } else if (action === "new-task") {
             openTaskModal();
+          } else if (action === "new-subtask") {
+            openTaskModal(null, { parentTaskId: event.target.closest("[data-task-id]").dataset.taskId });
           } else if (action === "save-board-view") {
             openBoardViewModal();
           } else if (action === "clear-board-filters") {
@@ -3791,6 +4046,10 @@
             openProjectModal();
           } else if (action === "edit-project") {
             openProjectModal(state.data.projects.find((project) => project["Project ID"] === event.target.closest("[data-project-id]").dataset.projectId));
+          } else if (action === "edit-project-dashboard") {
+            openProjectModal(state.data.projects.find((project) => project["Project ID"] === event.target.closest("[data-project-id]").dataset.projectId));
+          } else if (action === "new-subproject") {
+            openProjectModal(null, { parentProjectId: event.target.closest("[data-project-id]").dataset.projectId });
           } else if (action === "edit-project-task") {
             const taskId = event.target.closest("[data-task-id]").dataset.taskId;
             const selectedProject = state.data.projectDashboard?.selectedProject;
@@ -3944,6 +4203,9 @@
           state.boardGrouping = event.target.value;
           state.boardGroupExpanded = {};
           render();
+        }
+        if (event.target.closest('[data-form="task-modal"]') && event.target.name === "parentTaskId") {
+          syncTaskParentFields(event.target.closest('[data-form="task-modal"]'));
         }
         if (event.target.matches('[data-action="load-board-view"]')) {
           state.selectedBoardViewId = event.target.value;
@@ -4178,6 +4440,7 @@
               status: form.status.value,
               dueDate: form.dueDate.value,
               projectId: form.projectId.value,
+              parentTaskId: form.parentTaskId?.value || "",
               priority: form.priority.value,
               assigneeUserIds: selectedAssignees,
               tags: selectedTags
@@ -4286,6 +4549,7 @@
               projectName: form.projectName.value,
               description: form.description.value,
               status: form.status.value,
+              parentProjectId: form.parentProjectId?.value || "",
               active: form.active.checked
             });
             form.reset();

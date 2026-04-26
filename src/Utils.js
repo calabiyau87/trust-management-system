@@ -11,6 +11,13 @@ var TrustOpsUtils = (function () {
     return String(value || "").trim();
   }
 
+  function normalizeOptionalLink(value) {
+    var text = normalizeText(value);
+    if (!text) return "";
+    if (["all", "none", "null", "undefined"].indexOf(text.toLowerCase()) !== -1) return "";
+    return text;
+  }
+
   function normalizeKey(value) {
     return normalizeText(value).toLowerCase();
   }
@@ -151,6 +158,7 @@ var TrustOpsUtils = (function () {
     nowIso: nowIso,
     normalizeEmail: normalizeEmail,
     normalizeText: normalizeText,
+    normalizeOptionalLink: normalizeOptionalLink,
     normalizeKey: normalizeKey,
     toBoolean: toBoolean,
     toNumber: toNumber,

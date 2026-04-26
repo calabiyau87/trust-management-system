@@ -8,6 +8,7 @@ Trust Ops is a Google Workspace MVP for internal trust and property operations. 
 - Canonical Sheets tables for users, projects, tasks, time entries, categories, pay periods, pay summaries, audit log, and settings.
 - Server-side role and ownership checks for every write.
 - Assignment Board with filters and role-aware task actions.
+- One-level nested subprojects and subtasks with collapsible UI and progress rollups.
 - Task and general time entry creation.
 - User self-service time entry editing.
 - Owner/Admin all-user time review and editing.
@@ -100,6 +101,7 @@ GitHub pushes are branch-routed as follows:
 - All writes re-fetch the current server-side user context.
 - Managers can create time entries for users but cannot edit existing entries.
 - Regular Users can view all tasks but only add time to assigned tasks.
+- Assigned users can complete leaf subtasks even when they cannot edit the parent task.
 - Owner/Admin can edit all time entries, lock/unlock periods, and override locked periods with an audit reason.
 - Locked-period changes by non-overriding users create approval requests.
 - Pay summaries are calculated live while a period is open and snapshotted when locked.

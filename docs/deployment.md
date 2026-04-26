@@ -75,6 +75,7 @@ Host the sign-in page on GitHub Pages from this repository:
 - The published site root should be the login page.
 - Add `https://<your-github-user>.github.io` to the OAuth client's authorized JavaScript origins.
 - The login page receives `client_id` and `return_url` query parameters from the Apps Script app and redirects back with the Google ID token in the URL fragment.
+- The Apps Script deployment should pass its canonical web app URL to the bridge; that keeps the return target on the actual deployed app instead of the internal iframe URL.
 
 Example deployment URL:
 
@@ -93,6 +94,8 @@ Deploy as a web app:
   - `TRUST_OPS_GITHUB_PAGES_AUTH_URL`
 
 Regular users should only need access to the web app URL. They do not need direct spreadsheet sharing because the app verifies Google Sign-In against the `Users` allowlist and executes server-side as the script owner.
+
+Subprojects and subtasks are rendered as collapsible children in the app UI. They default to collapsed on load, and their progress rolls up from completed leaf items only.
 
 ## Staging Smoke Test
 
@@ -131,6 +134,7 @@ If a newly added user cannot enter:
 - Running `setupTrustOps(...)` or `syncSpreadsheetAccess()` is optional and should be reserved for trusted operators who need sheet access.
 - If the app cannot load, confirm the deployment is still set to execute as `Me` and that the user has access to the web app URL.
 - If the login bridge says the client ID or return URL is missing, confirm the GitHub Pages site root is the login page and that the Apps Script app is passing both query parameters.
+- If the browser returns to a blank page after sign-in, confirm the bridge is targeting the deployed web app URL and not the internal `script.googleusercontent.com` iframe URL.
 
 ## OAuth Scope Notes
 

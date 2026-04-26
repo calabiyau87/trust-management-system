@@ -33,6 +33,7 @@ Operational access:
 - View the Assignment Board.
 - Default preset can create/edit tasks, create time entries for others, and manage projects.
 - Additional task, time, pay-period, and settings permissions are controlled by Manager Permission overrides.
+- Hierarchy creation and reparenting stay privileged; subprojects and subtasks are managed server-side.
 
 Managers can be granted approval, lock/unlock, edit, delete, and settings capabilities through explicit overrides.
 
@@ -47,6 +48,7 @@ Basic access:
 - View own pay summary.
 - Set their own light/dark/system theme.
 - Upload their own profile image.
+- Assigned users can complete leaf subtasks even if they cannot edit the parent task.
 
 Users can be granted explicit capabilities, including creating their own tasks, managing tags, and changing their profile color. Tasks a user creates can be edited and deleted by that user unless a broader server-side rule blocks the mutation.
 

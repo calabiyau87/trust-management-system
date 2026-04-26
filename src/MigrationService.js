@@ -314,6 +314,7 @@ var TrustOpsMigrationService = (function () {
     if (TrustOpsPermissionService.canManageTags({ userId: owner["User ID"], role: TrustOpsConfig.ROLES.OWNER })) {
       TrustOpsTagService.seedFromTaskTags({ userId: owner["User ID"], email: TrustOpsUtils.normalizeEmail(ownerEmail), role: TrustOpsConfig.ROLES.OWNER });
     }
+    TrustOpsUserService.syncSpreadsheetAccess({ userId: owner["User ID"], email: TrustOpsUtils.normalizeEmail(ownerEmail), role: TrustOpsConfig.ROLES.OWNER });
     repairTaskAssigneeAssignments({ userId: owner["User ID"], email: TrustOpsUtils.normalizeEmail(ownerEmail), role: TrustOpsConfig.ROLES.OWNER });
     TrustOpsPayService.getCurrentPayPeriod();
     TrustOpsAuditService.log(

@@ -25,7 +25,12 @@ Pay types:
 
 Stable ID: `Project ID`
 
-Stores project name, description, derived/manual status, active state, timestamps, and archive state.
+Stores project name, description, derived/manual status, active state, timestamps, archive state, and an optional one-level parent link:
+
+- `Parent Project ID`
+- `Parent Project Name`
+
+Subprojects are first-class rows. The UI renders them as collapsible children under their parent project. Rollup progress is derived from leaf tasks across the parent project and its child subprojects.
 
 Project status rules:
 
@@ -34,12 +39,18 @@ Project status rules:
 - `Completed` when all active tasks are complete.
 - `Holding` is a manual status.
 - `Archived` is separate from the project status field.
+- Progress calculations ignore archived descendants and only count completed leaf tasks.
 
 ## Tasks
 
 Stable ID: `Task ID`
 
-Canonical task source of truth. Stores title, notes, status, due date, assignee names and IDs, project, priority, tags, creator, completion metadata, source, deferred integration fields, and archive state.
+Canonical task source of truth. Stores title, notes, status, due date, assignee names and IDs, project, priority, tags, creator, completion metadata, source, deferred integration fields, archive state, and an optional one-level parent link:
+
+- `Parent Task ID`
+- `Parent Task Title`
+
+Subtasks are first-class rows. The UI renders them as collapsible children under their parent task. A parent task's progress is based on completion of its leaf subtasks. Assigned users can complete leaf subtasks even when they cannot edit the parent task itself.
 
 Statuses:
 
@@ -55,6 +66,12 @@ Priorities:
 - Medium
 - High
 - Urgent
+
+Hierarchy rules:
+
+- One level only. A project may have subprojects, and a task may have subtasks, but no deeper nesting is allowed.
+- Parent assignments are privileged changes and are audited.
+- The app keeps the flat Sheets rows as the source of truth and derives the tree in server-side services and the client UI.
 
 ## Time Entries
 

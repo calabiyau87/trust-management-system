@@ -69,7 +69,9 @@ var TrustOpsPermissionService = (function () {
   }
 
   function canCompleteTask(context, task) {
-    return canEditTask(context, task);
+    if (!context || !task) return false;
+    if (canEditTask(context, task)) return true;
+    return isAssignedToTask(context, task) && Number(task["Child Task Count"] || 0) === 0;
   }
 
   function getAssigneeIds(task) {

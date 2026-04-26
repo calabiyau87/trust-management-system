@@ -32,9 +32,18 @@ google.script.run wrapper -> AuthService (verifies Google ID token) -> Permissio
 
 The browser signs in on GitHub Pages, receives a Google ID token, and passes that token back to the Apps Script web app in the URL fragment. The Apps Script UI stores the token in session storage and attaches it to every `google.script.run` wrapper invocation.
 
+Projects and tasks are hierarchical in the UI, but the Sheets model stays flat. Server services derive a one-level tree for subprojects and subtasks, compute rollup progress from completed leaf items, and keep parent links as additive columns only.
+
 ## Storage Model
 
 Sheets are treated as normalized tables with stable IDs. Row numbers are internal implementation details only. `SheetService` owns table reads, appends, ID lookup, updates, header creation, and write locking.
+
+The `Projects` and `Tasks` sheets now include optional parent-link columns so the UI can render collapsible nested lists without a destructive migration:
+
+- `Projects.Parent Project ID`
+- `Projects.Parent Project Name`
+- `Tasks.Parent Task ID`
+- `Tasks.Parent Task Title`
 
 ## Concurrency
 
