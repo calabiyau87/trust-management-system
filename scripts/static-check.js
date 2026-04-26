@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, "..");
 const requiredFiles = [
   "README.md",
   "package.json",
+  ".env.example",
   ".clasp.example.json",
   "AGENTS.md",
   "src/appsscript.json",
@@ -36,6 +37,7 @@ const requiredFiles = [
   "docs/data-model.md",
   "docs/permissions.md",
   "docs/deployment.md",
+  ".github/workflows/clasp-sync.yml",
   "docs/roadmap.md",
   "docs/agents/backend-agent.md",
   "docs/agents/frontend-agent.md",

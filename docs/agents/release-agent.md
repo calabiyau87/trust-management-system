@@ -9,9 +9,9 @@
 
 ## Responsibilities
 
-- Keep `main` production-oriented and feature branches testing-oriented.
+- Keep `main` production-oriented, `testing` testing-oriented, and feature branches working-oriented.
 - Confirm `.clasp.json` is generated and untracked before release.
-- Verify production and testing script IDs come from environment variables.
+- Verify production, testing, and working script IDs come from environment variables.
 - Confirm staging smoke tests pass before recommending merge/deploy.
 - Document rollback steps.
 
@@ -23,7 +23,7 @@
 ## Validation Checklist
 
 - Current branch is correct.
-- `TRUST_OPS_PRODUCTION_SCRIPT_ID` and `TRUST_OPS_TESTING_SCRIPT_ID` are documented.
+- `TRUST_OPS_PRODUCTION_SCRIPT_ID`, `TRUST_OPS_TESTING_SCRIPT_ID`, and `TRUST_OPS_WORKING_SCRIPT_ID` are documented.
 - `npm run check` passes.
 - Release notes include data model and permission changes.
 

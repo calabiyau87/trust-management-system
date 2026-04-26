@@ -9,15 +9,16 @@
 
 ## Configure clasp
 
-Do not commit `.clasp.json`. It is generated locally from environment variables.
+Do not commit `.clasp.json`. It is generated locally from environment variables or from `.env` / `.env.local`.
 
 ```powershell
-$env:TRUST_OPS_PRODUCTION_SCRIPT_ID="PRODUCTION_SCRIPT_ID"
-$env:TRUST_OPS_TESTING_SCRIPT_ID="TESTING_SCRIPT_ID"
+copy .env.example .env
 npm run clasp:configure
 ```
 
-`main` uses `TRUST_OPS_PRODUCTION_SCRIPT_ID`. Any other branch uses `TRUST_OPS_TESTING_SCRIPT_ID`.
+`main` uses `TRUST_OPS_PRODUCTION_SCRIPT_ID`. `testing` uses `TRUST_OPS_TESTING_SCRIPT_ID`. Any other branch uses `TRUST_OPS_WORKING_SCRIPT_ID`.
+
+For local development, put branch-specific script IDs in `.env` or `.env.local`. `scripts/configure-clasp.js` will load those files automatically if the shell does not already define the variables.
 
 ## Push Source
 
@@ -26,6 +27,32 @@ npm run check
 npm run clasp:login
 npm run clasp:push
 ```
+
+Local pushes follow the same branch routing as GitHub Actions.
+
+## GitHub Actions Sync
+
+Use a push workflow to mirror GitHub branches into the matching Apps Script project:
+
+- `main` pushes to production.
+- `testing` pushes to testing.
+- every other branch pushes to working.
+
+Required GitHub secrets:
+
+- `TRUST_OPS_PRODUCTION_SCRIPT_ID`
+- `TRUST_OPS_TESTING_SCRIPT_ID`
+- `TRUST_OPS_WORKING_SCRIPT_ID`
+- `CLASPRC_JSON` for clasp auth
+
+For GitHub Actions, keep those values in repository secrets rather than in files.
+
+The workflow should run on `push` only, not pull requests. That keeps the GitHub-to-clasp sync aligned with the branch promotion path:
+
+1. Create a feature/update/working branch and push it to GitHub.
+2. GitHub Actions pushes that branch to the working Apps Script project.
+3. Merge into `testing` and push to GitHub to update the testing Apps Script project.
+4. After verification, merge into `main` and push to GitHub to update production.
 
 ## Bootstrap Staging
 

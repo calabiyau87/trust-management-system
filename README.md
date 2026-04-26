@@ -55,8 +55,7 @@ The checker validates required files, JSON manifests, Apps Script JavaScript syn
 3. Set Apps Script target environment variables:
 
 ```powershell
-$env:TRUST_OPS_PRODUCTION_SCRIPT_ID="PRODUCTION_SCRIPT_ID"
-$env:TRUST_OPS_TESTING_SCRIPT_ID="TESTING_SCRIPT_ID"
+copy .env.example .env
 ```
 
 4. Log in and push:
@@ -82,6 +81,14 @@ Deploy the Apps Script web app as:
 - Access: your Workspace domain or explicit allowed users
 
 Use staging first. Do not connect the production spreadsheet until auth, permissions, time entry, pay summary, and audit smoke tests pass.
+
+For local work, keep your script IDs in `.env` or `.env.local`. The clasp helper reads those files automatically when the corresponding shell variables are not set.
+
+GitHub pushes are branch-routed as follows:
+
+- `main` -> production Apps Script project
+- `testing` -> testing Apps Script project
+- any other branch -> working Apps Script project
 
 ## Important Runtime Notes
 

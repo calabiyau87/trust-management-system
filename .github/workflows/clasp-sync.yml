@@ -1,0 +1,40 @@
+name: Sync clasp
+
+on:
+  push:
+    branches:
+      - "**"
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Run checks
+        run: npm run check
+
+      - name: Restore clasp auth
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: node -e "const fs=require('fs'); const os=require('os'); const path=require('path'); const auth=process.env.CLASPRC_JSON; if (!auth) { throw new Error('Missing CLASPRC_JSON secret.'); } fs.writeFileSync(path.join(os.homedir(), '.clasprc.json'), auth, 'utf8');"
+
+      - name: Configure clasp target
+        env:
+          TRUST_OPS_PRODUCTION_SCRIPT_ID: ${{ secrets.TRUST_OPS_PRODUCTION_SCRIPT_ID }}
+          TRUST_OPS_TESTING_SCRIPT_ID: ${{ secrets.TRUST_OPS_TESTING_SCRIPT_ID }}
+          TRUST_OPS_WORKING_SCRIPT_ID: ${{ secrets.TRUST_OPS_WORKING_SCRIPT_ID }}
+        run: node scripts/configure-clasp.js --branch "${{ github.ref_name }}"
+
+      - name: Push to Apps Script
+        run: npx --yes @google/clasp push

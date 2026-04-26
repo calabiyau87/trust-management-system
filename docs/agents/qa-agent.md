@@ -11,7 +11,7 @@
 - Verify role behavior for Owner, Admin, Manager, and User.
 - Exercise locked and unlocked pay periods.
 - Test create/edit/delete/request flows for tasks and time entries.
-- Confirm branch-based clasp target generation.
+- Confirm branch-based clasp target generation for `main`, `testing`, and working branches.
 - Capture failures with exact role, input, expected behavior, and actual behavior.
 
 ## Non-Goals
@@ -22,7 +22,7 @@
 ## Validation Checklist
 
 - `npm run check`
-- `npm run clasp:configure` with test env vars on a feature branch.
+- `npm run clasp:configure` with working env vars on a feature branch.
 - Staging Apps Script web app loads.
 - Staging smoke test passes from `docs/deployment.md`.
 
