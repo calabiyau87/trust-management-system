@@ -30,6 +30,8 @@
         --sticky-region-height: 0px;
         --sticky-top: var(--app-topbar-height);
         --side-pane-top: calc(var(--app-topbar-height) + var(--sticky-region-height));
+        --modal-surface: #fbfcfd;
+        --modal-border: #dbe3ea;
       }
 
       body[data-theme="dark"] {
@@ -49,6 +51,8 @@
         --shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
         --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.2);
         --focus-ring: 0 0 0 3px rgba(87, 172, 161, 0.18);
+        --modal-surface: #1a2027;
+        --modal-border: #384651;
       }
 
       * {
@@ -382,6 +386,82 @@
         position: sticky;
         top: 0;
         z-index: 1;
+      }
+
+      th.sortable-th {
+        padding: 0;
+      }
+
+      .sort-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        min-height: 100%;
+        border: 0;
+        border-radius: 0;
+        padding: 11px 10px;
+        background: transparent;
+        color: inherit;
+        box-shadow: none;
+        transform: none;
+        text-align: left;
+        font-size: inherit;
+        font-weight: inherit;
+      }
+
+      .sort-header:hover,
+      .sort-header:focus-visible {
+        background: rgba(127, 143, 156, 0.08);
+        box-shadow: none;
+        transform: none;
+      }
+
+      .sort-indicator {
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .grouped-board {
+        display: grid;
+        gap: 10px;
+      }
+
+      .board-group {
+        display: grid;
+        gap: 10px;
+      }
+
+      .board-group-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface-muted);
+        color: var(--text);
+        box-shadow: var(--shadow-soft);
+      }
+
+      .board-group-toggle:hover,
+      .board-group-toggle:focus-visible {
+        background: var(--surface);
+      }
+
+      .board-group-toggle strong {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .board-group-body[hidden] {
+        display: none !important;
       }
 
       body[data-theme="dark"] th {
@@ -890,21 +970,24 @@
         place-items: center;
         padding: 18px;
         background: rgba(16, 24, 32, 0.38);
+        backdrop-filter: blur(4px) saturate(1.05);
+        -webkit-backdrop-filter: blur(4px) saturate(1.05);
         z-index: 20;
       }
 
       .modal-backdrop[data-modal-level="2"] {
         z-index: 30;
-        background: rgba(16, 24, 32, 0.24);
+        background: rgba(16, 24, 32, 0.26);
       }
 
       .modal {
         width: min(760px, 100%);
         max-height: 92vh;
         overflow: auto;
-        background: var(--surface);
+        background: var(--modal-surface);
+        border: 1px solid var(--modal-border);
         border-radius: var(--radius-lg);
-        box-shadow: 0 22px 64px rgba(0, 0, 0, 0.24);
+        box-shadow: 0 22px 64px rgba(0, 0, 0, 0.28);
         padding: 20px;
       }
 
@@ -917,6 +1000,65 @@
 
       .modal-header h3 {
         margin: 0;
+      }
+
+      .pay-detail-modal .modal-header {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        margin-bottom: 16px;
+        padding: 2px 0 16px;
+        background: var(--modal-surface);
+        border-bottom: 1px solid var(--modal-border);
+      }
+
+      .collapsible-section {
+        border: 1px solid var(--modal-border);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+        box-shadow: var(--shadow-soft);
+        overflow: hidden;
+      }
+
+      .collapsible-section + .collapsible-section {
+        margin-top: 12px;
+      }
+
+      .collapsible-section > summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        list-style: none;
+        cursor: pointer;
+        font-weight: 800;
+        color: var(--text);
+      }
+
+      .collapsible-section > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .collapsible-section > summary::after {
+        content: "▸";
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1;
+      }
+
+      .collapsible-section[open] > summary::after {
+        content: "▾";
+      }
+
+      .collapsible-meta {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .collapsible-body {
+        padding: 0 16px 16px;
       }
 
       .metric-grid {
@@ -1024,11 +1166,6 @@
           grid-template-columns: 1fr;
         }
 
-        .side-pane {
-          position: static;
-          max-height: none;
-        }
-
         table,
         thead,
         tbody,
@@ -1086,6 +1223,8 @@
         paySidebarCollapsed: false,
         projectFilters: { rangeMode: "current", includeArchived: false, projectId: "" },
         projectSidebarCollapsed: false,
+        tableSorts: {},
+        boardGroupExpanded: {},
         settingsSection: "profile",
         settingsSidebarCollapsed: false,
         settingsGroupOpen: true,
@@ -1295,6 +1434,85 @@
             <input type="checkbox" name="${escapeHtml(name)}" value="${escapeHtml(item[valueKey])}" ${selected.has(String(item[valueKey])) ? "checked" : ""}>
             <span>${escapeHtml(item[labelKey] || item[valueKey])}</span>
           </label>`).join("")}</div>`;
+      }
+
+      function tableSortConfig(tableKey) {
+        return state.tableSorts?.[tableKey] || null;
+      }
+
+      function normalizeSortValue(value) {
+        if (value === null || value === undefined) return { type: 2, value: "" };
+        if (typeof value === "number" && Number.isFinite(value)) return { type: 0, value };
+        const text = String(value).trim();
+        if (!text) return { type: 2, value: "" };
+        const numericText = text.replace(/[$,%]/g, "").trim();
+        if (/^-?\d+(\.\d+)?$/.test(numericText)) {
+          return { type: 0, value: Number(numericText) };
+        }
+        const dateValue = Date.parse(text);
+        if (!Number.isNaN(dateValue) && /^\d{4}-\d{2}-\d{2}/.test(text)) {
+          return { type: 0, value: dateValue };
+        }
+        return { type: 1, value: text.toLowerCase() };
+      }
+
+      function compareSortValues(left, right, direction) {
+        const multiplier = direction === "desc" ? -1 : 1;
+        if (left.type !== right.type) {
+          return (left.type - right.type) * multiplier;
+        }
+        if (left.value < right.value) return -1 * multiplier;
+        if (left.value > right.value) return 1 * multiplier;
+        return 0;
+      }
+
+      function sortTableRows(rows, tableKey, columns) {
+        const sort = tableSortConfig(tableKey);
+        const accessor = sort && sort.key ? columns?.[sort.key] : null;
+        if (!accessor) return (rows || []).slice();
+        return (rows || []).slice().sort((left, right) => compareSortValues(
+          normalizeSortValue(accessor(left)),
+          normalizeSortValue(accessor(right)),
+          sort.direction || "asc"
+        ));
+      }
+
+      function setTableSort(tableKey, columnKey, defaultDirection = "asc") {
+        const current = tableSortConfig(tableKey);
+        const direction = current && current.key === columnKey
+          ? (current.direction === "asc" ? "desc" : "asc")
+          : defaultDirection;
+        state.tableSorts = Object.assign({}, state.tableSorts, {
+          [tableKey]: { key: columnKey, direction: direction }
+        });
+      }
+
+      function renderSortHeader(tableKey, columnKey, label, defaultDirection = "asc") {
+        const sort = tableSortConfig(tableKey);
+        const active = sort && sort.key === columnKey;
+        const direction = active ? (sort.direction || defaultDirection) : "";
+        const indicator = active ? (direction === "desc" ? "&#9660;" : "&#9650;") : "&nbsp;";
+        return `
+          <th class="sortable-th">
+            <button type="button" class="sort-header" data-sort-table="${escapeHtml(tableKey)}" data-sort-column="${escapeHtml(columnKey)}" data-sort-direction="${escapeHtml(defaultDirection)}" aria-sort="${active ? (direction === "desc" ? "descending" : "ascending") : "none"}">
+              <span>${escapeHtml(label)}</span>
+              <span class="sort-indicator">${indicator}</span>
+            </button>
+          </th>`;
+      }
+
+      function boardGroupStateKey(groupKey) {
+        return `${state.boardGrouping || ""}::${String(groupKey || "")}`;
+      }
+
+      function isBoardGroupExpanded(groupKey) {
+        return Boolean(state.boardGroupExpanded?.[boardGroupStateKey(groupKey)]);
+      }
+
+      function setBoardGroupExpanded(groupKey, expanded) {
+        state.boardGroupExpanded = Object.assign({}, state.boardGroupExpanded, {
+          [boardGroupStateKey(groupKey)]: Boolean(expanded)
+        });
       }
 
       function renderIcon(action, idName, idValue, label, symbol, danger = false) {
@@ -1631,17 +1849,26 @@
 
       function renderBoardResults(tasks) {
         if (!tasks.length) return '<div class="empty">No tasks match the current filters.</div>';
-        if (!state.boardGrouping) return renderTaskTable(tasks);
+        if (!state.boardGrouping) return renderTaskTable(tasks, "board");
         const grouped = tasks.reduce((acc, task) => {
           const key = groupTaskKey(task);
           acc[key] = acc[key] || [];
           acc[key].push(task);
           return acc;
         }, {});
-        return Object.keys(grouped).sort().map((key) => `
-          <div class="group-heading">${escapeHtml(key)} &middot; ${grouped[key].length}</div>
-          ${renderTaskTable(grouped[key])}
-        `).join("");
+        return `<div class="grouped-board">${Object.keys(grouped).sort().map((key) => {
+          const expanded = isBoardGroupExpanded(key);
+          return `
+            <section class="board-group">
+              <button type="button" class="board-group-toggle" data-action="toggle-board-group" data-board-group-key="${escapeHtml(key)}">
+                <strong>${escapeHtml(key)} <span class="badge">${grouped[key].length}</span></strong>
+                <span class="sort-indicator">${expanded ? "&#9660;" : "&#9654;"}</span>
+              </button>
+              <div class="board-group-body" ${expanded ? "" : "hidden"}>
+                ${renderTaskTable(grouped[key], "board")}
+              </div>
+            </section>`;
+        }).join("")}</div>`;
       }
 
       function updateBoardResultsOnly() {
@@ -1698,17 +1925,38 @@
         `;
       }
 
-      function renderTaskTable(tasks) {
+      function renderTaskTable(tasks, tableKey = "board") {
+        const sortColumns = tableKey === "projectTasks" ? {
+          task: (task) => task.Title,
+          status: (task) => task.Status,
+          assignees: (task) => task.Assignees || selectedList(task["Assignee User IDs"]).join(", "),
+          priority: (task) => task.Priority
+        } : {
+          task: (task) => task.Title,
+          status: (task) => task.Status,
+          assignees: (task) => task.Assignees || selectedList(task["Assignee User IDs"]).join(", "),
+          project: (task) => task["Project Name"],
+          priority: (task) => task.Priority,
+          due: (task) => task["Due Date"]
+        };
+        const sortedTasks = sortTableRows(tasks, tableKey, sortColumns);
+        const isProjectTaskTable = tableKey === "projectTasks";
         return `
           <div class="table-wrap">
-            <table class="board-table">
+            <table class="${isProjectTaskTable ? "project-task-table" : "board-table"}">
               <thead>
                 <tr>
-                  <th>Task</th><th>Status</th><th>Assignees</th><th>Project</th><th>Priority</th><th>Due</th><th>Actions</th>
+                  ${renderSortHeader(tableKey, "task", "Task")}
+                  ${renderSortHeader(tableKey, "status", "Status")}
+                  ${renderSortHeader(tableKey, "assignees", "Assignees")}
+                  ${isProjectTaskTable ? "" : renderSortHeader(tableKey, "project", "Project")}
+                  ${renderSortHeader(tableKey, "priority", "Priority")}
+                  ${isProjectTaskTable ? "" : renderSortHeader(tableKey, "due", "Due")}
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                ${tasks.map((task) => `
+                ${sortedTasks.map((task) => `
                   <tr>
                     <td data-label="Task">
                       <div class="task-title-row">
@@ -1719,9 +1967,9 @@
                     </td>
                     <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}"${badgeStyleForStatus(task.Status)}>${escapeHtml(task.Status)}</span></td>
                     <td data-label="Assignees">${renderAssigneeChips(task)}</td>
-                    <td data-label="Project">${escapeHtml(task["Project Name"])}</td>
+                    ${isProjectTaskTable ? "" : `<td data-label="Project">${escapeHtml(task["Project Name"])}</td>`}
                     <td data-label="Priority"><span class="badge ${escapeHtml(String(task.Priority).toLowerCase())}">${escapeHtml(task.Priority)}</span></td>
-                    <td data-label="Due">${escapeHtml(task["Due Date"])}</td>
+                    ${isProjectTaskTable ? "" : `<td data-label="Due">${escapeHtml(task["Due Date"])}</td>`}
                     <td data-label="Actions">
                       ${renderTaskActionMenu(task)}
                     </td>
@@ -1833,36 +2081,23 @@
           return `
             <div class="grouped-day">
               <div class="day-heading"><span>${escapeHtml(date)}</span><span>${total.toFixed(2)} hours</span></div>
-              <div class="table-wrap">
-                <table class="time-table">
-                  <thead><tr><th>Entry</th><th>Project</th><th>Hours</th><th>Pay Period</th><th>Actions</th></tr></thead>
-                  <tbody>
-                    ${dayEntries.map((entry) => `
-                      <tr>
-                        <td data-label="Entry"><strong>${escapeHtml(entry["Task / Category"])}</strong></td>
-                        <td data-label="Project">${escapeHtml(entry["Project Name"])}</td>
-                        <td data-label="Hours">${escapeHtml(entry.Hours)}</td>
-                        <td data-label="Pay Period">${escapeHtml(entry["Pay Period Label"])}</td>
-                        <td data-label="Actions">
-                          <div class="actions">
-                            ${entry._permissions?.canEdit ? renderIcon("edit-time", "data-entry-id", entry["Time Entry ID"], "Edit time entry", "&#9998;") : ""}
-                            ${entry._permissions?.canDelete ? renderIcon("delete-time", "data-entry-id", entry["Time Entry ID"], "Delete time entry", "&#128465;", true) : ""}
-                          </div>
-                        </td>
-                      </tr>`).join("")}
-                  </tbody>
-                </table>
-              </div>
+              ${renderTimeEntriesTable(dayEntries, "timeEntries")}
             </div>`;
         }).join("");
       }
 
       function renderTimeRequests(requests) {
+        const sortedRequests = sortTableRows(requests, "timeRequests", {
+          request: (request) => `${request["Request Type"] || ""} ${request.Status || ""}`,
+          user: (request) => request["Requested By Name"],
+          payPeriod: (request) => request["Pay Period Label"],
+          reason: (request) => request.Reason
+        });
         return `
           <div class="table-wrap">
             <table class="time-table">
-              <thead><tr><th>Request</th><th>User</th><th>Pay Period</th><th>Reason</th><th>Actions</th></tr></thead>
-              <tbody>${requests.map((request) => `
+              <thead><tr>${renderSortHeader("timeRequests", "request", "Request")}${renderSortHeader("timeRequests", "user", "User")}${renderSortHeader("timeRequests", "payPeriod", "Pay Period")}${renderSortHeader("timeRequests", "reason", "Reason")}<th>Actions</th></tr></thead>
+              <tbody>${sortedRequests.map((request) => `
                 <tr>
                   <td data-label="Request">${escapeHtml(request["Request Type"])} &middot; ${escapeHtml(request.Status)}</td>
                   <td data-label="User">${escapeHtml(request["Requested By Name"])}</td>
@@ -1874,6 +2109,36 @@
                       ${renderIcon("reject-time-request", "data-request-id", request["Time Edit Request ID"], "Reject", "&#10005;", true)}` : ""}
                   </td>
                 </tr>`).join("")}</tbody>
+            </table>
+          </div>`;
+      }
+
+      function renderTimeEntriesTable(entries, tableKey) {
+        const sortedEntries = sortTableRows(entries, tableKey, {
+          entry: (entry) => entry["Task / Category"],
+          project: (entry) => entry["Project Name"],
+          hours: (entry) => entry.Hours,
+          payPeriod: (entry) => entry["Pay Period Label"]
+        });
+        return `
+          <div class="table-wrap">
+            <table class="time-table">
+              <thead><tr>${renderSortHeader(tableKey, "entry", "Entry")}${renderSortHeader(tableKey, "project", "Project")}${renderSortHeader(tableKey, "hours", "Hours")}${renderSortHeader(tableKey, "payPeriod", "Pay Period")}<th>Actions</th></tr></thead>
+              <tbody>
+                ${sortedEntries.map((entry) => `
+                  <tr>
+                    <td data-label="Entry"><strong>${escapeHtml(entry["Task / Category"])}</strong></td>
+                    <td data-label="Project">${escapeHtml(entry["Project Name"])}</td>
+                    <td data-label="Hours">${escapeHtml(entry.Hours)}</td>
+                    <td data-label="Pay Period">${escapeHtml(entry["Pay Period Label"])}</td>
+                    <td data-label="Actions">
+                      <div class="actions">
+                        ${entry._permissions?.canEdit ? renderIcon("edit-time", "data-entry-id", entry["Time Entry ID"], "Edit time entry", "&#9998;") : ""}
+                        ${entry._permissions?.canDelete ? renderIcon("delete-time", "data-entry-id", entry["Time Entry ID"], "Delete time entry", "&#128465;", true) : ""}
+                      </div>
+                    </td>
+                  </tr>`).join("")}
+              </tbody>
             </table>
           </div>`;
       }
@@ -1944,6 +2209,14 @@
         const range = summary.range || {};
         const selectedPeriodId = summary.payPeriod?.["Pay Period ID"] || "";
         const totalSummaryHours = (summary.summaries || []).reduce((sum, row) => sum + Number(row["Total Hours"] || 0), 0).toFixed(2);
+        const sortedSummaries = sortTableRows(summary.summaries || [], "paySummary", {
+          user: (row) => row["User Name"],
+          totalHours: (row) => row["Total Hours"],
+          payType: (row) => row["Pay Type"],
+          rate: (row) => row["Pay Type"] === "Hourly" ? row["Hourly Rate"] : row["Salary Amount"],
+          effectiveHourly: (row) => row["Effective Hourly Rate"],
+          grossPay: (row) => row["Gross Pay"]
+        });
         return `
           <div class="sticky-region">
             <section class="toolbar">
@@ -1978,9 +2251,9 @@
                 ${summary.summaries?.length ? `
                   <div class="table-wrap">
                     <table class="pay-table">
-                      <thead><tr><th>User</th><th>Total Hours</th><th>Pay Type</th><th>Rate/Salary</th><th>Effective Hourly</th><th>Gross Pay</th></tr></thead>
+                      <thead><tr>${renderSortHeader("paySummary", "user", "User")}${renderSortHeader("paySummary", "totalHours", "Total Hours")}${renderSortHeader("paySummary", "payType", "Pay Type")}${renderSortHeader("paySummary", "rate", "Rate/Salary")}${renderSortHeader("paySummary", "effectiveHourly", "Effective Hourly")}${renderSortHeader("paySummary", "grossPay", "Gross Pay")}</tr></thead>
                       <tbody>
-                        ${summary.summaries.map((row) => `
+                        ${sortedSummaries.map((row) => `
                           <tr class="pay-row" data-action="open-pay-detail" data-user-id="${escapeHtml(row["User ID"])}">
                             <td data-label="User"><span class="user-cell">${avatarForUser(findUser(row["User ID"]) || row)}${escapeHtml(row["User Name"])}</span></td>
                             <td data-label="Total Hours">${escapeHtml(row["Total Hours"])}</td>
@@ -2003,6 +2276,14 @@
         const dashboard = data.projectDashboard || { projects: [], summary: {} };
         const range = dashboard.range || {};
         const selectedProject = dashboard.selectedProject;
+        const sortedProjects = sortTableRows(dashboard.projects || [], "projects", {
+          project: (project) => project["Project Name"],
+          status: (project) => project.Status,
+          tasks: (project) => project["Task Count"],
+          progress: (project) => project["Progress Percent"],
+          hours: (project) => project["Total Hours"],
+          users: (project) => project["User Count"]
+        });
         return `
           <div class="sticky-region">
             <section class="toolbar">
@@ -2042,9 +2323,9 @@
                 ${(dashboard.projects || []).length ? `
                   <div class="table-wrap">
                     <table class="project-dashboard-table">
-                      <thead><tr><th>Project</th><th>Status</th><th>Tasks</th><th>Progress</th><th>Hours</th><th>Users</th><th>Actions</th></tr></thead>
+                      <thead><tr>${renderSortHeader("projects", "project", "Project")}${renderSortHeader("projects", "status", "Status")}${renderSortHeader("projects", "tasks", "Tasks")}${renderSortHeader("projects", "progress", "Progress")}${renderSortHeader("projects", "hours", "Hours")}${renderSortHeader("projects", "users", "Users")}<th>Actions</th></tr></thead>
                       <tbody>
-                        ${(dashboard.projects || []).map((project) => `
+                        ${sortedProjects.map((project) => `
                           <tr class="project-summary-row" data-project-id="${escapeHtml(project["Project ID"])}">
                             <td data-label="Project"><strong>${escapeHtml(project["Project Name"])}</strong></td>
                             <td data-label="Status">${renderProjectStatusBadge(project.Status)}</td>
@@ -2063,7 +2344,7 @@
                     </table>
                   </div>` : '<div class="empty">No projects match this selection.</div>'}
               </section>
-              ${selectedProject ? `
+                  ${selectedProject ? `
                 <section class="panel">
                   <div class="toolbar">
                     <div>
@@ -2085,29 +2366,36 @@
                   ${selectedProject.tasks?.length ? `
                     <div class="table-wrap">
                       <table class="project-task-table">
-                        <thead><tr><th>Task</th><th>Status</th><th>Assignees</th><th>Priority</th><th>Actions</th></tr></thead>
-                        <tbody>${selectedProject.tasks.map((task) => `
-                          <tr>
-                            <td data-label="Task"><strong>${escapeHtml(task.Title)}</strong></td>
-                            <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}"${badgeStyleForStatus(task.Status)}>${escapeHtml(task.Status)}</span></td>
-                            <td data-label="Assignees">${renderAssigneeChips(task)}</td>
-                            <td data-label="Priority"><span class="badge">${escapeHtml(task.Priority || "")}</span></td>
-                            <td data-label="Actions">${task._permissions?.canEdit ? renderIcon("edit-project-task", "data-task-id", task["Task ID"], "Edit task", "&#9998;") : ""}</td>
-                          </tr>`).join("")}</tbody>
+                        <thead><tr>${renderSortHeader("projectTasks", "task", "Task")}${renderSortHeader("projectTasks", "status", "Status")}${renderSortHeader("projectTasks", "assignees", "Assignees")}${renderSortHeader("projectTasks", "priority", "Priority")}<th>Actions</th></tr></thead>
+                        <tbody>
+                          ${sortTableRows(selectedProject.tasks, "projectTasks", {
+                            task: (task) => task.Title,
+                            status: (task) => task.Status,
+                            assignees: (task) => task.Assignees || selectedList(task["Assignee User IDs"]).join(", "),
+                            priority: (task) => task.Priority
+                          }).map((task) => `
+                            <tr>
+                              <td data-label="Task"><strong>${escapeHtml(task.Title)}</strong></td>
+                              <td data-label="Status"><span class="badge ${escapeHtml(String(task.Status).toLowerCase())}"${badgeStyleForStatus(task.Status)}>${escapeHtml(task.Status)}</span></td>
+                              <td data-label="Assignees">${renderAssigneeChips(task)}</td>
+                              <td data-label="Priority"><span class="badge">${escapeHtml(task.Priority || "")}</span></td>
+                              <td data-label="Actions">${task._permissions?.canEdit ? renderIcon("edit-project-task", "data-task-id", task["Task ID"], "Edit task", "&#9998;") : ""}</td>
+                            </tr>`).join("")}
+                        </tbody>
                       </table>
                     </div>` : '<div class="empty">No related tasks.</div>'}
                   <div class="detail-grid" style="margin-top: 12px;">
                     <div>
                       <h3>Task Time</h3>
-                      ${renderHoursList(selectedProject.taskTotals, "No task time in this range.")}
+                      ${renderHoursList(selectedProject.taskTotals, "No task time in this range.", "projectTaskTotals")}
                     </div>
                     <div>
                       <h3>Users</h3>
-                      ${renderHoursList(selectedProject.userTotals, "No user time in this range.")}
+                      ${renderHoursList(selectedProject.userTotals, "No user time in this range.", "projectUserTotals")}
                     </div>
                     <div>
                       <h3>Categories</h3>
-                      ${renderHoursList(selectedProject.categoryTotals, "No category time in this range.")}
+                      ${renderHoursList(selectedProject.categoryTotals, "No category time in this range.", "projectCategoryTotals")}
                     </div>
                   </div>
                 </section>` : ""}
@@ -2896,42 +3184,66 @@
           </div>`);
       }
 
-      function renderHoursList(rows, emptyText) {
+      function renderHoursList(rows, emptyText, tableKey = "hoursList") {
         if (!rows || !rows.length) return `<div class="empty">${escapeHtml(emptyText)}</div>`;
-        return `<div class="table-wrap"><table><thead><tr><th>Name</th><th>Hours</th></tr></thead><tbody>
-          ${rows.map((row) => `<tr><td data-label="Name">${escapeHtml(row.label)}</td><td data-label="Hours">${escapeHtml(row.hours)}</td></tr>`).join("")}
+        const sortedRows = sortTableRows(rows, tableKey, {
+          name: (row) => row.label,
+          hours: (row) => row.hours
+        });
+        return `<div class="table-wrap"><table><thead><tr>${renderSortHeader(tableKey, "name", "Name")}${renderSortHeader(tableKey, "hours", "Hours")}</tr></thead><tbody>
+          ${sortedRows.map((row) => `<tr><td data-label="Name">${escapeHtml(row.label)}</td><td data-label="Hours">${escapeHtml(row.hours)}</td></tr>`).join("")}
         </tbody></table></div>`;
       }
 
+      function renderCollapsibleSection(title, bodyHtml, meta = "", open = false) {
+        return `
+          <details class="collapsible-section"${open ? " open" : ""}>
+            <summary>
+              <span>${escapeHtml(title)}</span>
+              ${meta ? `<span class="collapsible-meta">${escapeHtml(meta)}</span>` : ""}
+            </summary>
+            <div class="collapsible-body">${bodyHtml}</div>
+          </details>`;
+      }
+
       function openPaySummaryDetailModal(detail) {
+        const taskTotalCount = (detail.taskTotals || []).length;
+        const projectTotalCount = (detail.projectTotals || []).length;
+        const entryCount = (detail.entries || []).length;
         pushModal(`
           <div class="modal-backdrop">
-            <div class="modal stack">
+            <div class="modal stack pay-detail-modal">
               <div class="modal-header"><h3>Pay Details</h3><button type="button" data-action="close-modal">Close</button></div>
               <div class="profile-preview">${avatarForUser(detail.user)}<strong>${escapeHtml(detail.user["Full Name"])}</strong><span>${escapeHtml(detail.range.label)}</span></div>
               <div class="form-grid two">
                 <div class="panel" style="box-shadow:none;margin:0;"><h3>Total Hours</h3><strong>${escapeHtml(detail.metrics.totalHours)}</strong></div>
                 <div class="panel" style="box-shadow:none;margin:0;"><h3>Average Hours / Week</h3><strong>${escapeHtml(detail.metrics.averageHoursPerWeek)}</strong></div>
               </div>
-              <h3>Task Time</h3>
-              ${renderHoursList(detail.taskTotals, "No task time in this range.")}
-              <h3>Project Time</h3>
-              ${renderHoursList(detail.projectTotals, "No project time in this range.")}
-              <h3>Entries</h3>
-              <div class="table-wrap"><table>
-                <thead><tr><th>Date</th><th>Entry</th><th>Project</th><th>Hours</th></tr></thead>
-                <tbody>${(detail.entries || []).map((entry) => `<tr>
+              ${renderCollapsibleSection("Task Time", renderHoursList(detail.taskTotals, "No task time in this range.", "payDetailTaskTotals"), `${taskTotalCount} item${taskTotalCount === 1 ? "" : "s"}`)}
+              ${renderCollapsibleSection("Project Time", renderHoursList(detail.projectTotals, "No project time in this range.", "payDetailProjectTotals"), `${projectTotalCount} item${projectTotalCount === 1 ? "" : "s"}`)}
+              ${renderCollapsibleSection("Entries", `<div class="table-wrap"><table>
+                <thead><tr>${renderSortHeader("payDetailEntries", "date", "Date")}${renderSortHeader("payDetailEntries", "entry", "Entry")}${renderSortHeader("payDetailEntries", "project", "Project")}${renderSortHeader("payDetailEntries", "hours", "Hours")}</tr></thead>
+                <tbody>${sortTableRows(detail.entries || [], "payDetailEntries", {
+                  date: (entry) => entry.Date,
+                  entry: (entry) => entry["Task / Category"],
+                  project: (entry) => entry["Project Name"],
+                  hours: (entry) => entry.Hours
+                }).map((entry) => `<tr>
                   <td data-label="Date">${escapeHtml(entry.Date)}</td>
                   <td data-label="Entry">${escapeHtml(entry["Task / Category"])}</td>
                   <td data-label="Project">${escapeHtml(entry["Project Name"])}</td>
                   <td data-label="Hours">${escapeHtml(entry.Hours)}</td>
                 </tr>`).join("")}</tbody>
-              </table></div>
+              </table></div>`, `${entryCount} item${entryCount === 1 ? "" : "s"}`)}
             </div>
           </div>`);
       }
 
       document.addEventListener("click", async (event) => {
+        if (event.target.classList?.contains("modal-backdrop")) {
+          closeTopModal();
+          return;
+        }
         const tabButton = event.target.closest("[data-tab]");
         if (tabButton) {
           state.tab = tabButton.dataset.tab;
@@ -2943,6 +3255,21 @@
         if (settingsButton) {
           state.settingsSection = settingsButton.dataset.settingsSection;
           saveStoredString("settingsSection", state.settingsSection);
+          render();
+          return;
+        }
+        const sortButton = event.target.closest("[data-sort-table]");
+        if (sortButton) {
+          closeActionMenus();
+          setTableSort(sortButton.dataset.sortTable, sortButton.dataset.sortColumn, sortButton.dataset.sortDirection || "asc");
+          render();
+          return;
+        }
+        const boardGroupToggle = event.target.closest("[data-board-group-key]");
+        if (boardGroupToggle) {
+          closeActionMenus();
+          const key = boardGroupToggle.dataset.boardGroupKey;
+          setBoardGroupExpanded(key, !isBoardGroupExpanded(key));
           render();
           return;
         }
@@ -2991,6 +3318,7 @@
             state.boardFilters = {};
             state.boardGrouping = "";
             state.selectedBoardViewId = "";
+            state.boardGroupExpanded = {};
             render();
           } else if (action === "delete-board-view") {
             const view = selectedBoardView();
@@ -3236,6 +3564,7 @@
         }
         if (event.target.matches("[data-board-grouping]")) {
           state.boardGrouping = event.target.value;
+          state.boardGroupExpanded = {};
           render();
         }
         if (event.target.matches('[data-action="load-board-view"]')) {
@@ -3248,10 +3577,12 @@
               state.boardFilters = {};
             }
             state.boardGrouping = view.Grouping || "";
+            state.boardGroupExpanded = {};
             render();
           } else {
             state.boardFilters = {};
             state.boardGrouping = "";
+            state.boardGroupExpanded = {};
             render();
           }
         }

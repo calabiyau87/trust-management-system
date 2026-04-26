@@ -280,6 +280,10 @@ function migrateAssignmentBoardTasks() {
   return TrustOpsMigrationService.migrateAssignmentBoardTasks(requireTrustOpsContext_());
 }
 
+function repairTaskAssigneeAssignments() {
+  return TrustOpsMigrationService.repairTaskAssigneeAssignments(requireTrustOpsContext_());
+}
+
 function importLegacyWorkbook(payload) {
   return TrustOpsMigrationService.importLegacyWorkbook(requireTrustOpsContext_(), payload || {});
 }

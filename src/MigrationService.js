@@ -236,6 +236,74 @@ var TrustOpsMigrationService = (function () {
     });
   }
 
+  function listKey_(values) {
+    return TrustOpsUtils.splitList(values)
+      .slice()
+      .sort()
+      .join(" | ");
+  }
+
+  function repairTaskAssigneeAssignments(context) {
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.canManageSettings(context),
+      "Only Owner/Admin can run migrations."
+    );
+    var activeUsers = TrustOpsUserService.listActiveUsers();
+    var tasks = TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.TASKS);
+    var repaired = 0;
+    var failed = 0;
+    tasks.forEach(function (task) {
+      try {
+        var resolved = TrustOpsTaskService.resolveAssignees(task["Assignee User IDs"], task.Assignees, activeUsers);
+        if (!resolved.ids.length && !resolved.names.length) return;
+        if (listKey_(task["Assignee User IDs"]) === listKey_(resolved.ids) && listKey_(task.Assignees) === listKey_(resolved.names)) {
+          return;
+        }
+        var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.TASKS, task["Task ID"], {
+          "Assignees": resolved.names.join(", "),
+          "Assignee User IDs": resolved.ids.join(", "),
+          "Updated At": TrustOpsUtils.nowIso()
+        });
+        TrustOpsAuditService.log(
+          context,
+          "TASK_ASSIGNEES_REPAIRED",
+          "Task",
+          task["Task ID"],
+          task,
+          saved,
+          "Normalized assignee IDs from existing task data."
+        );
+        repaired += 1;
+      } catch (error) {
+        failed += 1;
+        TrustOpsAuditService.log(
+          context,
+          "TASK_ASSIGNEE_REPAIR_FAILED",
+          "Task",
+          task["Task ID"],
+          task,
+          { error: error && error.message ? error.message : String(error) },
+          "Failed to normalize assignees during bootstrap repair."
+        );
+      }
+    });
+    if (repaired || failed) {
+      TrustOpsAuditService.log(
+        context,
+        "TASK_ASSIGNEE_REPAIR_COMPLETE",
+        "Migration",
+        "Tasks",
+        null,
+        { repaired: repaired, failed: failed },
+        "Backfilled assignee IDs on existing tasks."
+      );
+    }
+    return {
+      repaired: repaired,
+      failed: failed
+    };
+  }
+
   function bootstrap(spreadsheetId, ownerEmail) {
     TrustOpsAuthService.requireBootstrapAllowed(ownerEmail);
     TrustOpsSheetService.setSpreadsheetId(spreadsheetId);
@@ -246,6 +314,7 @@ var TrustOpsMigrationService = (function () {
     if (TrustOpsPermissionService.canManageTags({ userId: owner["User ID"], role: TrustOpsConfig.ROLES.OWNER })) {
       TrustOpsTagService.seedFromTaskTags({ userId: owner["User ID"], email: TrustOpsUtils.normalizeEmail(ownerEmail), role: TrustOpsConfig.ROLES.OWNER });
     }
+    repairTaskAssigneeAssignments({ userId: owner["User ID"], email: TrustOpsUtils.normalizeEmail(ownerEmail), role: TrustOpsConfig.ROLES.OWNER });
     TrustOpsPayService.getCurrentPayPeriod();
     TrustOpsAuditService.log(
       { userId: owner["User ID"], email: TrustOpsUtils.normalizeEmail(ownerEmail) },
@@ -1372,6 +1441,7 @@ var TrustOpsMigrationService = (function () {
     bootstrap: bootstrap,
     getMigrationPreview: getMigrationPreview,
     migrateAssignmentBoardTasks: migrateAssignmentBoardTasks,
+    repairTaskAssigneeAssignments: repairTaskAssigneeAssignments,
     getLegacyMigrationPreview: getLegacyMigrationPreview,
     importLegacyWorkbook: importLegacyWorkbook
   };

@@ -5,8 +5,8 @@ var TrustOpsTaskService = (function () {
     });
   }
 
-  function resolveAssignees(assigneeUserIds, assigneeNames) {
-    var users = TrustOpsUserService.listActiveUsers();
+  function resolveAssignees(assigneeUserIds, assigneeNames, usersOverride) {
+    var users = usersOverride || TrustOpsUserService.listActiveUsers();
     var ids = TrustOpsUtils.splitList(assigneeUserIds);
     var names = TrustOpsUtils.splitList(assigneeNames);
     names.forEach(function (name) {
@@ -213,6 +213,7 @@ var TrustOpsTaskService = (function () {
     updateTask: updateTask,
     completeTask: completeTask,
     archiveTask: archiveTask,
-    listIncompleteTasksForUser: listIncompleteTasksForUser
+    listIncompleteTasksForUser: listIncompleteTasksForUser,
+    resolveAssignees: resolveAssignees
   };
 })();
