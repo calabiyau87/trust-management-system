@@ -5,6 +5,7 @@
 - Google Apps Script Web App
 - Google Sheets as canonical storage
 - Vanilla `Index.html` SPA
+- GitHub Pages login bridge using Google Identity Services
 - `google.script.run` for client/server calls
 - `clasp` for deployment
 
@@ -26,8 +27,10 @@ No external backend, database, React build step, Chat API, Google Tasks API, Gma
 Every write path follows:
 
 ```text
-google.script.run wrapper -> AuthService -> PermissionService -> domain service -> SheetService -> AuditService
+google.script.run wrapper -> AuthService (verifies Google ID token) -> PermissionService -> domain service -> SheetService -> AuditService
 ```
+
+The browser signs in on GitHub Pages, receives a Google ID token, and passes that token back to the Apps Script web app in the URL fragment. The Apps Script UI stores the token in session storage and attaches it to every `google.script.run` wrapper invocation.
 
 ## Storage Model
 

@@ -118,16 +118,7 @@ var TrustOpsUserService = (function () {
       ? TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.USERS, userId, record)
       : TrustOpsSheetService.appendRecord(TrustOpsConfig.SHEETS.USERS, record);
     TrustOpsAuditService.log(context, existing ? "USER_UPDATED" : "USER_CREATED", "User", saved["User ID"], existing, saved, "");
-    var output = TrustOpsUtils.sanitizeForClient(saved);
-    if (TrustOpsPermissionService.isOwnerOrAdmin(context)) {
-      try {
-        shareSpreadsheetWithUser(context, saved["User ID"]);
-      } catch (error) {
-        output.shareError = error.message || String(error);
-        TrustOpsAuditService.log(context, "SPREADSHEET_SHARE_FAILED", "User", saved["User ID"], null, { email: saved.Email, error: output.shareError }, output.shareError);
-      }
-    }
-    return output;
+    return TrustOpsUtils.sanitizeForClient(saved);
   }
 
   function updateProfile(context, payload) {
@@ -165,6 +156,68 @@ var TrustOpsUserService = (function () {
     return TrustOpsUtils.sanitizeForClient(saved);
   }
 
+  function applySpreadsheetAccess_(file, user) {
+    var email = TrustOpsUtils.requireValue(user && user.Email, "User email");
+    var privileged = user.Role === TrustOpsConfig.ROLES.OWNER || user.Role === TrustOpsConfig.ROLES.ADMIN;
+    if (privileged) {
+      file.addEditor(email);
+      try {
+        file.removeViewer(email);
+      } catch (error) {}
+      return "Editor";
+    }
+    file.addViewer(email);
+    try {
+      file.removeEditor(email);
+    } catch (error) {}
+    return "Viewer";
+  }
+
+  function syncSpreadsheetAccessForUsers(context, users) {
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.isOwnerOrAdmin(context),
+      "Only Owner/Admin can share spreadsheet access."
+    );
+    var spreadsheetId = TrustOpsConfig.getSpreadsheetId();
+    TrustOpsUtils.requireValue(spreadsheetId, "Spreadsheet ID");
+    var file = DriveApp.getFileById(spreadsheetId);
+    var results = [];
+    (users || []).forEach(function (user) {
+      if (!user || !TrustOpsUtils.normalizeText(user.Email)) return;
+      var accessLevel = applySpreadsheetAccess_(file, user);
+      results.push({
+        userId: user["User ID"],
+        email: user.Email,
+        accessLevel: accessLevel
+      });
+    });
+    if (results.length) {
+      TrustOpsAuditService.log(
+        context,
+        "SPREADSHEET_ACCESS_SYNCED",
+        "Spreadsheet",
+        spreadsheetId,
+        null,
+        { users: results },
+        "Synchronized spreadsheet access with least privilege."
+      );
+    }
+    return results;
+  }
+
+  function syncSpreadsheetAccess(context) {
+    TrustOpsPermissionService.requireAllowed(
+      TrustOpsPermissionService.isOwnerOrAdmin(context),
+      "Only Owner/Admin can share spreadsheet access."
+    );
+    return syncSpreadsheetAccessForUsers(
+      context,
+      TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.USERS).filter(function (user) {
+        return !TrustOpsUtils.toBoolean(user.Archived);
+      })
+    );
+  }
+
   function shareSpreadsheetWithUser(context, userId) {
     TrustOpsPermissionService.requireAllowed(
       TrustOpsPermissionService.isOwnerOrAdmin(context),
@@ -172,18 +225,15 @@ var TrustOpsUserService = (function () {
     );
     var user = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.USERS, userId);
     if (!user) throw new Error("User not found.");
-    var email = TrustOpsUtils.requireValue(user.Email, "User email");
-    var spreadsheetId = TrustOpsConfig.getSpreadsheetId();
-    TrustOpsUtils.requireValue(spreadsheetId, "Spreadsheet ID");
-    var file = DriveApp.getFileById(spreadsheetId);
-    file.addEditor(email);
+    var accessLevel = syncSpreadsheetAccessForUsers(context, [user])[0];
     var result = {
       userId: userId,
-      email: email,
+      email: user.Email,
       shared: true,
+      accessLevel: accessLevel ? accessLevel.accessLevel : "Viewer",
       sharedAt: TrustOpsUtils.nowIso()
     };
-    TrustOpsAuditService.log(context, "SPREADSHEET_SHARED_WITH_USER", "User", userId, null, result, "");
+    TrustOpsAuditService.log(context, "SPREADSHEET_SHARED_WITH_USER", "User", userId, null, result, "Granted spreadsheet access at the least-privilege level.");
     return result;
   }
 
@@ -270,6 +320,7 @@ var TrustOpsUserService = (function () {
     saveUser: saveUser,
     updateProfile: updateProfile,
     shareSpreadsheetWithUser: shareSpreadsheetWithUser,
+    syncSpreadsheetAccess: syncSpreadsheetAccess,
     uploadProfileImage: uploadProfileImage,
     removeProfileImage: removeProfileImage,
     archiveUser: archiveUser

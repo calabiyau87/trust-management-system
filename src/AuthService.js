@@ -1,4 +1,20 @@
 var TrustOpsAuthService = (function () {
+  function getGoogleClientId() {
+    return TrustOpsUtils.normalizeText(
+      PropertiesService.getScriptProperties().getProperty("GOOGLE_OAUTH_CLIENT_ID") ||
+      PropertiesService.getScriptProperties().getProperty("GOOGLE_CLIENT_ID") ||
+      ""
+    );
+  }
+
+  function getGithubPagesAuthUrl() {
+    return TrustOpsUtils.normalizeText(
+      PropertiesService.getScriptProperties().getProperty("TRUST_OPS_GITHUB_PAGES_AUTH_URL") ||
+      PropertiesService.getScriptProperties().getProperty("GITHUB_PAGES_AUTH_URL") ||
+      ""
+    );
+  }
+
   function getActiveEmail() {
     var email = "";
     try {
@@ -32,7 +48,7 @@ var TrustOpsAuthService = (function () {
     if (!normalizedEmail) return null;
     var users = TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.USERS);
     return users.filter(function (user) {
-      return TrustOpsUtils.normalizeEmail(user.Email) === normalizedEmail && !TrustOpsUtils.toBoolean(user.Archived);
+      return TrustOpsUtils.normalizeEmail(user.Email) === normalizedEmail;
     })[0] || null;
   }
 
@@ -41,17 +57,59 @@ var TrustOpsAuthService = (function () {
     return TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.USERS, userId);
   }
 
-  function requireAuthorizedUser() {
-    var email = getActiveEmail();
-    if (!email) {
-      throw new Error("Unable to determine the signed-in Google account.");
+  function verifyGoogleIdToken(authToken) {
+    var token = TrustOpsUtils.normalizeText(authToken);
+    if (!token) {
+      throw new Error("Google Sign-In is required.");
     }
-    var user = getUserByEmail(email);
+    var clientId = getGoogleClientId();
+    if (!clientId) {
+      throw new Error("Google OAuth client ID is not configured.");
+    }
+    var response = UrlFetchApp.fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(token), {
+      muteHttpExceptions: true
+    });
+    if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) {
+      throw new Error("Google Sign-In token could not be verified.");
+    }
+    var claims = {};
+    try {
+      claims = JSON.parse(response.getContentText() || "{}");
+    } catch (error) {
+      throw new Error("Google Sign-In token could not be verified.");
+    }
+    var audience = TrustOpsUtils.normalizeText(claims.aud);
+    var issuer = TrustOpsUtils.normalizeText(claims.iss);
+    var email = TrustOpsUtils.normalizeEmail(claims.email);
+    if (audience !== clientId) {
+      throw new Error("Google Sign-In token was issued for the wrong client.");
+    }
+    if (issuer !== "accounts.google.com" && issuer !== "https://accounts.google.com") {
+      throw new Error("Google Sign-In token was issued by an unexpected provider.");
+    }
+    if (!TrustOpsUtils.toBoolean(claims.email_verified)) {
+      throw new Error("Google account email is not verified.");
+    }
+    if (!email) {
+      throw new Error("Google Sign-In did not return an email address.");
+    }
+    claims.email = email;
+    claims.aud = audience;
+    claims.iss = issuer;
+    return claims;
+  }
+
+  function requireAuthorizedUser(authToken) {
+    var claims = verifyGoogleIdToken(authToken);
+    var user = getUserByEmail(claims.email);
     if (!user) {
-      throw new Error("This Google account is not authorized for Trust Ops: " + email);
+      throw new Error("This Google account is not authorized for Trust Ops: " + claims.email);
+    }
+    if (TrustOpsUtils.toBoolean(user.Archived)) {
+      throw new Error("This Trust Ops user is archived: " + claims.email);
     }
     if (!TrustOpsUtils.toBoolean(user.Active)) {
-      throw new Error("This Trust Ops user is inactive: " + email);
+      throw new Error("This Trust Ops user is inactive: " + claims.email);
     }
     return {
       userId: user["User ID"],
@@ -59,13 +117,38 @@ var TrustOpsAuthService = (function () {
       firstName: user["First Name"] || "",
       fullName: user["Full Name"] || user.Email,
       role: user.Role || TrustOpsConfig.ROLES.USER,
-      user: TrustOpsUtils.sanitizeForClient(user)
+      user: TrustOpsUtils.sanitizeForClient(user),
+      googleProfile: {
+        email: claims.email,
+        name: claims.name || "",
+        picture: claims.picture || "",
+        givenName: claims.given_name || "",
+        familyName: claims.family_name || ""
+      },
+      authClaims: {
+        sub: claims.sub || "",
+        aud: claims.aud || "",
+        iss: claims.iss || ""
+      }
     };
   }
 
   function getOptionalUserContext() {
     try {
-      return requireAuthorizedUser();
+      var email = getActiveEmail();
+      if (!email) return null;
+      var user = getUserByEmail(email);
+      if (!user || !TrustOpsUtils.toBoolean(user.Active) || TrustOpsUtils.toBoolean(user.Archived)) {
+        return null;
+      }
+      return {
+        userId: user["User ID"],
+        email: TrustOpsUtils.normalizeEmail(user.Email),
+        firstName: user["First Name"] || "",
+        fullName: user["Full Name"] || user.Email,
+        role: user.Role || TrustOpsConfig.ROLES.USER,
+        user: TrustOpsUtils.sanitizeForClient(user)
+      };
     } catch (error) {
       return null;
     }
@@ -102,23 +185,24 @@ var TrustOpsAuthService = (function () {
       issue: !normalizedEmail
         ? "No email provided."
         : !user
-          ? "No active user row matches this normalized email."
-          : !TrustOpsUtils.toBoolean(user.Active)
-            ? "User exists but is inactive."
-            : TrustOpsUtils.toBoolean(user.Archived)
-              ? "User exists but is archived."
+          ? "No user row matches this normalized email."
+          : TrustOpsUtils.toBoolean(user.Archived)
+            ? "User exists but is archived."
+            : !TrustOpsUtils.toBoolean(user.Active)
+              ? "User exists but is inactive."
               : ""
     };
   }
 
-  function getPublicAuthDiagnostic() {
-    var activeEmail = getActiveEmail();
-    var effectiveEmail = getEffectiveEmail();
+  function getPublicAuthDiagnostic(authToken) {
     var diagnostic = {
-      activeEmail: activeEmail,
-      effectiveEmail: effectiveEmail,
-      temporaryUserKey: getTemporaryUserKey(),
-      spreadsheetConfigured: Boolean(TrustOpsConfig.getSpreadsheetId()),
+      clientIdConfigured: Boolean(getGoogleClientId()),
+      tokenProvided: Boolean(TrustOpsUtils.normalizeText(authToken)),
+      tokenVerified: false,
+      email: "",
+      audience: "",
+      issuer: "",
+      subject: "",
       userLookupAttempted: false,
       userFound: false,
       userActive: false,
@@ -126,18 +210,21 @@ var TrustOpsAuthService = (function () {
       userRole: "",
       userId: "",
       storedEmail: "",
-      sheetAccessOk: false,
-      sheetAccessError: "",
       issue: ""
     };
-    if (!activeEmail) {
-      diagnostic.issue = "Apps Script did not expose the signed-in user's email to Session.getActiveUser().getEmail().";
+    if (!diagnostic.tokenProvided) {
+      diagnostic.issue = "No Google ID token was supplied.";
       return diagnostic;
     }
     try {
+      var claims = verifyGoogleIdToken(authToken);
+      diagnostic.tokenVerified = true;
+      diagnostic.email = claims.email || "";
+      diagnostic.audience = claims.aud || "";
+      diagnostic.issuer = claims.iss || "";
+      diagnostic.subject = claims.sub || "";
       diagnostic.userLookupAttempted = true;
-      var user = getUserByEmail(activeEmail);
-      diagnostic.sheetAccessOk = true;
+      var user = getUserByEmail(claims.email);
       diagnostic.userFound = Boolean(user);
       if (user) {
         diagnostic.userActive = TrustOpsUtils.toBoolean(user.Active);
@@ -148,34 +235,26 @@ var TrustOpsAuthService = (function () {
       }
       diagnostic.issue = !user
         ? "No Users row matches the signed-in email."
-        : !diagnostic.userActive
-          ? "The matching Users row is inactive."
-          : diagnostic.userArchived
-            ? "The matching Users row is archived."
+        : diagnostic.userArchived
+          ? "The matching Users row is archived."
+          : !diagnostic.userActive
+            ? "The matching Users row is inactive."
             : "";
     } catch (error) {
-      diagnostic.sheetAccessError = error.message || String(error);
-      diagnostic.issue = "The signed-in user could not read the configured spreadsheet.";
+      diagnostic.issue = error.message || String(error);
     }
     return diagnostic;
   }
 
-  function getGoogleProfile() {
+  function getGoogleProfile(authToken) {
     try {
-      var response = UrlFetchApp.fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-        headers: {
-          Authorization: "Bearer " + ScriptApp.getOAuthToken()
-        },
-        muteHttpExceptions: true
-      });
-      if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) {
-        return {};
-      }
-      var profile = JSON.parse(response.getContentText() || "{}");
+      var profile = verifyGoogleIdToken(authToken);
       return {
         name: profile.name || "",
         picture: profile.picture || "",
-        email: TrustOpsUtils.normalizeEmail(profile.email || "")
+        email: TrustOpsUtils.normalizeEmail(profile.email || ""),
+        givenName: profile.given_name || "",
+        familyName: profile.family_name || ""
       };
     } catch (error) {
       return {};
@@ -188,6 +267,9 @@ var TrustOpsAuthService = (function () {
     getTemporaryUserKey: getTemporaryUserKey,
     getUserByEmail: getUserByEmail,
     getUserById: getUserById,
+    getGoogleClientId: getGoogleClientId,
+    getGithubPagesAuthUrl: getGithubPagesAuthUrl,
+    verifyGoogleIdToken: verifyGoogleIdToken,
     requireAuthorizedUser: requireAuthorizedUser,
     getOptionalUserContext: getOptionalUserContext,
     requireBootstrapAllowed: requireBootstrapAllowed,

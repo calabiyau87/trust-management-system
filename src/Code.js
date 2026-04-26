@@ -1,8 +1,15 @@
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile("Index")
+  var template = HtmlService.createTemplateFromFile("Index");
+  template.googleClientId = TrustOpsAuthService.getGoogleClientId();
+  template.githubAuthUrl = TrustOpsAuthService.getGithubPagesAuthUrl();
+  return template.evaluate()
     .setTitle("Trust Ops")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
+
+var TrustOpsRequestAuth = {
+  token: ""
+};
 
 function resetTrustOpsRequest_() {
   TrustOpsSheetService.resetRequestCache();
@@ -10,7 +17,24 @@ function resetTrustOpsRequest_() {
 
 function requireTrustOpsContext_() {
   resetTrustOpsRequest_();
-  return TrustOpsAuthService.requireAuthorizedUser();
+  return TrustOpsAuthService.requireAuthorizedUser(TrustOpsRequestAuth.token);
+}
+
+function invokeServer(methodName, authToken, args) {
+  var previousToken = TrustOpsRequestAuth.token;
+  TrustOpsRequestAuth.token = authToken || "";
+  try {
+    var fn = globalThis[methodName];
+    if (!fn && this) {
+      fn = this[methodName];
+    }
+    if (typeof fn !== "function") {
+      throw new Error("Unknown server method: " + methodName);
+    }
+    return fn.apply(null, Array.isArray(args) ? args : []);
+  } finally {
+    TrustOpsRequestAuth.token = previousToken;
+  }
 }
 
 function setupTrustOps(spreadsheetId, ownerEmail) {
@@ -20,9 +44,9 @@ function setupTrustOps(spreadsheetId, ownerEmail) {
 
 function getInitialData() {
   resetTrustOpsRequest_();
+  var context = requireTrustOpsContext_();
   TrustOpsSheetService.ensureAllSheets();
-  var context = TrustOpsAuthService.requireAuthorizedUser();
-  var googleProfile = TrustOpsAuthService.getGoogleProfile();
+  var googleProfile = context.googleProfile || {};
   if (googleProfile.picture && !context.user["Google Profile Photo URL"]) {
     context.user["Google Profile Photo URL"] = googleProfile.picture;
   }
@@ -71,7 +95,7 @@ function getInitialData() {
 
 function getAuthDiagnostic() {
   resetTrustOpsRequest_();
-  return TrustOpsAuthService.getPublicAuthDiagnostic();
+  return TrustOpsAuthService.getPublicAuthDiagnostic(TrustOpsRequestAuth.token);
 }
 
 function refreshAppData(filters) {
@@ -198,6 +222,10 @@ function removeProfileImage(userId) {
 
 function shareSpreadsheetWithUser(userId) {
   return TrustOpsUserService.shareSpreadsheetWithUser(requireTrustOpsContext_(), userId);
+}
+
+function syncSpreadsheetAccess() {
+  return TrustOpsUserService.syncSpreadsheetAccess(requireTrustOpsContext_());
 }
 
 function archiveUser(userId) {

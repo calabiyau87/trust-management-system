@@ -37,6 +37,8 @@ const requiredFiles = [
   "docs/data-model.md",
   "docs/permissions.md",
   "docs/deployment.md",
+  "docs/index.html",
+  "docs/.nojekyll",
   ".github/workflows/clasp-sync.yml",
   "docs/roadmap.md",
   "docs/agents/backend-agent.md",
@@ -95,6 +97,22 @@ scriptMatches.forEach((match, index) => {
     new Function(match[1]);
   } catch (error) {
     fail(`Index.html inline script ${index + 1} has a JavaScript syntax error: ${error.message}`);
+  }
+});
+
+const pagesIndexHtml = fs.readFileSync(path.join(root, "docs", "index.html"), "utf8");
+for (const needle of ["Trust Ops Sign-In", "Google Sign-In", "google.accounts.id.renderButton"]) {
+  if (!pagesIndexHtml.includes(needle)) {
+    fail(`docs/index.html does not include expected text: ${needle}`);
+  }
+}
+
+const pagesScriptMatches = [...pagesIndexHtml.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)];
+pagesScriptMatches.forEach((match, index) => {
+  try {
+    new Function(match[1]);
+  } catch (error) {
+    fail(`docs/index.html inline script ${index + 1} has a JavaScript syntax error: ${error.message}`);
   }
 });
 

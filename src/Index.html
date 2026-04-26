@@ -1,10 +1,12 @@
 <!doctype html>
 <html>
-  <head>
-    <base target="_top">
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
+    <head>
+      <base target="_top">
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="google-oauth-client-id" content="<?= googleClientId ?>">
+      <meta name="trust-ops-github-auth-url" content="<?= githubAuthUrl ?>">
+      <style>
       :root {
         --bg: #eef2f5;
         --surface: #ffffff;
@@ -954,6 +956,165 @@
         border-color: #dfb7b7;
       }
 
+      .auth-shell {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 28px 20px;
+        background:
+          radial-gradient(circle at top left, rgba(35, 93, 87, 0.18), transparent 32%),
+          radial-gradient(circle at bottom right, rgba(16, 65, 61, 0.16), transparent 34%),
+          linear-gradient(180deg, #f4f7f9 0%, #ebeff3 100%);
+      }
+
+      body[data-theme="dark"] .auth-shell {
+        background:
+          radial-gradient(circle at top left, rgba(87, 172, 161, 0.16), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(18, 26, 31, 0.92), transparent 30%),
+          linear-gradient(180deg, #11171c 0%, #0b1014 100%);
+      }
+
+      .auth-card {
+        width: min(940px, 100%);
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(320px, 420px);
+        gap: 0;
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        overflow: hidden;
+        background: var(--surface);
+        box-shadow: 0 24px 72px rgba(21, 34, 50, 0.16);
+      }
+
+      .auth-panel {
+        padding: 34px;
+      }
+
+      .auth-panel.hero {
+        position: relative;
+        display: grid;
+        align-content: start;
+        gap: 18px;
+        color: #fff;
+        background:
+          linear-gradient(135deg, rgba(19, 33, 45, 0.88), rgba(20, 77, 71, 0.9)),
+          radial-gradient(circle at top right, rgba(255, 255, 255, 0.14), transparent 28%);
+      }
+
+      .auth-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .auth-brand .brand-mark {
+        width: 42px;
+        height: 42px;
+        font-size: 15px;
+      }
+
+      .auth-panel.hero h1 {
+        margin: 0;
+        font-size: clamp(30px, 4vw, 44px);
+        line-height: 1.02;
+        letter-spacing: -0.04em;
+      }
+
+      .auth-panel.hero p {
+        margin: 0;
+        max-width: 54ch;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 15px;
+      }
+
+      .auth-bullets {
+        display: grid;
+        gap: 10px;
+        margin: 6px 0 0;
+        padding: 0;
+        list-style: none;
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .auth-bullets li {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+
+      .auth-bullets li::before {
+        content: "•";
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1.2;
+      }
+
+      .auth-panel.login {
+        display: grid;
+        gap: 18px;
+      }
+
+      .auth-panel.login h2 {
+        margin: 0;
+        font-size: 24px;
+        letter-spacing: -0.02em;
+      }
+
+      .auth-panel.login p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .auth-button-slot {
+        display: grid;
+        gap: 12px;
+        justify-items: start;
+        min-height: 48px;
+      }
+
+      .auth-note {
+        padding: 14px 16px;
+        border-radius: var(--radius-md);
+        background: var(--surface-muted);
+        color: var(--muted);
+      }
+
+      .auth-error {
+        display: none;
+        padding: 12px 14px;
+        border: 1px solid #dfb7b7;
+        border-radius: var(--radius-md);
+        background: #fff7f7;
+        color: var(--danger);
+      }
+
+      body[data-theme="dark"] .auth-error {
+        background: rgba(103, 37, 37, 0.2);
+      }
+
+      .auth-error.visible {
+        display: block;
+      }
+
+      .auth-meta {
+        display: grid;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .auth-meta code {
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: var(--surface-muted);
+        color: var(--text);
+      }
+
+      @media (max-width: 900px) {
+        .auth-card {
+          grid-template-columns: 1fr;
+        }
+      }
+
       .status-line {
         min-height: 22px;
         display: flex;
@@ -1210,9 +1371,23 @@
     <div id="modal-root"></div>
 
     <script>
+      const AUTH_CONFIG = {
+        clientId: document.querySelector('meta[name="google-oauth-client-id"]')?.content || "",
+        githubAuthUrl: document.querySelector('meta[name="trust-ops-github-auth-url"]')?.content || ""
+      };
+
       const state = {
         tab: "board",
         data: null,
+        auth: {
+          idToken: "",
+          email: "",
+          name: "",
+          picture: "",
+          loading: false,
+          initialized: false,
+          error: ""
+        },
         boardFilters: {},
         boardGrouping: "",
         selectedBoardViewId: "",
@@ -1238,8 +1413,67 @@
         migrationSpreadsheetId: ""
       };
 
+      const AUTH_TOKEN_STORAGE_KEY = "trust-ops:auth-token";
+
       function storageKey(name) {
         return `trust-ops:${state.data?.context?.userId || "anonymous"}:${name}`;
+      }
+
+      function loadStoredAuthToken() {
+        try {
+          return sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY) || "";
+        } catch (error) {
+          return "";
+        }
+      }
+
+      function saveStoredAuthToken(token) {
+        try {
+          if (token) {
+            sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+          } else {
+            sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+          }
+        } catch (error) {
+          // Ignore storage failures and keep the in-memory token.
+        }
+      }
+
+      function currentAppUrl() {
+        return String(window.location.href || "").split("#")[0];
+      }
+
+      function clearLocationHash() {
+        try {
+          window.history.replaceState({}, document.title, currentAppUrl());
+        } catch (error) {}
+      }
+
+      function readAuthTokenFromLocation() {
+        const hash = String(window.location.hash || "").replace(/^#/, "");
+        if (!hash) return "";
+        const params = new URLSearchParams(hash);
+        const token = params.get("id_token") || params.get("auth_token") || params.get("token") || "";
+        if (token) {
+          clearLocationHash();
+        }
+        return token;
+      }
+
+      function persistAuthToken(token) {
+        const normalized = String(token || "").trim();
+        state.auth.idToken = normalized;
+        saveStoredAuthToken(normalized);
+        return normalized;
+      }
+
+      function buildGithubAuthUrl() {
+        if (!AUTH_CONFIG.githubAuthUrl) return "";
+        const url = new URL(AUTH_CONFIG.githubAuthUrl);
+        url.searchParams.set("client_id", AUTH_CONFIG.clientId || "");
+        url.searchParams.set("return_url", currentAppUrl());
+        url.searchParams.set("app_name", organizationName());
+        return url.toString();
       }
 
       function loadStoredBool(name, fallback = false) {
@@ -1288,10 +1522,33 @@
         if (line) line.innerHTML = state.loadingCount ? `<span class="spinner status-spinner"></span>${escapeHtml(state.busyLabel || "Loading...")}` : escapeHtml(state.status);
       }
 
+      function currentAuthToken() {
+        return state.auth.idToken || loadStoredAuthToken();
+      }
+
+      function isAuthFailure(error) {
+        const message = String(error?.message || error || "");
+        return /Google Sign-In|Google OAuth client ID|GitHub Pages auth|not authorized for Trust Ops|inactive:|archived:|verified email|wrong client/i.test(message);
+      }
+
+      function clearAuthState(message = "") {
+        state.auth.idToken = "";
+        state.auth.email = "";
+        state.auth.name = "";
+        state.auth.picture = "";
+        state.auth.loading = false;
+        state.auth.initialized = false;
+        state.auth.error = message || "";
+        state.data = null;
+        saveStoredAuthToken("");
+        clearLocationHash();
+      }
+
       function callServer(name, ...args) {
         const busyMessage = busyLabelForMethod(name);
         setBusy(busyMessage);
         return new Promise((resolve, reject) => {
+          const authToken = currentAuthToken();
           google.script.run
             .withSuccessHandler((result) => {
               clearBusy();
@@ -1299,9 +1556,13 @@
             })
             .withFailureHandler((error) => {
               clearBusy();
+              if (isAuthFailure(error)) {
+                clearAuthState(error.message || String(error));
+                renderAuthScreen(error.message || String(error));
+              }
               reject(error);
             })
-            [name](...args);
+            .invokeServer(name, authToken, args);
         });
       }
 
@@ -1619,8 +1880,27 @@
       }
 
       async function loadInitial() {
+        const locationToken = readAuthTokenFromLocation();
+        if (locationToken) {
+          persistAuthToken(locationToken);
+        } else {
+          state.auth.idToken = loadStoredAuthToken();
+        }
+        if (!state.auth.idToken) {
+          state.auth.loading = false;
+          renderAuthScreen(state.auth.error || "");
+          return;
+        }
+        state.auth.loading = true;
+        document.getElementById("app").className = "loading";
+        document.getElementById("app").textContent = "Verifying Google sign-in...";
         try {
           state.data = await callServer("getInitialData");
+          state.auth.loading = false;
+          state.auth.error = "";
+          state.auth.email = state.data.context.email || "";
+          state.auth.name = state.data.context.fullName || "";
+          state.auth.picture = state.data.googleProfile?.picture || state.data.currentUser?.["Google Profile Photo URL"] || "";
           state.settingsSidebarCollapsed = loadStoredBool("settingsSidebarCollapsed", false);
           state.settingsGroupOpen = loadStoredBool("settingsGroupOpen", true);
           state.boardSidebarCollapsed = loadStoredBool("boardSidebarCollapsed", false);
@@ -1635,41 +1915,83 @@
           applyUserPreferences();
           render();
         } catch (error) {
-          let diagnostic = null;
-          try {
-            diagnostic = await callServer("getAuthDiagnostic");
-          } catch (diagnosticError) {
-            diagnostic = { diagnosticError: diagnosticError.message || String(diagnosticError) };
+          state.auth.loading = false;
+          if (isAuthFailure(error)) {
+            clearAuthState(error.message || String(error));
+            renderAuthScreen(error.message || String(error));
+            return;
           }
+          document.getElementById("app").className = "error";
           document.getElementById("app").innerHTML = `
             <div class="error">
               <strong>Unable to load Trust Ops.</strong><br>
               ${escapeHtml(error.message || error)}
-              ${renderAuthDiagnostic(diagnostic)}
             </div>`;
         }
       }
 
-      function renderAuthDiagnostic(diagnostic) {
-        if (!diagnostic) return "";
-        return `
-          <div class="panel" style="margin-top: 14px; box-shadow: none;">
-            <h3>Access Diagnostic</h3>
-            <div class="table-wrap">
-              <table>
-                <tbody>
-                  <tr><td data-label="Field">Active email</td><td data-label="Value">${escapeHtml(diagnostic.activeEmail || "(blank)")}</td></tr>
-                  <tr><td data-label="Field">Effective email</td><td data-label="Value">${escapeHtml(diagnostic.effectiveEmail || "(blank)")}</td></tr>
-                  <tr><td data-label="Field">Spreadsheet configured</td><td data-label="Value">${escapeHtml(diagnostic.spreadsheetConfigured)}</td></tr>
-                  <tr><td data-label="Field">Sheet access</td><td data-label="Value">${escapeHtml(diagnostic.sheetAccessOk)}</td></tr>
-                  <tr><td data-label="Field">User row found</td><td data-label="Value">${escapeHtml(diagnostic.userFound)}</td></tr>
-                  <tr><td data-label="Field">User active</td><td data-label="Value">${escapeHtml(diagnostic.userActive)}</td></tr>
-                  <tr><td data-label="Field">Stored email</td><td data-label="Value">${escapeHtml(diagnostic.storedEmail || "")}</td></tr>
-                  <tr><td data-label="Field">Issue</td><td data-label="Value">${escapeHtml(diagnostic.issue || diagnostic.sheetAccessError || diagnostic.diagnosticError || "")}</td></tr>
-                </tbody>
-              </table>
+      function renderAuthScreen(message = "") {
+        if (message) {
+          state.auth.error = message;
+        }
+        const githubAuthUrl = buildGithubAuthUrl();
+        const root = document.getElementById("app");
+        root.className = "auth-shell";
+        root.innerHTML = `
+          <section class="auth-card">
+            <div class="auth-panel hero">
+              <div class="auth-brand">
+                <div class="brand-mark">TO</div>
+                <div>
+                  <p style="margin: 0; color: rgba(255,255,255,0.72); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;">Trust Ops</p>
+                  <h1>Sign in on GitHub Pages to continue.</h1>
+                </div>
+              </div>
+              <p>This app verifies your Google ID token against the Users allowlist, then loads tasks, time, pay, and administration without exposing the spreadsheet to regular users.</p>
+              <ul class="auth-bullets">
+                <li>Regular users only need app access.</li>
+                <li>Owner and operator actions stay server-side and audited.</li>
+                <li>Inactive or archived Users rows are rejected after sign-in.</li>
+              </ul>
             </div>
-          </div>`;
+            <div class="auth-panel login">
+              <div>
+                <h2>GitHub Pages Login</h2>
+                <p>Use the Google account that appears in the Users sheet. The button opens the GitHub Pages login bridge, which runs Google Identity Services on a valid web origin.</p>
+              </div>
+              <div class="auth-button-slot">
+                <button type="button" class="primary" data-auth-continue ${githubAuthUrl ? "" : "disabled"}>Continue with Google</button>
+              </div>
+              <div class="auth-error ${state.auth.error ? "visible" : ""}">${escapeHtml(state.auth.error || "")}</div>
+              <div class="auth-note">
+                Execute the web app as <code>Me</code>. Access is controlled by the Users table, not by direct spreadsheet sharing.
+                ${githubAuthUrl ? `The login bridge is ${escapeHtml(AUTH_CONFIG.githubAuthUrl)}.` : "Set the GitHub Pages auth URL in the script property TRUST_OPS_GITHUB_PAGES_AUTH_URL."}
+              </div>
+              <div class="auth-meta">
+                <span>Configured client ID: <code>${escapeHtml(AUTH_CONFIG.clientId || "missing")}</code></span>
+                <span>GitHub Pages auth URL: <code>${escapeHtml(AUTH_CONFIG.githubAuthUrl || "missing")}</code></span>
+                <span>Stored token lives only in this browser session.</span>
+              </div>
+            </div>
+          </section>`;
+        const continueButton = root.querySelector("[data-auth-continue]");
+        if (continueButton) {
+          continueButton.addEventListener("click", () => {
+            const target = buildGithubAuthUrl();
+            if (!target) {
+              renderAuthScreen("Set TRUST_OPS_GITHUB_PAGES_AUTH_URL before trying to sign in.");
+              return;
+            }
+            window.location.href = target;
+          });
+        }
+      }
+
+      function signOut() {
+        clearModals();
+        state.tab = "board";
+        clearAuthState("");
+        renderAuthScreen("");
       }
 
       async function refreshData(parts = {}) {
@@ -1754,7 +2076,10 @@
 
       function render() {
         const data = state.data;
-        if (!data) return;
+        if (!data) {
+          renderAuthScreen(state.auth.error || "");
+          return;
+        }
         applyUserPreferences();
         const tabs = [
           ["board", "Assignment Board"],
@@ -1774,7 +2099,7 @@
                   <p>Tasks, time, pay periods, and administration</p>
                 </div>
               </div>
-              <div class="user-chip user-chip-current">${avatarForUser(data.currentUser)}<span>${escapeHtml(data.context.fullName)} / ${escapeHtml(data.context.role)}</span></div>
+              <div class="user-chip user-chip-current">${avatarForUser(data.currentUser)}<span>${escapeHtml(data.context.fullName)} / ${escapeHtml(data.context.role)}</span><button type="button" class="link" data-action="sign-out">Sign out</button></div>
             </header>
             <nav>
               ${tabs.map(([id, label]) => `<button class="${state.tab === id ? "active" : ""}" data-tab="${id}">${label}</button>`).join("")}
@@ -2509,7 +2834,7 @@
         return `
           <section class="panel">
             <div class="toolbar"><h3>Users</h3><button class="primary" data-action="new-user">Create User</button></div>
-            <label>Access Diagnostic <input data-diagnostic-email placeholder="email@example.com"></label>
+            <label>User Lookup <input data-diagnostic-email placeholder="email@example.com"></label>
             <div class="actions"><button data-action="diagnose-user">Diagnose Email</button></div>
             <div class="table-wrap">
               <table>
@@ -3291,6 +3616,10 @@
           if (!action) return;
         try {
           closeActionMenus();
+          if (action === "sign-out") {
+            signOut();
+            return;
+          }
           if (action === "close-modal") {
             state.pendingCategorySave = null;
             state.pendingMigrationImport = null;
@@ -3901,10 +4230,7 @@
             }
             form.reset();
             clearModals();
-            const userMessage = state.data.userPermissions?.length
-              ? (savedUser.shareError ? `User saved. Spreadsheet share failed: ${savedUser.shareError}` : "User saved and spreadsheet shared.")
-              : "User saved.";
-            await refreshData({ message: userMessage });
+            await refreshData({ message: "User saved." });
           } else if (formType === "project") {
             await callServer("saveProject", {
               projectId: form.projectId.value,

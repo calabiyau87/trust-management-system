@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <title>Trust Ops Sign-In</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f1519;
+        --panel: rgba(18, 24, 30, 0.82);
+        --panel-strong: #12181e;
+        --text: #ecf2f7;
+        --muted: #a8b4c0;
+        --border: rgba(255, 255, 255, 0.12);
+        --accent: #6bb7ad;
+        --accent-strong: #93d7cd;
+        --shadow: 0 20px 60px rgba(0, 0, 0, 0.38);
+        --radius: 28px;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font: 16px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(107, 183, 173, 0.28), transparent 32%),
+          radial-gradient(circle at bottom right, rgba(146, 215, 205, 0.16), transparent 28%),
+          linear-gradient(160deg, #0d1317, #10181d 42%, #0e1418);
+      }
+
+      .page {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 28px;
+      }
+
+      .card {
+        width: min(1120px, 100%);
+        display: grid;
+        grid-template-columns: 1.2fr 0.95fr;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(16px);
+      }
+
+      .hero,
+      .panel {
+        padding: 40px;
+      }
+
+      .hero {
+        display: grid;
+        align-content: space-between;
+        gap: 26px;
+        background:
+          linear-gradient(155deg, rgba(46, 62, 68, 0.92), rgba(18, 29, 31, 0.96)),
+          linear-gradient(180deg, #11181e, #0f1418);
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+
+      .mark {
+        width: 44px;
+        height: 44px;
+        display: inline-grid;
+        place-items: center;
+        border-radius: 14px;
+        background: linear-gradient(180deg, rgba(107, 183, 173, 0.26), rgba(67, 104, 102, 0.36));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        font-weight: 800;
+        color: white;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        max-width: 12ch;
+        margin-top: 14px;
+        font-size: clamp(2.6rem, 6vw, 5rem);
+        line-height: 0.95;
+        letter-spacing: -0.05em;
+      }
+
+      .hero p {
+        max-width: 56ch;
+        color: rgba(236, 242, 247, 0.82);
+        font-size: 1.05rem;
+      }
+
+      .points {
+        display: grid;
+        gap: 12px;
+        margin-top: 8px;
+        padding: 0;
+        list-style: none;
+        color: rgba(236, 242, 247, 0.88);
+      }
+
+      .points li {
+        display: grid;
+        grid-template-columns: 18px 1fr;
+        gap: 12px;
+        align-items: start;
+      }
+
+      .points li::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        margin-top: 8px;
+        border-radius: 999px;
+        background: var(--accent-strong);
+        box-shadow: 0 0 0 5px rgba(147, 215, 205, 0.12);
+      }
+
+      .panel {
+        display: grid;
+        align-content: center;
+        gap: 20px;
+        background: rgba(250, 252, 253, 0.98);
+        color: #15212c;
+      }
+
+      .panel h2 {
+        font-size: clamp(2rem, 4vw, 3rem);
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+      }
+
+      .panel p {
+        color: #5e6c78;
+        font-size: 1.05rem;
+      }
+
+      .auth-box {
+        display: grid;
+        gap: 14px;
+        padding: 22px;
+        border-radius: 22px;
+        border: 1px solid #e1e8ee;
+        background: linear-gradient(180deg, #ffffff, #f7f9fb);
+        box-shadow: 0 10px 24px rgba(18, 24, 30, 0.08);
+      }
+
+      .meta {
+        display: grid;
+        gap: 8px;
+        color: #647380;
+        font-size: 14px;
+      }
+
+      .meta code {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #edf2f6;
+        color: #0f1820;
+      }
+
+      .error {
+        display: none;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(176, 69, 69, 0.08);
+        color: #9e3737;
+        border: 1px solid rgba(176, 69, 69, 0.16);
+        font-size: 14px;
+      }
+
+      .error.visible {
+        display: block;
+      }
+
+      #google-signin-button {
+        min-height: 48px;
+      }
+
+      .hint {
+        font-size: 13px;
+        color: #6f7d89;
+      }
+
+      @media (max-width: 900px) {
+        .card {
+          grid-template-columns: 1fr;
+        }
+
+        .hero,
+        .panel {
+          padding: 28px;
+        }
+
+        h1 {
+          max-width: 14ch;
+        }
+      }
+    </style>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+  </head>
+  <body>
+    <main class="page">
+      <section class="card">
+        <div class="hero">
+          <div>
+            <div class="eyebrow"><span class="mark">TO</span> Trust Ops</div>
+            <h1>Sign in with Google to continue.</h1>
+          </div>
+          <div>
+            <p>This page runs Google Identity Services on a valid GitHub Pages origin, then sends the Google ID token back to the Apps Script app. The spreadsheet stays hidden from regular users.</p>
+            <ul class="points">
+              <li>Regular users only need app access.</li>
+              <li>The Apps Script backend still verifies the token against the Users table.</li>
+              <li>Sign-out in the app clears the stored token from this browser session.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="panel">
+          <div>
+            <h2>Google Sign-In</h2>
+            <p>Open this page from Trust Ops so it can pass the deployment URL and OAuth client ID automatically.</p>
+          </div>
+          <div class="auth-box">
+            <div id="google-signin-button"></div>
+            <div id="error" class="error"></div>
+            <div class="meta">
+              <div>Client ID: <code id="client-id">missing</code></div>
+              <div>Return URL: <code id="return-url">missing</code></div>
+            </div>
+            <div class="hint">If you open this page manually, append <code>?client_id=...</code> and <code>&amp;return_url=...</code>.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const state = {
+        clientId: params.get("client_id") || "",
+        returnUrl: params.get("return_url") || "",
+        appName: params.get("app_name") || "Trust Ops",
+        initialized: false
+      };
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function setError(message) {
+        const error = document.getElementById("error");
+        error.textContent = message || "";
+        error.classList.toggle("visible", Boolean(message));
+      }
+
+      function updateMeta() {
+        document.getElementById("client-id").textContent = state.clientId || "missing";
+        document.getElementById("return-url").textContent = state.returnUrl || "missing";
+      }
+
+      function buildReturnUrl(token) {
+        try {
+          const url = new URL(state.returnUrl);
+          url.hash = `id_token=${encodeURIComponent(token)}`;
+          return url.toString();
+        } catch (error) {
+          setError("The return_url is not a valid absolute URL.");
+          return "";
+        }
+      }
+
+      function handleCredentialResponse(response) {
+        const token = response?.credential || "";
+        if (!token) {
+          setError("Google Sign-In did not return an ID token.");
+          return;
+        }
+        if (!state.returnUrl) {
+          setError("Missing return_url. Open this page from Trust Ops so it can provide the Apps Script URL.");
+          return;
+        }
+        const redirectUrl = buildReturnUrl(token);
+        if (redirectUrl) {
+          window.location.replace(redirectUrl);
+        }
+      }
+
+      function renderButton() {
+        const slot = document.getElementById("google-signin-button");
+        slot.innerHTML = "";
+        if (!state.clientId || !state.returnUrl) {
+          slot.innerHTML = "<div class=\"hint\">The page needs both client_id and return_url query parameters.</div>";
+          return;
+        }
+        if (!window.google || !google.accounts || !google.accounts.id) {
+          slot.innerHTML = "<div class=\"hint\">Loading Google Sign-In...</div>";
+          setTimeout(renderButton, 100);
+          return;
+        }
+        if (!state.initialized) {
+          google.accounts.id.initialize({
+            client_id: state.clientId,
+            callback: handleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: false
+          });
+          state.initialized = true;
+        }
+        google.accounts.id.renderButton(slot, {
+          theme: "outline",
+          size: "large",
+          shape: "pill",
+          text: "signin_with",
+          logo_alignment: "left"
+        });
+      }
+
+      function boot() {
+        updateMeta();
+        renderButton();
+      }
+
+      window.addEventListener("load", boot);
+    </script>
+  </body>
+</html>

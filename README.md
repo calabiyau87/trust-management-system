@@ -4,7 +4,7 @@ Trust Ops is a Google Workspace MVP for internal trust and property operations. 
 
 ## MVP Scope
 
-- Google-authenticated web app using `Session.getActiveUser().getEmail()`.
+- Google Sign-In authenticated web app using a GitHub Pages login bridge and Google ID tokens verified server-side against the `Users` allowlist.
 - Canonical Sheets tables for users, projects, tasks, time entries, categories, pay periods, pay summaries, audit log, and settings.
 - Server-side role and ownership checks for every write.
 - Assignment Board with filters and role-aware task actions.
@@ -22,7 +22,7 @@ src/
   Code.js                 # web app entrypoints and google.script.run wrappers
   Config.js               # constants, sheet names, canonical columns
   SheetService.js         # low-level Sheets table access
-  AuthService.js          # Google identity and active user context
+  AuthService.js          # Google identity verification and allowlist context
   PermissionService.js    # centralized RBAC decisions
   TaskService.js          # task CRUD and Assignment Board data
   TimeService.js          # time entry CRUD and tracker data
@@ -58,14 +58,17 @@ The checker validates required files, JSON manifests, Apps Script JavaScript syn
 copy .env.example .env
 ```
 
-4. Log in and push:
+4. Set the `GOOGLE_OAUTH_CLIENT_ID` script property for each Apps Script environment before opening the web app.
+5. Set the `TRUST_OPS_GITHUB_PAGES_AUTH_URL` script property to your GitHub Pages login page.
+
+6. Log in and push:
 
 ```powershell
 npm run clasp:login
 npm run clasp:push
 ```
 
-5. In the Apps Script editor, run:
+6. In the Apps Script editor, run:
 
 ```javascript
 setupTrustOps("STAGING_SPREADSHEET_ID", "owner@example.com")
@@ -77,8 +80,10 @@ The signed-in Google account must match `owner@example.com`. This creates the ca
 
 Deploy the Apps Script web app as:
 
-- Execute as: `User accessing the web app`
-- Access: your Workspace domain or explicit allowed users
+- Execute as: `Me`
+- Access: Anyone with a Google account
+- Set `GOOGLE_OAUTH_CLIENT_ID` and `TRUST_OPS_GITHUB_PAGES_AUTH_URL` before sharing the URL.
+- Add `https://<your-github-user>.github.io` to the OAuth client’s authorized JavaScript origins.
 
 Use staging first. Do not connect the production spreadsheet until auth, permissions, time entry, pay summary, and audit smoke tests pass.
 
