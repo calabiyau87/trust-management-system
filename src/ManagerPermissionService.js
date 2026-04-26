@@ -15,6 +15,7 @@ var TrustOpsManagerPermissionService = (function () {
     "Can Manage Projects",
     "Can Manage Time Categories",
     "Can Manage Tags",
+    "Can Manage Organization",
     "Can Manage Board Views",
     "Can Manage Settings",
     "Can Change Profile Color",
@@ -36,7 +37,7 @@ var TrustOpsManagerPermissionService = (function () {
     permissions["Can Manage Projects"] = true;
     if (selectedPreset === TrustOpsConfig.MANAGER_PRESETS.ADMIN_LIKE) {
       CAPABILITIES.forEach(function (capability) {
-        permissions[capability] = capability !== "Can Manage Users" && capability !== "Can Manage Settings";
+        permissions[capability] = capability !== "Can Manage Users" && capability !== "Can Manage Settings" && capability !== "Can Manage Organization" && capability !== "Can Import Legacy Data";
       });
     } else if (selectedPreset === TrustOpsConfig.MANAGER_PRESETS.BASIC) {
       permissions["Can Edit Tasks"] = false;

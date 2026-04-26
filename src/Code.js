@@ -56,12 +56,14 @@ function getInitialData() {
     userPermissions: TrustOpsPermissionService.isOwnerOrAdmin(context) ? TrustOpsManagerPermissionService.listUserPermissions(context) : [],
     payPeriods: TrustOpsPayService.listPayPeriods(),
     currentPayPeriod: TrustOpsUtils.sanitizeForClient(currentPayPeriod),
+    organizationName: TrustOpsSettingsService.getOrganizationName(),
     tasks: TrustOpsTaskService.listTasks(context, {}),
     tracker: TrustOpsTimeService.getTrackerData(context, { userId: context.userId, payPeriodId: currentPayPeriod["Pay Period ID"] }),
     paySummary: TrustOpsPayService.getPaySummary(context, { userId: context.userId, payPeriodId: currentPayPeriod["Pay Period ID"] }),
     projectDashboard: TrustOpsProjectService.getProjectDashboard(context, { rangeMode: "current" }),
     timeRequests: TrustOpsTimeRequestService.listRequests(context, { status: TrustOpsConfig.REQUEST_STATUS.PENDING }),
     settings: TrustOpsPermissionService.canManageSettings(context) ? TrustOpsSettingsService.listSettings(context) : [],
+    organizationName: TrustOpsSettingsService.getOrganizationName(),
     visualSettings: TrustOpsSettingsService.getClientVisualSettings(),
     googleProfile: googleProfile
   };
@@ -98,6 +100,7 @@ function refreshAppData(filters) {
     payPeriods: TrustOpsPayService.listPayPeriods(),
     timeRequests: TrustOpsTimeRequestService.listRequests(context, { status: TrustOpsConfig.REQUEST_STATUS.PENDING }),
     settings: TrustOpsPermissionService.canManageSettings(context) ? TrustOpsSettingsService.listSettings(context) : [],
+    organizationName: TrustOpsSettingsService.getOrganizationName(),
     visualSettings: TrustOpsSettingsService.getClientVisualSettings()
   };
 }

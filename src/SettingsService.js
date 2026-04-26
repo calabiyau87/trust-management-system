@@ -7,6 +7,10 @@ var TrustOpsSettingsService = (function () {
     return TrustOpsUtils.recordsForClient(TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.SETTINGS));
   }
 
+  function getOrganizationName() {
+    return getSetting(TrustOpsConfig.ORGANIZATION_NAME_KEY, TrustOpsConfig.APP_NAME);
+  }
+
   function getSetting(key, fallback) {
     var matches = TrustOpsSheetService.findByColumn(TrustOpsConfig.SHEETS.SETTINGS, "Setting Key", key);
     if (!matches.length) return fallback;
@@ -59,11 +63,15 @@ var TrustOpsSettingsService = (function () {
   }
 
   function saveSetting(context, payload) {
-    TrustOpsPermissionService.requireAllowed(
-      TrustOpsPermissionService.canManageSettings(context),
-      "Only Owner/Admin can manage settings."
-    );
     var key = TrustOpsUtils.requireValue(payload["Setting Key"] || payload.key, "Setting key");
+    TrustOpsPermissionService.requireAllowed(
+      key === TrustOpsConfig.ORGANIZATION_NAME_KEY
+        ? TrustOpsPermissionService.canManageOrganization(context)
+        : TrustOpsPermissionService.canManageSettings(context),
+      key === TrustOpsConfig.ORGANIZATION_NAME_KEY
+        ? "Only Owner/Admin/authorized users can manage organization settings."
+        : "Only Owner/Admin can manage settings."
+    );
     var existing = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.SETTINGS, key);
     var record = {
       "Setting Value": payload["Setting Value"] || payload.value || "",
@@ -85,6 +93,7 @@ var TrustOpsSettingsService = (function () {
   return {
     listSettings: listSettings,
     getSetting: getSetting,
+    getOrganizationName: getOrganizationName,
     getClientVisualSettings: getClientVisualSettings,
     getTaskStatusColors: getTaskStatusColors,
     getProjectStatusColors: getProjectStatusColors,

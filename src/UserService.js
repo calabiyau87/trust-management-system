@@ -58,6 +58,16 @@ var TrustOpsUserService = (function () {
     var trackPay = payload["Track Pay"] === undefined ? existing ? TrustOpsUtils.toBoolean(existing["Track Pay"]) : false : TrustOpsUtils.toBoolean(payload["Track Pay"]);
     var trackTime = payload["Track Time"] === undefined ? existing ? TrustOpsUtils.toBoolean(existing["Track Time"]) : true : TrustOpsUtils.toBoolean(payload["Track Time"]);
     if (trackPay) trackTime = true;
+    if (payType === "Hourly") {
+      salaryAmountValue = 0;
+      salaryFrequency = "";
+    } else if (payType === "Salary") {
+      hourlyRateValue = 0;
+    } else {
+      hourlyRateValue = 0;
+      salaryAmountValue = 0;
+      salaryFrequency = "";
+    }
     TrustOpsUtils.requireValue(firstName, "First name");
     TrustOpsUtils.requireValue(fullName, "Full name");
     TrustOpsUtils.requireValue(email, "Email");

@@ -41,7 +41,9 @@ const requiredFiles = [
   "docs/agents/frontend-agent.md",
   "docs/agents/data-agent.md",
   "docs/agents/qa-agent.md",
-  "docs/agents/release-agent.md"
+  "docs/agents/release-agent.md",
+  "docs/agents/performance-agent.md",
+  "docs/agents/ux-ui-designer.md"
 ];
 
 function fail(message) {

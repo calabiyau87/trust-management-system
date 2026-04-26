@@ -137,6 +137,12 @@
         grid-template-rows: auto auto 1fr;
       }
 
+      .app-topbar {
+        position: sticky;
+        top: 0;
+        z-index: 15;
+      }
+
       header {
         display: flex;
         justify-content: space-between;
@@ -260,6 +266,10 @@
         overflow-x: auto;
       }
 
+      .table-wrap table {
+        min-width: 100%;
+      }
+
       table {
         width: 100%;
         border-collapse: collapse;
@@ -279,6 +289,11 @@
         font-size: 12px;
         font-weight: 800;
         background: var(--table-head);
+      }
+
+      body[data-theme="dark"] th {
+        color: #f7fbff;
+        background: #1f2830;
       }
 
       table {
@@ -502,14 +517,98 @@
         gap: 14px;
       }
 
+      .settings-layout[data-sidebar-collapsed="true"] {
+        grid-template-columns: 68px minmax(0, 1fr);
+      }
+
       .side-pane {
         display: grid;
         gap: 6px;
         align-self: start;
+        position: sticky;
+        top: 124px;
+        max-height: calc(100vh - 140px);
+        overflow: auto;
       }
 
       .side-pane button {
         text-align: left;
+      }
+
+      .side-pane .sidebar-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .side-pane .sidebar-short {
+        display: none;
+        min-width: 24px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0;
+      }
+
+      .settings-layout[data-sidebar-collapsed="true"] .side-pane {
+        width: 68px;
+        padding: 10px 8px;
+      }
+
+      .settings-layout[data-sidebar-collapsed="true"] .side-pane button {
+        text-align: center;
+        padding-left: 8px;
+        padding-right: 8px;
+      }
+
+      .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-text,
+      .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-group .sidebar-children,
+      .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-short,
+      .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-group .sidebar-children {
+        display: none;
+      }
+
+      .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-short {
+        display: inline-flex;
+      }
+
+      .side-pane .sidebar-group {
+        display: grid;
+        gap: 6px;
+      }
+
+      .side-pane .sidebar-children {
+        display: grid;
+        gap: 4px;
+        padding-left: 12px;
+      }
+
+      .side-pane .sidebar-children button {
+        padding-left: 10px;
+      }
+
+      .spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        border-radius: 50%;
+        display: inline-block;
+        animation: spin 0.8s linear infinite;
+        vertical-align: middle;
+      }
+
+      .status-spinner {
+        margin-right: 8px;
+      }
+
+      .button-spinner {
+        width: 12px;
+        height: 12px;
+        margin-right: 6px;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
       }
 
       .side-pane button.active {
@@ -669,6 +768,16 @@
           grid-template-columns: 1fr;
         }
 
+        .settings-layout[data-sidebar-collapsed="true"],
+        .settings-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .side-pane {
+          position: static;
+          max-height: none;
+        }
+
         table,
         thead,
         tbody,
@@ -721,15 +830,72 @@
         payFilters: { rangeMode: "current" },
         projectFilters: { rangeMode: "current", includeArchived: false, projectId: "" },
         settingsSection: "profile",
+        settingsSidebarCollapsed: false,
+        settingsGroupOpen: true,
+        loadingCount: 0,
+        busyLabel: "",
         pendingCategorySave: null,
-        status: ""
+        pendingMigrationImport: null,
+        status: "",
+        migrationSourceType: "sheet",
+        migrationImportMode: "append",
+        migrationSpreadsheetId: ""
       };
 
+      function storageKey(name) {
+        return `trust-ops:${state.data?.context?.userId || "anonymous"}:${name}`;
+      }
+
+      function loadStoredBool(name, fallback = false) {
+        const value = localStorage.getItem(storageKey(name));
+        if (value === null) return fallback;
+        return value === "true";
+      }
+
+      function saveStoredBool(name, value) {
+        localStorage.setItem(storageKey(name), String(Boolean(value)));
+      }
+
+      function busyLabelForMethod(name) {
+        const text = String(name || "").toLowerCase();
+        if (text.includes("import")) return "Importing...";
+        if (text.startsWith("get") || text.startsWith("refresh") || text.startsWith("list") || text.startsWith("load")) return "Loading...";
+        if (text.includes("save") || text.includes("create") || text.includes("update") || text.includes("remove") || text.includes("delete") || text.includes("archive") || text.includes("approve") || text.includes("reject") || text.includes("share") || text.includes("lock") || text.includes("unlock")) return "Saving...";
+        return "Working...";
+      }
+
+      function setBusy(message) {
+        state.loadingCount += 1;
+        state.busyLabel = message || state.busyLabel || "Loading...";
+        renderBusyState();
+      }
+
+      function clearBusy() {
+        state.loadingCount = Math.max(0, state.loadingCount - 1);
+        if (!state.loadingCount) {
+          state.busyLabel = "";
+        }
+        renderBusyState();
+      }
+
+      function renderBusyState() {
+        const line = document.querySelector("[data-status-line]");
+        if (line) line.innerHTML = state.loadingCount ? `<span class="spinner status-spinner"></span>${escapeHtml(state.busyLabel || "Loading...")}` : escapeHtml(state.status);
+      }
+
       function callServer(name, ...args) {
+        const busyMessage = busyLabelForMethod(name);
+        setBusy(busyMessage);
         return new Promise((resolve, reject) => {
           google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler((error) => reject(error))
+            .withSuccessHandler((result) => {
+              clearBusy();
+              resolve(result);
+            })
+            .withFailureHandler((error) => {
+              clearBusy();
+              reject(error);
+            })
             [name](...args);
         });
       }
@@ -766,6 +932,10 @@
 
       function settingMap() {
         return Object.fromEntries((state.data?.settings || []).map((setting) => [setting["Setting Key"], setting["Setting Value"]]));
+      }
+
+      function organizationName() {
+        return state.data?.organizationName || settingMap()[`ORGANIZATION_NAME`] || state.data?.appName || "Trust Ops";
       }
 
       function taskStatusColors() {
@@ -865,6 +1035,10 @@
         return `<button type="button" class="icon-button ${danger ? "danger" : ""}" data-action="${escapeHtml(action)}" ${idName ? `${idName}="${escapeHtml(idValue)}"` : ""} title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${symbol}</button>`;
       }
 
+      function sidebarLabel(shortLabel, fullLabel) {
+        return `<span class="sidebar-label"><span class="sidebar-short">${escapeHtml(shortLabel)}</span><span class="sidebar-text">${escapeHtml(fullLabel)}</span></span>`;
+      }
+
       function setModal(html) {
         document.getElementById("modal-root").innerHTML = html;
       }
@@ -903,6 +1077,7 @@
       async function loadInitial() {
         try {
           state.data = await callServer("getInitialData");
+          state.settingsSidebarCollapsed = loadStoredBool("settingsSidebarCollapsed", false);
           state.timeFilters.userId = state.data.context.userId;
           state.timeFilters.payPeriodId = state.data.currentPayPeriod["Pay Period ID"];
           state.payFilters.userId = state.data.context.userId;
@@ -1006,33 +1181,41 @@
           ["time", "Time Tracker"],
           ["pay", "Pay Summary"]
         ];
+        if (data.permissions.canImportLegacyData) {
+          tabs.push(["import", "Import"]);
+        }
         tabs.push(["settings", "Settings"]);
         document.getElementById("app").className = "app-shell";
         document.getElementById("app").innerHTML = `
-          <header>
-            <div class="brand">
-              <div class="brand-mark">TO</div>
-              <div>
-                <h1>Trust Ops</h1>
-                <p>Tasks, time, pay periods, and administration</p>
+          <div class="app-topbar">
+            <header>
+              <div class="brand">
+                <div class="brand-mark">TO</div>
+                <div>
+                  <h1>${escapeHtml(organizationName())}</h1>
+                  <p>Tasks, time, pay periods, and administration</p>
+                </div>
               </div>
-            </div>
-            <div class="user-chip user-chip-current">${avatarForUser(data.currentUser)}<span>${escapeHtml(data.context.fullName)} / ${escapeHtml(data.context.role)}</span></div>
-          </header>
-          <nav>
-            ${tabs.map(([id, label]) => `<button class="${state.tab === id ? "active" : ""}" data-tab="${id}">${label}</button>`).join("")}
-          </nav>
+              <div class="user-chip user-chip-current">${avatarForUser(data.currentUser)}<span>${escapeHtml(data.context.fullName)} / ${escapeHtml(data.context.role)}</span></div>
+            </header>
+            <nav>
+              ${tabs.map(([id, label]) => `<button class="${state.tab === id ? "active" : ""}" data-tab="${id}">${label}</button>`).join("")}
+            </nav>
+          </div>
           <main>
-            <div class="status-line" data-status-line>${escapeHtml(state.status)}</div>
+            <div class="status-line" data-status-line>${state.loadingCount ? `<span class="spinner status-spinner"></span>${escapeHtml(state.busyLabel || "Loading...")}` : escapeHtml(state.status)}</div>
             ${renderActiveTab()}
           </main>
         `;
+        renderBusyState();
+        syncMigrationMode();
       }
 
       function renderActiveTab() {
         if (state.tab === "time") return renderTimeTracker();
         if (state.tab === "pay") return renderPaySummary();
         if (state.tab === "projects") return renderProjectDashboard();
+        if (state.tab === "import") return renderImportAdmin();
         if (state.tab === "settings") return renderSettings();
         return renderBoard();
       }
@@ -1549,25 +1732,40 @@
 
       function renderSettings() {
         const data = state.data;
-        const sections = [
-          ["profile", "Profile", true],
+        const organizationChildren = [
+          ["organization", "Organization", data.permissions.canManageOrganization],
           ["users", "Users", data.permissions.canManageUsers],
           ["projects", "Projects", data.permissions.canManageProjects],
-          ["categories", "Time Categories", data.permissions.canManageTimeCategories],
           ["tags", "Tags", data.permissions.canManageTags],
-          ["settings", "Settings", data.permissions.canManageSettings],
-          ["migration", "Import", data.permissions.canImportLegacyData]
+          ["categories", "Time Categories", data.permissions.canManageTimeCategories]
+        ].filter((section) => section[2]);
+        const sections = [
+          ["profile", "Profile", true],
+          ["organization-group", "Organization", organizationChildren.length],
+          ["settings", "Settings", data.permissions.canManageSettings]
         ].filter((section) => section[2]);
         return `
           <section class="toolbar">
             <div>
               <h2>Settings</h2>
-              <p>Profile, users, projects, categories, tags, and application settings</p>
+              <p>Profile, organization settings, and application settings</p>
             </div>
           </section>
-          <section class="settings-layout">
+          <section class="settings-layout" data-sidebar-collapsed="${state.settingsSidebarCollapsed ? "true" : "false"}">
             <aside class="panel side-pane">
-              ${sections.map(([id, label]) => `<button class="${state.settingsSection === id ? "active" : ""}" data-settings-section="${id}">${label}</button>`).join("")}
+              <button type="button" class="icon-button" data-action="toggle-settings-sidebar" title="${state.settingsSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}" aria-label="${state.settingsSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}">${state.settingsSidebarCollapsed ? "&#9654;" : "&#9664;"}</button>
+              ${sections.map(([id, label]) => {
+                if (id === "organization-group") {
+                  return `
+                    <div class="sidebar-group">
+                      <button type="button" class="${state.settingsGroupOpen ? "active" : ""}" data-action="toggle-organization-group">${sidebarLabel("Org", "Organization")}</button>
+                      ${state.settingsGroupOpen ? `<div class="sidebar-children">
+                        ${organizationChildren.map(([childId, childLabel]) => `<button type="button" class="${state.settingsSection === childId ? "active" : ""}" data-settings-section="${childId}">${sidebarLabel(childLabel.slice(0, 3), childLabel)}</button>`).join("")}
+                      </div>` : ""}
+                    </div>`;
+                }
+                return `<button type="button" class="${state.settingsSection === id ? "active" : ""}" data-settings-section="${id}">${sidebarLabel(label.slice(0, 3), label)}</button>`;
+              }).join("")}
             </aside>
             <div>${renderSettingsContent()}</div>
           </section>
@@ -1575,13 +1773,28 @@
       }
 
       function renderSettingsContent() {
+        if (state.settingsSection === "organization") return renderOrganizationSettings();
         if (state.settingsSection === "users") return renderUsersSettings();
         if (state.settingsSection === "projects") return renderProjectsSettings();
         if (state.settingsSection === "categories") return renderCategoriesSettings();
         if (state.settingsSection === "tags") return renderTagsSettings();
-        if (state.settingsSection === "migration") return renderMigrationAdmin();
         if (state.settingsSection === "settings") return renderAppSettings();
         return renderProfileSettings();
+      }
+
+      function renderOrganizationSettings() {
+        return `
+          <section class="panel">
+            <h3>Organization</h3>
+            <form data-form="organization" class="stack">
+              <div class="form-grid two">
+                <label>Organization Name <input name="organizationName" value="${escapeHtml(organizationName())}" required></label>
+                <label>Header Label <input value="${escapeHtml(organizationName())}" disabled></label>
+              </div>
+              <p class="help">This name appears in the top bar for all users. Additional organization settings can be added here as needed.</p>
+              <div class="actions"><button class="primary" type="submit">Save Organization</button></div>
+            </form>
+          </section>`;
       }
 
       function renderProfileSettings() {
@@ -1729,7 +1942,11 @@
               <button class="primary" type="submit">Save Settings</button>
             </form>
           </section>
-          ${renderMigrationAdmin()}`;
+        `;
+      }
+
+      function renderImportAdmin() {
+        return renderMigrationAdmin();
       }
 
       function renderUserAdmin() {
@@ -1858,24 +2075,24 @@
       function renderMigrationAdmin() {
         return `
           <section class="panel">
-            <h3>Legacy Data Migration</h3>
+            <h3>Import</h3>
             <form data-form="migration" class="stack">
-              <div class="form-grid two">
+              <div class="form-grid two" data-import-mode-fields>
                 <label>Source Mode
-                  <select name="sourceType">
-                    <option value="sheet">Google Sheet</option>
-                    <option value="csv">CSV Files</option>
+                  <select name="sourceType" value="${escapeHtml(state.migrationSourceType)}">
+                    <option value="sheet" ${state.migrationSourceType === "sheet" ? "selected" : ""}>Google Sheet</option>
+                    <option value="csv" ${state.migrationSourceType === "csv" ? "selected" : ""}>CSV Files</option>
                   </select>
                 </label>
-                <label>Google Sheet URL or ID <input name="spreadsheetId" placeholder="Optional when using CSV files"></label>
                 <label>Import Behavior
                   <select name="importMode">
-                    <option value="append">Append to existing data</option>
-                    <option value="overwrite">Overwrite existing data</option>
+                    <option value="append" ${state.migrationImportMode === "append" ? "selected" : ""}>Append to existing data</option>
+                    <option value="overwrite" ${state.migrationImportMode === "overwrite" ? "selected" : ""}>Overwrite existing data</option>
                   </select>
                 </label>
               </div>
-              <label>Legacy CSV Files <input name="legacyFiles" type="file" multiple accept=".csv,text/csv"></label>
+              <label data-import-sheet-field>Google Sheet URL or ID <input name="spreadsheetId" value="${escapeHtml(state.migrationSpreadsheetId)}" placeholder="Optional when using CSV files"></label>
+              <label data-import-csv-field class="hidden">Legacy CSV Files <input name="legacyFiles" type="file" multiple accept=".csv,text/csv"></label>
               <p class="help">For CSV imports, use file names that match the legacy sheet names, such as Users.csv, Projects.csv, Time Log.csv, Pay Summary.csv, Assignment Board.csv, Imported Tasks.csv, Time Categories.csv, and Tags.csv. You can import any subset now and return later for the rest.</p>
               <div class="actions">
                 <button type="button" data-action="migration-preview">Preview Legacy Data</button>
@@ -1883,6 +2100,143 @@
               </div>
             </form>
           </section>`;
+      }
+
+      function migrationFormMode(form) {
+        return form?.sourceType?.value || "sheet";
+      }
+
+      function syncMigrationMode(form = document.querySelector('[data-form="migration"]')) {
+        if (!form) return;
+        const mode = migrationFormMode(form);
+        form.querySelector("[data-import-sheet-field]")?.classList.toggle("hidden", mode !== "sheet");
+        form.querySelector("[data-import-csv-field]")?.classList.toggle("hidden", mode !== "csv");
+      }
+
+      function duplicateFieldsForKind(kind, record) {
+        const row = record || {};
+        const fields = {
+          project: [
+            ["Project", row["Project Name"] || row.Project || row.Name || ""],
+            ["Status", row.Status || ""],
+            ["Active", row.Active || ""]
+          ],
+          user: [
+            ["Full Name", row["Full Name"] || row.FullName || row.User || row.Name || ""],
+            ["Email", row.Email || ""],
+            ["Role", row.Role || ""],
+            ["Pay Type", row["Pay Type"] || row.PayType || ""]
+          ],
+          tag: [
+            ["Tag", row.Tag || row["Tag Name"] || row.Name || ""],
+            ["Color", row.Color || ""],
+            ["Description", row.Description || ""]
+          ],
+          category: [
+            ["Category", row.Category || ""],
+            ["Default Project", row["Default Project"] || row.Project || ""]
+          ],
+          task: [
+            ["Title", row.Title || row.Task || ""],
+            ["Project", row["Project Name"] || row.Project || ""],
+            ["Due Date", row["Due Date"] || row.Due || ""],
+            ["Status", row.Status || ""]
+          ],
+          timeEntry: [
+            ["Date", row.Date || ""],
+            ["User", row["User Name"] || row.User || ""],
+            ["Entry Type", row["Entry Type"] || ""],
+            ["Task / Category", row["Task / Category"] || row.Task || row.Title || row.Category || ""],
+            ["Project", row["Project Name"] || row.Project || ""],
+            ["Hours", row.Hours || ""]
+          ],
+          payPeriod: [
+            ["Pay Period", row["Pay Period"] || row["Pay Period Label"] || ""],
+            ["Start Date", row["Start Date"] || row["Start Pay Period"] || ""],
+            ["End Date", row["End Date"] || row["End Pay Period"] || ""]
+          ],
+          paySummary: [
+            ["User", row["User Name"] || row.User || row["Full Name"] || ""],
+            ["Pay Period", row["Pay Period"] || row["Pay Period Label"] || ""],
+            ["Total Hours", row["Total Hours"] || row.Total || row.Hours || ""],
+            ["Gross Pay", row["Gross Pay"] || row.Pay || ""]
+          ]
+        };
+        return fields[kind] || Object.entries(row).slice(0, 4).map(([label, value]) => [label, value]);
+      }
+
+      function duplicateKindTitle(kind) {
+        const labels = {
+          project: "Project",
+          user: "User",
+          tag: "Tag",
+          category: "Time Category",
+          task: "Task",
+          timeEntry: "Time Entry",
+          payPeriod: "Pay Period",
+          paySummary: "Pay Summary"
+        };
+        return labels[kind] || kind;
+      }
+
+      function renderDuplicateComparison(duplicate, index) {
+        return `
+          <section class="panel" style="box-shadow:none;margin:0;">
+            <div class="toolbar" style="margin-bottom:8px;">
+              <div>
+                <h3>${escapeHtml(duplicateKindTitle(duplicate.kind))}</h3>
+                <p>${escapeHtml(duplicate.label || duplicate.fingerprint || "")}</p>
+              </div>
+              <label style="min-width:160px;">Decision
+                <select data-duplicate-decision="${index}">
+                  <option value="keep">Keep Original</option>
+                  <option value="replace">Replace</option>
+                </select>
+              </label>
+            </div>
+            <div class="detail-grid">
+              <div class="panel" style="box-shadow:none;margin:0;">
+                <h3>Existing</h3>
+                ${duplicateFieldsForKind(duplicate.kind, duplicate.existing).map(([label, value]) => `<div><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</div>`).join("")}
+              </div>
+              <div class="panel" style="box-shadow:none;margin:0;">
+                <h3>Incoming</h3>
+                ${duplicateFieldsForKind(duplicate.kind, duplicate.incoming).map(([label, value]) => `<div><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</div>`).join("")}
+              </div>
+            </div>
+          </section>`;
+      }
+
+      function openLegacyDuplicateReview(preview, payload) {
+        state.pendingMigrationImport = { payload, preview };
+        const duplicates = preview.duplicates || [];
+        setModal(`
+          <div class="modal-backdrop">
+            <div class="modal stack" style="width:min(1080px,100%);">
+              <div class="modal-header">
+                <h3>Duplicate Records Found</h3>
+                <button type="button" data-action="close-modal">Close</button>
+              </div>
+              <p>${escapeHtml(duplicates.length)} potential duplicate${duplicates.length === 1 ? "" : "s"} were found. Choose what to do for each one, or apply the same choice to every duplicate.</p>
+              <label class="checkbox-row"><input type="checkbox" data-duplicate-apply-all> Apply the first decision to every duplicate</label>
+              <div class="stack" style="max-height:58vh;overflow:auto;">
+                ${duplicates.map((duplicate, index) => renderDuplicateComparison(duplicate, index)).join("")}
+              </div>
+              <div class="actions">
+                <button type="button" class="primary" data-action="confirm-legacy-import">Import with these choices</button>
+              </div>
+            </div>
+          </div>`);
+      }
+
+      function syncDuplicateApplyAll() {
+        const applyAll = document.querySelector("[data-duplicate-apply-all]")?.checked;
+        if (!applyAll) return;
+        const first = document.querySelector("[data-duplicate-decision='0']");
+        const value = first?.value || "keep";
+        document.querySelectorAll("[data-duplicate-decision]").forEach((select) => {
+          select.value = value;
+        });
       }
 
       function activeTags() {
@@ -2121,14 +2475,14 @@
         else setModal(html);
       }
 
-      function openConfirmModal(message, action, payloadName, payloadValue) {
+      function openConfirmModal(message, action, payloadName, payloadValue, confirmLabel = "Delete", title = "Confirm Delete") {
         setModal(`
           <div class="modal-backdrop">
             <div class="modal stack">
-              <div class="modal-header"><h3>Confirm Delete</h3><button type="button" data-action="close-modal">Close</button></div>
+              <div class="modal-header"><h3>${escapeHtml(title)}</h3><button type="button" data-action="close-modal">Close</button></div>
               <p>${escapeHtml(message)}</p>
               <div class="actions">
-                <button type="button" data-action="${escapeHtml(action)}" ${payloadName}="${escapeHtml(payloadValue)}" class="danger">Delete</button>
+                <button type="button" data-action="${escapeHtml(action)}" ${payloadName}="${escapeHtml(payloadValue)}" class="danger">${escapeHtml(confirmLabel)}</button>
                 <button type="button" data-action="close-modal">Cancel</button>
               </div>
             </div>
@@ -2203,7 +2557,15 @@
         try {
           if (action === "close-modal") {
             state.pendingCategorySave = null;
+            state.pendingMigrationImport = null;
             closeTopModal();
+          } else if (action === "toggle-settings-sidebar") {
+            state.settingsSidebarCollapsed = !state.settingsSidebarCollapsed;
+            saveStoredBool("settingsSidebarCollapsed", state.settingsSidebarCollapsed);
+            render();
+          } else if (action === "toggle-organization-group") {
+            state.settingsGroupOpen = !state.settingsGroupOpen;
+            render();
           } else if (action === "new-task") {
             openTaskModal();
           } else if (action === "save-board-view") {
@@ -2287,7 +2649,10 @@
             await callServer("rejectTimeEditRequest", event.target.closest("[data-request-id]").dataset.requestId, "Rejected in Time Tracker");
             await refreshTrackerData("Request rejected.");
           } else if (action === "remove-profile-image") {
-            await callServer("removeProfileImage", state.data.currentUser["User ID"]);
+            openConfirmModal("Remove this profile image? This will delete the uploaded file if one exists.", "confirm-remove-profile-image", "data-user-id", state.data.currentUser["User ID"], "Remove", "Confirm Remove");
+          } else if (action === "confirm-remove-profile-image") {
+            await callServer("removeProfileImage", event.target.closest("[data-user-id]").dataset.userId);
+            clearModals();
             await refreshData({ message: "Profile image removed." });
           } else if (action === "new-user") {
             openUserModal();
@@ -2375,12 +2740,31 @@
           } else if (action === "migration-preview") {
             const form = event.target.closest('form[data-form="migration"]');
             const payload = await buildLegacyMigrationPayload(form);
-            const preview = await callServer("getMigrationPreview", payload);
+            const preview = await callServer("getLegacyMigrationPreview", payload);
             if (preview.sourceType === "current") {
               setStatus(`Prototype rows: Assignment Board ${preview.assignmentBoardRows}, Imported Tasks ${preview.importedTaskRows}.`);
             } else {
-              setStatus(`Legacy source rows: Projects ${preview.rows.projects}, Users ${preview.rows.users}, Tasks ${preview.rows.assignmentBoard + preview.rows.importedTasks}, Time logs ${preview.rows.timeLog}, Pay summaries ${preview.rows.paySummary}.`);
+              setStatus(`Legacy source rows: Projects ${preview.rows.projects}, Users ${preview.rows.users}, Tasks ${preview.rows.assignmentBoard + preview.rows.importedTasks}, Time logs ${preview.rows.timeLog}, Pay summaries ${preview.rows.paySummary}, Tags ${preview.rows.tags}.`);
+              if (payload.importMode !== "overwrite" && (preview.duplicates || []).length) {
+                openLegacyDuplicateReview(preview, payload);
+              }
             }
+          } else if (action === "confirm-legacy-import") {
+            const pending = state.pendingMigrationImport;
+            if (!pending) return;
+            const duplicates = pending.preview.duplicates || [];
+            const applyAll = document.querySelector("[data-duplicate-apply-all]")?.checked;
+            const duplicateDecisions = {};
+            const sharedChoice = applyAll ? (document.querySelector("[data-duplicate-decision='0']")?.value || "keep") : null;
+            duplicates.forEach((duplicate, index) => {
+              const bucket = duplicateDecisions[duplicate.kind] || (duplicateDecisions[duplicate.kind] = {});
+              bucket[duplicate.fingerprint] = applyAll ? sharedChoice : (document.querySelector(`[data-duplicate-decision="${index}"]`)?.value || "keep");
+            });
+            const result = await callServer("importLegacyWorkbook", Object.assign({}, pending.payload, { duplicateDecisions }));
+            const summary = `Imported legacy data: ${result.projects.created + result.projects.updated} projects, ${result.users.created + result.users.updated} users, ${result.tags.imported || (result.tags.created + result.tags.updated)} tags, ${result.tasks.created + result.tasks.updated} tasks, ${result.timeEntries.created + result.timeEntries.updated} time entries, ${result.paySummaries.created + result.paySummaries.updated} pay summaries.`;
+            state.pendingMigrationImport = null;
+            clearModals();
+            await refreshData({ message: summary });
           }
         } catch (error) {
           setStatus(error.message || String(error));
@@ -2391,6 +2775,9 @@
         if (event.target.matches("[data-filter]")) {
           state.boardFilters[event.target.dataset.filter] = event.target.value;
           updateBoardResultsOnly();
+        }
+        if (event.target.closest('[data-form="migration"]') && event.target.name === "spreadsheetId") {
+          state.migrationSpreadsheetId = event.target.value;
         }
         if (event.target.matches("[data-tag-search]")) {
           updateTagPicker(event.target.closest("[data-tag-picker]"));
@@ -2405,6 +2792,9 @@
           const wheel = document.querySelector(`[data-color-wheel="${cssEscape(name)}"]`);
           if (wheel && /^#[0-9a-fA-F]{6}$/.test(event.target.value)) wheel.value = event.target.value;
         }
+        if (event.target.matches("[data-duplicate-decision]")) {
+          syncDuplicateApplyAll();
+        }
       });
 
       document.addEventListener("change", async (event) => {
@@ -2412,8 +2802,15 @@
           state.boardFilters[event.target.dataset.filter] = event.target.value;
           render();
         }
+        if (event.target.closest('[data-form="migration"]') && event.target.name === "importMode") {
+          state.migrationImportMode = event.target.value;
+        }
         if (event.target.matches("[data-user-pay-type], [name='trackPay']")) {
           syncUserPayFields(event.target.closest('[data-form="user"]'));
+        }
+        if (event.target.matches('[name="sourceType"]')) {
+          state.migrationSourceType = event.target.value;
+          syncMigrationMode(event.target.closest('[data-form="migration"]'));
         }
         if (event.target.matches("[data-board-grouping]")) {
           state.boardGrouping = event.target.value;
@@ -2477,6 +2874,12 @@
           } catch (error) {
             setStatus(error.message || String(error));
           }
+        }
+        if (event.target.matches("[data-duplicate-apply-all]")) {
+          syncDuplicateApplyAll();
+        }
+        if (event.target.matches("[data-duplicate-decision]")) {
+          syncDuplicateApplyAll();
         }
         if (event.target.closest('[data-form="time-entry"], [data-form="time-modal"]') && event.target.name === "date") {
           const form = event.target.closest("form");
@@ -2708,6 +3111,13 @@
             state.data.context.fullName = savedProfile["Full Name"];
             applyUserPreferences();
             await refreshData({ message: "Profile saved." });
+          } else if (formType === "organization") {
+            await callServer("saveSetting", {
+              key: "ORGANIZATION_NAME",
+              value: form.organizationName.value,
+              description: "Organization name displayed in the app shell."
+            });
+            await refreshData({ message: "Organization saved." });
           } else if (formType === "user") {
             const savedUser = await callServer("saveUser", {
               userId: form.userId.value,
@@ -2771,8 +3181,19 @@
             await refreshData({ message: "Category saved." });
           } else if (formType === "migration") {
             const payload = await buildLegacyMigrationPayload(form);
+            const preview = await callServer("getLegacyMigrationPreview", payload);
+            const duplicates = preview.duplicates || [];
+            if (payload.importMode !== "overwrite" && duplicates.length) {
+              openLegacyDuplicateReview(preview, payload);
+              return;
+            }
+            if (payload.importMode === "overwrite") {
+              state.pendingMigrationImport = { payload, preview };
+              openConfirmModal("Overwrite existing canonical data with the imported data? The original owner row will be preserved.", "confirm-legacy-import", "data-pending-import", "true", "Overwrite", "Confirm Overwrite");
+              return;
+            }
             const result = await callServer("importLegacyWorkbook", payload);
-            const summary = `Imported legacy data: ${result.projects.created + result.projects.updated} projects, ${result.users.created + result.users.updated} users, ${result.tasks.created + result.tasks.updated} tasks, ${result.timeEntries.created + result.timeEntries.updated} time entries, ${result.paySummaries.created + result.paySummaries.updated} pay summaries.`;
+            const summary = `Imported legacy data: ${result.projects.created + result.projects.updated} projects, ${result.users.created + result.users.updated} users, ${result.tags.imported || (result.tags.created + result.tags.updated)} tags, ${result.tasks.created + result.tasks.updated} tasks, ${result.timeEntries.created + result.timeEntries.updated} time entries, ${result.paySummaries.created + result.paySummaries.updated} pay summaries.`;
             await refreshData({ message: summary });
           } else if (formType === "tag") {
             const savedTag = await callServer("saveTag", {

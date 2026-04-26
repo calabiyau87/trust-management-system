@@ -237,6 +237,7 @@ var TrustOpsConfig = (function () {
       "Can Manage Projects",
       "Can Manage Time Categories",
       "Can Manage Tags",
+      "Can Manage Organization",
       "Can Manage Board Views",
       "Can Manage Settings",
       "Can Change Profile Color",
@@ -349,6 +350,7 @@ var TrustOpsConfig = (function () {
     DEFAULT_TASK_STATUS_COLORS: DEFAULT_TASK_STATUS_COLORS,
     DEFAULT_PROJECT_STATUS_COLORS: DEFAULT_PROJECT_STATUS_COLORS,
     DEFAULT_TIME_CATEGORIES: DEFAULT_TIME_CATEGORIES,
+    ORGANIZATION_NAME_KEY: "ORGANIZATION_NAME",
     PAY_PERIOD_DAYS: 14,
     PAY_PERIOD_ANCHOR_DATE: "2026-04-26",
     getSpreadsheetId: getSpreadsheetId

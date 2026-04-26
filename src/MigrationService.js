@@ -165,6 +165,11 @@ var TrustOpsMigrationService = (function () {
   }
 
   function seedSettings() {
+    TrustOpsSheetService.upsertById(TrustOpsConfig.SHEETS.SETTINGS, TrustOpsConfig.ORGANIZATION_NAME_KEY, {
+      "Setting Value": TrustOpsConfig.APP_NAME,
+      "Description": "Organization name displayed in the app shell.",
+      "Updated At": TrustOpsUtils.nowIso()
+    });
     TrustOpsSheetService.upsertById(TrustOpsConfig.SHEETS.SETTINGS, "DEFAULT_PAY_PERIOD_DAYS", {
       "Setting Value": TrustOpsConfig.PAY_PERIOD_DAYS,
       "Description": "Number of calendar days in each pay period.",
@@ -398,6 +403,160 @@ var TrustOpsMigrationService = (function () {
     };
   }
 
+  function normalizeLegacyImportDecision_(value) {
+    var text = TrustOpsUtils.normalizeKey(value);
+    if (text === "keep" || text === "keeporiginal" || text === "original") return "keep";
+    if (text === "replace") return "replace";
+    return "";
+  }
+
+  function duplicateDecisionFor_(payload, kind, fingerprint) {
+    var decisions = payload && (payload.duplicateDecisions || payload.importDecisions) || {};
+    var kindDecisions = decisions[kind] || {};
+    return normalizeLegacyImportDecision_(kindDecisions[String(fingerprint)]);
+  }
+
+  function legacyProjectFingerprint_(row) {
+    return TrustOpsUtils.normalizeKey(row["Project Name"] || row.Project || row.Name || "");
+  }
+
+  function legacyUserFingerprint_(row) {
+    return TrustOpsUtils.normalizeEmail(row.Email || row.email || row["Email Address"]) || TrustOpsUtils.normalizeKey(row["Full Name"] || row.Full || row.User || row.UserName || row.Name || row["User"] || "");
+  }
+
+  function legacyTagFingerprint_(row) {
+    return TrustOpsUtils.normalizeKey(row.Tag || row["Tag Name"] || row.Name || "");
+  }
+
+  function legacyCategoryFingerprint_(row) {
+    return TrustOpsUtils.normalizeKey(row.Category || row["Category"] || "");
+  }
+
+  function legacyTaskFingerprint_(row) {
+    return taskKeyCandidates_(row.Task || row.Title || row["Title"], row.Project || row["Project Name"] || row["Default Project"], normalizeLegacyDate_(row["Due Date"] || row.Due || row["Due"]))[0] || "";
+  }
+
+  function legacyPayPeriodFingerprint_(row) {
+    var startDate = normalizeLegacyDate_(row["Start Pay Period"] || row["Start Date"] || row["Start"]);
+    var endDate = normalizeLegacyDate_(row["End Pay Period"] || row["End Date"] || row["End"]);
+    if (startDate && endDate) return "range:" + startDate + "|" + endDate;
+    return TrustOpsUtils.normalizeKey(row["Pay Period"] || row["Pay Period Label"] || row.Label || "");
+  }
+
+  function legacyPaySummaryFingerprint_(row) {
+    return legacyPayPeriodFingerprint_(row) + "|" + legacyUserFingerprint_(row);
+  }
+
+  function legacyTimeEntryFingerprint_(row) {
+    var dateValue = normalizeLegacyDate_(row.Date || row["Date"]);
+    var entryType = TrustOpsUtils.normalizeKey(row["Entry Type"]) === "general time" ? TrustOpsConfig.ENTRY_TYPES.GENERAL : TrustOpsConfig.ENTRY_TYPES.TASK;
+    var taskOrCategory = TrustOpsUtils.normalizeText(row["Task / Category"] || row.Task || row.Title || row.Category || row["Category"] || "");
+    var projectName = TrustOpsUtils.normalizeText(row.Project || row["Project Name"] || "");
+    var hours = TrustOpsUtils.toNumber(row.Hours || row["Hours"]);
+    var notes = TrustOpsUtils.normalizeText(row.Notes || row["Notes"] || "");
+    var payPeriodFingerprint = legacyPayPeriodFingerprint_(row);
+    if (!payPeriodFingerprint) payPeriodFingerprint = dateValue || "";
+    return [
+      legacyUserFingerprint_(row),
+      dateValue,
+      entryType,
+      taskOrCategory,
+      projectName,
+      hours,
+      notes,
+      payPeriodFingerprint
+    ].join("|");
+  }
+
+  function duplicatePreviewEntry_(kind, fingerprint, existing, incoming, label) {
+    return {
+      kind: kind,
+      fingerprint: fingerprint,
+      label: label || "",
+      existing: TrustOpsUtils.sanitizeForClient(existing),
+      incoming: TrustOpsUtils.sanitizeForClient(incoming)
+    };
+  }
+
+  function buildDuplicatePreviewIndex_(rows, fingerprintFn) {
+    var index = {};
+    (rows || []).forEach(function (row) {
+      var fingerprint = fingerprintFn(row);
+      if (!TrustOpsUtils.normalizeText(fingerprint)) return;
+      index[String(fingerprint)] = row;
+    });
+    return index;
+  }
+
+  function collectLegacyDuplicatePreviews_(source) {
+    var state = buildImportState_();
+    var duplicates = [];
+    var projectIndex = buildDuplicatePreviewIndex_(state.projects, legacyProjectFingerprint_);
+    var userIndex = buildDuplicatePreviewIndex_(state.users, legacyUserFingerprint_);
+    var tagIndex = buildDuplicatePreviewIndex_(state.tags, legacyTagFingerprint_);
+    var categoryIndex = buildDuplicatePreviewIndex_(state.categories, legacyCategoryFingerprint_);
+    var taskIndex = buildDuplicatePreviewIndex_(state.tasks, legacyTaskFingerprint_);
+    var timeEntryIndex = buildDuplicatePreviewIndex_(state.timeEntries, legacyTimeEntryFingerprint_);
+    var payPeriodIndex = buildDuplicatePreviewIndex_(state.payPeriods, legacyPayPeriodFingerprint_);
+    var paySummaryIndex = buildDuplicatePreviewIndex_(state.paySummaries, legacyPaySummaryFingerprint_);
+
+    readLegacyRows_(source, LEGACY_SHEETS.PROJECTS).forEach(function (row) {
+      var fingerprint = legacyProjectFingerprint_(row);
+      if (fingerprint && projectIndex[String(fingerprint)]) {
+        duplicates.push(duplicatePreviewEntry_("project", fingerprint, projectIndex[String(fingerprint)], row, row["Project Name"] || row.Project || row.Name || ""));
+      }
+    });
+    readLegacyRows_(source, LEGACY_SHEETS.USERS).forEach(function (row) {
+      var fingerprint = legacyUserFingerprint_(row);
+      if (fingerprint && userIndex[String(fingerprint)]) {
+        duplicates.push(duplicatePreviewEntry_("user", fingerprint, userIndex[String(fingerprint)], row, row["Full Name"] || row.Email || row.User || ""));
+      }
+    });
+    readLegacyRows_(source, LEGACY_SHEETS.TAGS).forEach(function (row) {
+      var fingerprint = legacyTagFingerprint_(row);
+      if (fingerprint && tagIndex[String(fingerprint)]) {
+        duplicates.push(duplicatePreviewEntry_("tag", fingerprint, tagIndex[String(fingerprint)], row, row.Tag || row["Tag Name"] || row.Name || ""));
+      }
+    });
+    readLegacyRows_(source, LEGACY_SHEETS.TIME_CATEGORIES).forEach(function (row) {
+      var fingerprint = legacyCategoryFingerprint_(row);
+      if (fingerprint && categoryIndex[String(fingerprint)]) {
+        duplicates.push(duplicatePreviewEntry_("category", fingerprint, categoryIndex[String(fingerprint)], row, row.Category || row["Category"] || ""));
+      }
+    });
+    readLegacyRows_(source, LEGACY_SHEETS.ASSIGNMENT_BOARD).forEach(function (row) {
+      var fingerprint = legacyTaskFingerprint_(row);
+      if (fingerprint && taskIndex[String(fingerprint)]) {
+        duplicates.push(duplicatePreviewEntry_("task", fingerprint, taskIndex[String(fingerprint)], row, row.Task || row.Title || ""));
+      }
+    });
+    readLegacyRows_(source, LEGACY_SHEETS.IMPORTED_TASKS).forEach(function (row) {
+      var fingerprint = legacyTaskFingerprint_(row);
+      if (fingerprint && taskIndex[String(fingerprint)]) {
+        duplicates.push(duplicatePreviewEntry_("task", fingerprint, taskIndex[String(fingerprint)], row, row.Task || row.Title || ""));
+      }
+    });
+    readLegacyRows_(source, LEGACY_SHEETS.TIME_LOG).forEach(function (row) {
+      var fingerprint = legacyTimeEntryFingerprint_(row);
+      if (fingerprint && timeEntryIndex[String(fingerprint)]) {
+        duplicates.push(duplicatePreviewEntry_("timeEntry", fingerprint, timeEntryIndex[String(fingerprint)], row, row["Task / Category"] || row.Task || row.Title || ""));
+      }
+    });
+    readLegacyRows_(source, LEGACY_SHEETS.PAY_SUMMARY).forEach(function (row) {
+      var fingerprint = legacyPaySummaryFingerprint_(row);
+      if (fingerprint && paySummaryIndex[String(fingerprint)]) {
+        duplicates.push(duplicatePreviewEntry_("paySummary", fingerprint, paySummaryIndex[String(fingerprint)], row, row["User Name"] || row.User || ""));
+      }
+    });
+    readLegacyRows_(source, LEGACY_SHEETS.PAY_SUMMARY).forEach(function (row) {
+      var periodFingerprint = legacyPayPeriodFingerprint_(row);
+      if (periodFingerprint && payPeriodIndex[String(periodFingerprint)]) {
+        duplicates.push(duplicatePreviewEntry_("payPeriod", periodFingerprint, payPeriodIndex[String(periodFingerprint)], row, row["Pay Period"] || row["Pay Period Label"] || ""));
+      }
+    });
+    return duplicates;
+  }
+
   function taskKeyCandidates_(title, projectName, dueDate) {
     var normalizedTitle = TrustOpsUtils.normalizeKey(title);
     var normalizedProject = TrustOpsUtils.normalizeKey(projectName);
@@ -457,6 +616,10 @@ var TrustOpsMigrationService = (function () {
     var existing = email ? maps.usersByEmail[email] : null;
     if (!existing && fullName) {
       existing = maps.usersByName[TrustOpsUtils.normalizeKey(fullName)] || null;
+    }
+    var fingerprint = email || TrustOpsUtils.normalizeKey(fullName);
+    if (existing && duplicateDecisionFor_(maps, "user", fingerprint) === "keep") {
+      return existing;
     }
     var salary = TrustOpsUtils.toNumber(row.Salary || row["Salary"]);
     var weeklyPay = TrustOpsUtils.toNumber(row["Weekly Pay"] || row.WeeklyPay || row["Bi-Weekly Pay"]);
@@ -543,14 +706,31 @@ var TrustOpsMigrationService = (function () {
     return saved;
   }
 
-  function resolveTag_(context, maps, tagName) {
+  function resolveTag_(context, maps, tagValue) {
+    var tagName = tagValue && typeof tagValue === "object" ? (tagValue.Tag || tagValue["Tag Name"] || tagValue.Name || "") : tagValue;
     var normalized = TrustOpsUtils.normalizeText(tagName);
     if (!normalized) return null;
     var key = TrustOpsUtils.normalizeKey(normalized);
-    if (maps.tagsByName[key]) return maps.tagsByName[key];
+    var incomingColor = tagValue && typeof tagValue === "object" ? TrustOpsUtils.normalizeText(tagValue.Color || tagValue.color || "") : "";
+    var incomingDescription = tagValue && typeof tagValue === "object" ? TrustOpsUtils.normalizeText(tagValue.Description || tagValue.description || "") : "";
+    if (maps.tagsByName[key]) {
+      if (duplicateDecisionFor_(maps, "tag", key) === "keep") {
+        return maps.tagsByName[key];
+      }
+      var updated = TrustOpsTagService.saveTag(context, {
+        "Tag ID": maps.tagsByName[key]["Tag ID"],
+        tag: normalized,
+        color: incomingColor || colorFromText_(normalized),
+        description: incomingDescription || maps.tagsByName[key].Description || "",
+        active: true
+      });
+      maps.tagsByName[key] = updated;
+      return updated;
+    }
     var saved = TrustOpsTagService.saveTag(context, {
       tag: normalized,
-      color: colorFromText_(normalized)
+      color: incomingColor || colorFromText_(normalized),
+      description: incomingDescription || ""
     });
     maps.tagsByName[key] = saved;
     return saved;
@@ -571,6 +751,9 @@ var TrustOpsMigrationService = (function () {
     if (!projectName) return null;
     var key = TrustOpsUtils.normalizeKey(projectName);
     var existing = maps.projectsByName[key];
+    if (existing && duplicateDecisionFor_(maps, "project", key) === "keep") {
+      return existing;
+    }
     var now = TrustOpsUtils.nowIso();
     var record = {
       "Project Name": projectName,
@@ -598,6 +781,9 @@ var TrustOpsMigrationService = (function () {
     if (!categoryName) return null;
     var key = TrustOpsUtils.normalizeKey(categoryName);
     var existing = maps.categoriesByName[key];
+    if (existing && duplicateDecisionFor_(maps, "category", key) === "keep") {
+      return existing;
+    }
     var projectInfo = resolveCategoryProject_(context, maps, row);
     var now = TrustOpsUtils.nowIso();
     var record = {
@@ -680,11 +866,15 @@ var TrustOpsMigrationService = (function () {
   function upsertTask_(context, maps, row, sourceLabel) {
     var aliases = legacyTaskSearchKeys_(row);
     var existing = null;
+    var fingerprint = legacyTaskFingerprint_(row);
     for (var index = 0; index < aliases.length; index += 1) {
       if (maps.tasksByKey[String(aliases[index])]) {
         existing = maps.tasksByKey[String(aliases[index])];
         break;
       }
+    }
+    if (existing && duplicateDecisionFor_(maps, "task", fingerprint) === "keep") {
+      return existing;
     }
     var record = buildTaskRecord_(context, maps, row, existing);
     record["Source"] = sourceLabel || record["Source"];
@@ -826,6 +1016,9 @@ var TrustOpsMigrationService = (function () {
     };
     var key = timeEntryKey_(record);
     var existing = maps.timeEntriesByKey[String(key)];
+    if (existing && duplicateDecisionFor_(maps, "timeEntry", key) === "keep") {
+      return existing;
+    }
     var saved;
     if (existing) {
       saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.TIME_ENTRIES, existing["Time Entry ID"], record);
@@ -865,6 +1058,9 @@ var TrustOpsMigrationService = (function () {
       "Updated At": now
     };
     var existing = maps.payPeriodsByKey[String(periodId)];
+    if (existing && duplicateDecisionFor_(maps, "payPeriod", String(periodId)) === "keep") {
+      return existing;
+    }
     var saved;
     if (existing) {
       saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.PAY_PERIODS, existing["Pay Period ID"], record);
@@ -929,6 +1125,9 @@ var TrustOpsMigrationService = (function () {
       "Updated At": TrustOpsUtils.nowIso()
     };
     var existing = maps.paySummariesByKey[String(snapshot["Pay Summary ID"])];
+    if (existing && duplicateDecisionFor_(maps, "paySummary", String(snapshot["Pay Summary ID"])) === "keep") {
+      return existing;
+    }
     var saved;
     if (existing) {
       saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.PAY_SUMMARIES, existing["Pay Summary ID"], snapshot);
@@ -955,6 +1154,7 @@ var TrustOpsMigrationService = (function () {
     }
     var state = buildImportState_();
     var maps = createLookupMaps_(state);
+    maps.importDecisions = payload.duplicateDecisions || {};
     var report = {
       sourceType: source.type,
       projects: { created: 0, updated: 0 },
@@ -1001,7 +1201,7 @@ var TrustOpsMigrationService = (function () {
       if (!name) return;
       var key = TrustOpsUtils.normalizeKey(name);
       var existing = maps.tagsByName[key];
-      var saved = resolveTag_(context, maps, name);
+      var saved = resolveTag_(context, maps, row);
       if (existing) {
         report.tags.updated += 1;
       } else {
@@ -1011,6 +1211,7 @@ var TrustOpsMigrationService = (function () {
         report.warnings.push("Unable to import tag: " + name);
       }
     });
+    report.tags.imported = report.tags.created + report.tags.updated;
 
     readLegacyRows_(source, LEGACY_SHEETS.PAY_SUMMARY).forEach(function (row) {
       var savedPeriod = upsertPayPeriod_(context, maps, row);
@@ -1108,11 +1309,13 @@ var TrustOpsMigrationService = (function () {
         assignmentBoardRows: getExistingSheetRows(TrustOpsConfig.SHEETS.LEGACY_ASSIGNMENT_BOARD).length,
         importedTaskRows: getExistingSheetRows(TrustOpsConfig.SHEETS.IMPORTED_TASKS).length,
         canonicalTasks: TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.TASKS).length,
-        canonicalTimeEntries: TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.TIME_ENTRIES).length
+        canonicalTimeEntries: TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.TIME_ENTRIES).length,
+        duplicates: []
       };
     }
     return {
       sourceType: source.type,
+      duplicates: collectLegacyDuplicatePreviews_(source),
       rows: {
         assignmentBoard: readLegacyRows_(source, LEGACY_SHEETS.ASSIGNMENT_BOARD).length,
         timeLog: readLegacyRows_(source, LEGACY_SHEETS.TIME_LOG).length,
