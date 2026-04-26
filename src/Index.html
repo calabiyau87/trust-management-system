@@ -26,7 +26,10 @@
         --radius-lg: 16px;
         --focus-ring: 0 0 0 3px rgba(35, 93, 87, 0.14);
         --app-topbar-height: 0px;
+        --sticky-gap: 14px;
+        --sticky-region-height: 0px;
         --sticky-top: var(--app-topbar-height);
+        --side-pane-top: calc(var(--app-topbar-height) + var(--sticky-region-height));
       }
 
       body[data-theme="dark"] {
@@ -292,8 +295,9 @@
         z-index: 12;
         display: grid;
         gap: 14px;
-        margin-bottom: 14px;
+        margin-bottom: 0;
         padding-top: 2px;
+        padding-bottom: var(--sticky-gap);
         background: var(--bg);
       }
 
@@ -724,9 +728,9 @@
         gap: 6px;
         align-self: start;
         position: sticky;
-        top: 124px;
-        max-height: calc(100vh - 140px);
-        overflow: auto;
+        top: var(--side-pane-top);
+        max-height: none;
+        overflow: visible;
         scrollbar-gutter: stable;
         overscroll-behavior: contain;
       }
@@ -1499,21 +1503,34 @@
         state.data.tags = tags;
       }
 
-      let stickyTopbarObserver = null;
-      let stickyTopbarObservedElement = null;
+      let stickyLayoutObserver = null;
+      let stickyLayoutObservedTopbar = null;
+      let stickyLayoutObservedRegion = null;
 
-      function syncStickyTopOffset() {
+      function syncStickyOffsets() {
         const appTopbar = document.querySelector(".app-topbar");
-        if (!appTopbar) return;
-        document.documentElement.style.setProperty("--app-topbar-height", `${Math.ceil(appTopbar.getBoundingClientRect().height)}px`);
+        const stickyRegion = document.querySelector(".sticky-region");
+        const appTopbarHeight = appTopbar ? Math.ceil(appTopbar.getBoundingClientRect().height) : 0;
+        const stickyRegionHeight = stickyRegion ? Math.ceil(stickyRegion.getBoundingClientRect().height) : 0;
+
+        document.documentElement.style.setProperty("--app-topbar-height", `${appTopbarHeight}px`);
+        document.documentElement.style.setProperty("--sticky-region-height", `${stickyRegionHeight}px`);
+
         if (!window.ResizeObserver) return;
-        if (!stickyTopbarObserver) {
-          stickyTopbarObserver = new ResizeObserver(() => syncStickyTopOffset());
+        if (!stickyLayoutObserver) {
+          stickyLayoutObserver = new ResizeObserver(() => syncStickyOffsets());
         }
-        if (stickyTopbarObservedElement !== appTopbar) {
-          if (stickyTopbarObservedElement) stickyTopbarObserver.unobserve(stickyTopbarObservedElement);
-          stickyTopbarObserver.observe(appTopbar);
-          stickyTopbarObservedElement = appTopbar;
+
+        if (stickyLayoutObservedTopbar !== appTopbar) {
+          if (stickyLayoutObservedTopbar) stickyLayoutObserver.unobserve(stickyLayoutObservedTopbar);
+          if (appTopbar) stickyLayoutObserver.observe(appTopbar);
+          stickyLayoutObservedTopbar = appTopbar;
+        }
+
+        if (stickyLayoutObservedRegion !== stickyRegion) {
+          if (stickyLayoutObservedRegion) stickyLayoutObserver.unobserve(stickyLayoutObservedRegion);
+          if (stickyRegion) stickyLayoutObserver.observe(stickyRegion);
+          stickyLayoutObservedRegion = stickyRegion;
         }
       }
 
@@ -1550,7 +1567,7 @@
             ${renderActiveTab()}
           </main>
         `;
-        syncStickyTopOffset();
+        syncStickyOffsets();
         renderBusyState();
         syncMigrationMode();
       }
@@ -3671,7 +3688,7 @@
         }
       });
 
-      window.addEventListener("resize", syncStickyTopOffset);
+      window.addEventListener("resize", syncStickyOffsets);
       loadInitial();
     </script>
   </body>
