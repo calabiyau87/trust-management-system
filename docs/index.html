@@ -285,6 +285,7 @@
       function buildReturnUrl(token) {
         try {
           const url = new URL(state.returnUrl);
+          url.searchParams.set("trust_ops_token", token);
           url.hash = `id_token=${encodeURIComponent(token)}`;
           return url.toString();
         } catch (error) {
@@ -303,6 +304,11 @@
           setError("Missing return_url. Open this page from Trust Ops so it can provide the Apps Script URL.");
           return;
         }
+        window.name = JSON.stringify({
+          trust_ops_token: token,
+          app_name: state.appName,
+          ts: Date.now()
+        });
         const redirectUrl = buildReturnUrl(token);
         if (redirectUrl) {
           window.location.replace(redirectUrl);

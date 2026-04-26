@@ -1449,13 +1449,37 @@
         } catch (error) {}
       }
 
+      function readAuthTokenFromWindowName() {
+        try {
+          const raw = String(window.name || "");
+          if (!raw) return "";
+          const parsed = JSON.parse(raw);
+          const token = parsed?.trust_ops_token || "";
+          if (token) {
+            window.name = "";
+          }
+          return token;
+        } catch (error) {
+          return "";
+        }
+      }
+
       function readAuthTokenFromLocation() {
+        const searchParams = new URLSearchParams(String(window.location.search || ""));
         const hash = String(window.location.hash || "").replace(/^#/, "");
-        if (!hash) return "";
-        const params = new URLSearchParams(hash);
-        const token = params.get("id_token") || params.get("auth_token") || params.get("token") || "";
+        const hashParams = hash ? new URLSearchParams(hash) : new URLSearchParams();
+        const token = searchParams.get("trust_ops_token") || searchParams.get("id_token") || searchParams.get("auth_token") || searchParams.get("token") || hashParams.get("trust_ops_token") || hashParams.get("id_token") || hashParams.get("auth_token") || hashParams.get("token") || "";
         if (token) {
-          clearLocationHash();
+          try {
+            const url = new URL(currentAppUrl());
+            url.searchParams.delete("trust_ops_token");
+            url.searchParams.delete("id_token");
+            url.searchParams.delete("auth_token");
+            url.searchParams.delete("token");
+            history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+          } catch (error) {
+            clearLocationHash();
+          }
         }
         return token;
       }
@@ -1529,6 +1553,17 @@
       function isAuthFailure(error) {
         const message = String(error?.message || error || "");
         return /Google Sign-In|Google OAuth client ID|GitHub Pages auth|not authorized for Trust Ops|inactive:|archived:|verified email|wrong client/i.test(message);
+      }
+
+      function showFatalError(message) {
+        const root = document.getElementById("app");
+        if (!root) return;
+        root.className = "error";
+        root.innerHTML = `
+          <div class="error">
+            <strong>Trust Ops crashed while loading.</strong><br>
+            ${escapeHtml(message || "Unknown error")}
+          </div>`;
       }
 
       function clearAuthState(message = "") {
@@ -1880,11 +1915,16 @@
       }
 
       async function loadInitial() {
-        const locationToken = readAuthTokenFromLocation();
-        if (locationToken) {
-          persistAuthToken(locationToken);
+        const windowNameToken = readAuthTokenFromWindowName();
+        if (windowNameToken) {
+          persistAuthToken(windowNameToken);
         } else {
-          state.auth.idToken = loadStoredAuthToken();
+          const locationToken = readAuthTokenFromLocation();
+          if (locationToken) {
+            persistAuthToken(locationToken);
+          } else {
+            state.auth.idToken = loadStoredAuthToken();
+          }
         }
         if (!state.auth.idToken) {
           state.auth.loading = false;
@@ -4346,7 +4386,21 @@
       });
 
       window.addEventListener("resize", syncStickyOffsets);
-      loadInitial();
+      window.addEventListener("error", (event) => {
+        if (!event || !event.error) return;
+        showFatalError(event.error.message || String(event.error));
+      });
+      window.addEventListener("unhandledrejection", (event) => {
+        showFatalError(event.reason?.message || String(event.reason || "Unhandled promise rejection"));
+      });
+      window.setTimeout(() => {
+        if (state.auth.loading && !state.data) {
+          showFatalError("Trust Ops is still waiting for the Apps Script backend. Check the browser console and redeploy the latest Apps Script version.");
+        }
+      }, 10000);
+      loadInitial().catch((error) => {
+        showFatalError(error.message || String(error));
+      });
     </script>
   </body>
 </html>
