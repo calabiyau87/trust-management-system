@@ -2,6 +2,7 @@ function doGet(e) {
   var template = HtmlService.createTemplateFromFile("Index");
   template.googleClientId = TrustOpsAuthService.getGoogleClientId();
   template.githubAuthUrl = TrustOpsAuthService.getGithubPagesAuthUrl();
+  template.webAppUrl = ScriptApp.getService().getUrl();
   template.initialAuthToken = "";
   if (e && e.parameter) {
     template.initialAuthToken = TrustOpsUtils.normalizeText(
