@@ -55,6 +55,7 @@ var TrustOpsSheetService = (function () {
     if (!existingHeaders.length || !existingHeaders[0]) {
       sheet.getRange(1, 1, 1, config.columns.length).setValues([config.columns]);
       sheet.setFrozenRows(1);
+      applyColumnFormats(sheet, config.columns);
       return;
     }
     var missingColumns = config.columns.filter(function (column) {
@@ -64,6 +65,7 @@ var TrustOpsSheetService = (function () {
       sheet.getRange(1, existingHeaders.length + 1, 1, missingColumns.length).setValues([missingColumns]);
     }
     sheet.setFrozenRows(1);
+    applyColumnFormats(sheet, config.columns);
   }
 
   function ensureAllSheets() {
@@ -92,11 +94,62 @@ var TrustOpsSheetService = (function () {
     return value;
   }
 
+  function isDateHeader(header) {
+    return [
+      "Date",
+      "Start Date",
+      "End Date",
+      "Due Date"
+    ].indexOf(String(header || "")) !== -1;
+  }
+
+  function isDateTimeHeader(header) {
+    return [
+      "Timestamp",
+      "Created At",
+      "Updated At",
+      "Locked At",
+      "Approved At",
+      "Decided At",
+      "Clock In At",
+      "Clock Out At"
+    ].indexOf(String(header || "")) !== -1;
+  }
+
+  function cellForClientByHeader(header, value) {
+    if (!(value instanceof Date)) return value;
+    return isDateTimeHeader(header) ? TrustOpsUtils.formatDateTime(value) : TrustOpsUtils.formatDate(value);
+  }
+
+  function cellForRecordByHeader(header, value) {
+    if (value === undefined || value === null) return "";
+    if (Array.isArray(value)) return TrustOpsUtils.joinList(value);
+    if (isDateTimeHeader(header)) {
+      return TrustOpsUtils.parseDateTime(value) || value;
+    }
+    if (isDateHeader(header)) {
+      return TrustOpsUtils.parseDate(value) || value;
+    }
+    if (typeof value === "object" && !(value instanceof Date)) return JSON.stringify(value);
+    return value;
+  }
+
+  function applyColumnFormats(sheet, headers) {
+    headers.forEach(function (header, index) {
+      var column = index + 1;
+      if (isDateTimeHeader(header)) {
+        sheet.getRange(1, column, sheet.getMaxRows(), 1).setNumberFormat("yyyy-mm-dd hh:mm:ss");
+      } else if (isDateHeader(header)) {
+        sheet.getRange(1, column, sheet.getMaxRows(), 1).setNumberFormat("yyyy-mm-dd");
+      }
+    });
+  }
+
   function rowToRecord(headers, row, rowNumber) {
     var record = {};
     headers.forEach(function (header, index) {
       if (!header) return;
-      record[header] = cellForClient(row[index]);
+      record[header] = cellForClientByHeader(header, row[index]);
     });
     record._rowNumber = rowNumber;
     return record;
@@ -132,6 +185,7 @@ var TrustOpsSheetService = (function () {
     map[TrustOpsConfig.SHEETS.PROJECTS] = "prj";
     map[TrustOpsConfig.SHEETS.TASKS] = "tsk";
     map[TrustOpsConfig.SHEETS.TIME_ENTRIES] = "tim";
+    map[TrustOpsConfig.SHEETS.TIME_PUNCHES] = "pun";
     map[TrustOpsConfig.SHEETS.TIME_CATEGORIES] = "cat";
     map[TrustOpsConfig.SHEETS.TAGS] = "tag";
     map[TrustOpsConfig.SHEETS.PAY_PERIODS] = "pay";
@@ -166,9 +220,10 @@ var TrustOpsSheetService = (function () {
         normalizedRecord[config.idColumn] = TrustOpsUtils.makeId(idPrefixForSheet(sheetName));
       }
       var row = headers.map(function (header) {
-        return cellForRecord(normalizedRecord[header]);
+        return cellForRecordByHeader(header, normalizedRecord[header]);
       });
       sheet.appendRow(row);
+      applyColumnFormats(sheet, headers);
       delete requestCache[sheetName];
       return findById(sheetName, normalizedRecord[config.idColumn]);
     });
@@ -208,9 +263,10 @@ var TrustOpsSheetService = (function () {
         }
       });
       var row = headers.map(function (header) {
-        return cellForRecord(updated[header]);
+        return cellForRecordByHeader(header, updated[header]);
       });
       sheet.getRange(record._rowNumber, 1, 1, headers.length).setValues([row]);
+      applyColumnFormats(sheet, headers);
       delete requestCache[sheetName];
       return findById(sheetName, id);
     });

@@ -79,6 +79,12 @@ var TrustOpsUtils = (function () {
     }
     var text = normalizeText(value);
     if (!text) return null;
+    if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?$/.test(text)) {
+      var dateTime = parseDateTime(text);
+      if (dateTime) {
+        return new Date(dateTime.getFullYear(), dateTime.getMonth(), dateTime.getDate());
+      }
+    }
     var parts = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (parts) {
       return new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]));
@@ -98,6 +104,47 @@ var TrustOpsUtils = (function () {
     var date = parseDate(value);
     if (!date) return "";
     return Utilities.formatDate(date, Session.getScriptTimeZone(), "MM-dd-yyyy");
+  }
+
+  function formatDateTime(value) {
+    var date = parseDateTime(value);
+    if (!date) return "";
+    return Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+  }
+
+  function formatDateTimeInput(value) {
+    var date = parseDateTime(value);
+    if (!date) return "";
+    return Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss");
+  }
+
+  function parseDateTime(value) {
+    if (value instanceof Date) {
+      return new Date(value.getTime());
+    }
+    var text = normalizeText(value);
+    if (!text) return null;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+      return parseDate(text);
+    }
+    if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?$/.test(text)) {
+      var normalized = text.indexOf("T") !== -1 ? text : text.replace(" ", "T");
+      var format = normalized.length === 16 ? "yyyy-MM-dd'T'HH:mm" : "yyyy-MM-dd'T'HH:mm:ss";
+      try {
+        return Utilities.parseDate(normalized, Session.getScriptTimeZone(), format);
+      } catch (error) {
+        return new Date(normalized);
+      }
+    }
+    var parsed = new Date(text);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  function hoursBetween(startValue, endValue) {
+    var start = parseDateTime(startValue);
+    var end = parseDateTime(endValue);
+    if (!start || !end) return 0;
+    return Math.round(((end.getTime() - start.getTime()) / 3600000) * 100) / 100;
   }
 
   function addDays(value, days) {
@@ -136,13 +183,26 @@ var TrustOpsUtils = (function () {
     return fallback || "";
   }
 
+  function isDateTimeFieldName(key) {
+    return [
+      "Timestamp",
+      "Created At",
+      "Updated At",
+      "Locked At",
+      "Approved At",
+      "Decided At",
+      "Clock In At",
+      "Clock Out At"
+    ].indexOf(String(key || "")) !== -1;
+  }
+
   function sanitizeForClient(record) {
     var output = {};
     Object.keys(record || {}).forEach(function (key) {
       if (key.charAt(0) === "_") return;
       var value = record[key];
       if (value instanceof Date) {
-        output[key] = formatDate(value);
+        output[key] = isDateTimeFieldName(key) ? formatDateTime(value) : formatDate(value);
       } else {
         output[key] = value;
       }
@@ -171,8 +231,12 @@ var TrustOpsUtils = (function () {
     parseDate: parseDate,
     formatDate: formatDate,
     formatDateLabel: formatDateLabel,
+    formatDateTime: formatDateTime,
+    formatDateTimeInput: formatDateTimeInput,
+    parseDateTime: parseDateTime,
     addDays: addDays,
     daysBetween: daysBetween,
+    hoursBetween: hoursBetween,
     isBetweenInclusive: isBetweenInclusive,
     requireValue: requireValue,
     normalizeHexColor: normalizeHexColor,

@@ -11,6 +11,7 @@ var TrustOpsConfig = (function () {
     PROJECTS: "Projects",
     TASKS: "Tasks",
     TIME_ENTRIES: "Time Entries",
+    TIME_PUNCHES: "Time Punches",
     TIME_CATEGORIES: "Time Categories",
     TAGS: "Tags",
     PAY_PERIODS: "Pay Periods",
@@ -108,6 +109,11 @@ var TrustOpsConfig = (function () {
       "Project ID",
       "Project Name",
       "Hours",
+      "Entry Source",
+      "Punch Session ID",
+      "Punch Segment",
+      "Clock In At",
+      "Clock Out At",
       "Notes",
       "Pay Period ID",
       "Pay Period Label",
@@ -130,6 +136,29 @@ var TrustOpsConfig = (function () {
       "Created At",
       "Updated At",
       "Archived"
+    ]
+  };
+  TABLES[SHEETS.TIME_PUNCHES] = {
+    idColumn: "Punch Session ID",
+    columns: [
+      "Punch Session ID",
+      "User ID",
+      "User Name",
+      "Entry Type",
+      "Task ID",
+      "Category ID",
+      "Task / Category",
+      "Project ID",
+      "Project Name",
+      "Clock In At",
+      "Clock Out At",
+      "Total Hours",
+      "Status",
+      "Notes",
+      "Created By User ID",
+      "Created At",
+      "Updated By User ID",
+      "Updated At"
     ]
   };
   TABLES[SHEETS.TAGS] = {

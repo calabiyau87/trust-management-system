@@ -1645,6 +1645,8 @@
         selectedBoardViewId: "",
         boardSidebarCollapsed: false,
         timeFilters: {},
+        timeMode: "Log",
+        timeEntryType: "Task",
         timeSidebarCollapsed: false,
         payFilters: { rangeMode: "current" },
         paySidebarCollapsed: false,
@@ -2406,6 +2408,8 @@
           state.paySidebarCollapsed = loadStoredBool("paySidebarCollapsed", false);
           state.projectSidebarCollapsed = loadStoredBool("projectSidebarCollapsed", false);
           state.settingsSection = loadStoredString("settingsSection", state.settingsSection);
+          state.timeMode = loadStoredString("timeMode", "Log");
+          state.timeEntryType = loadStoredString("timeEntryType", "Task");
           state.timeFilters.userId = state.data.context.userId;
           state.timeFilters.payPeriodId = state.data.currentPayPeriod["Pay Period ID"];
           state.payFilters.userId = state.data.context.userId;
@@ -2852,6 +2856,35 @@
         return '<label>Request Reason <input name="requestReason" placeholder="Required for locked-period request"></label>';
       }
 
+      function renderTimeSourceBadge(entrySource) {
+        const source = String(entrySource || "Logged");
+        const label = source === "Clocked" ? "Clocked" : "Logged";
+        return `<span class="badge" title="Entry source">${escapeHtml(label)}</span>`;
+      }
+
+      function renderTimeEntrySubtitle(entry) {
+        if ((entry["Entry Source"] || "Logged") !== "Clocked") return "";
+        const inAt = entry["Clock In At"] || "";
+        const outAt = entry["Clock Out At"] || "";
+        return `<div class="hierarchy-subtitle">${escapeHtml(inAt)}${outAt ? ` - ${escapeHtml(outAt)}` : ""}</div>`;
+      }
+
+      function toDateTimeInputValue(value) {
+        return String(value || "").replace(" ", "T").slice(0, 19);
+      }
+
+      function renderActivePunchBanner(activePunch) {
+        if (!activePunch) return "";
+        const inAt = activePunch["Clock In At"] || "";
+        const outAt = activePunch["Clock Out At"] || "";
+        return `
+          <div class="panel" style="margin-bottom:14px;border-style:dashed;">
+            <strong>Active punch</strong>
+            <div class="help">Started ${escapeHtml(inAt)}${outAt ? ` and ended ${escapeHtml(outAt)}` : ""}</div>
+            <div class="help">${escapeHtml(activePunch["Task / Category"] || "Unassigned")} &middot; ${escapeHtml(activePunch["Project Name"] || "")}</div>
+          </div>`;
+      }
+
       function findClientPayPeriodForDate(dateValue) {
         const date = String(dateValue || "");
         return (state.data.payPeriods || []).find((period) => date >= String(period["Start Date"]) && date <= String(period["End Date"])) || null;
@@ -2868,11 +2901,17 @@
         const periodLocked = String(selectedPeriod.Locked) === "true" || selectedPeriod.Status === "Locked";
         const selectedUser = (data.users || []).find((user) => user["User ID"] === targetUserId) || data.currentUser;
         const defaultEntryDate = selectedPeriod["Start Date"] || new Date().toISOString().slice(0, 10);
+        const mode = state.timeMode || "Log";
+        const activePunch = tracker.activePunch || null;
+        const punchMode = mode === "Punch";
+        const punchButtonLabel = punchMode ? (activePunch ? "Clock Out" : "Clock In") : "Save Time";
+        const entryType = state.timeEntryType || "Task";
+        const showTaskFields = entryType === "Task";
         return `
           <section class="toolbar">
             <div>
               <h2>Time Tracker</h2>
-              <p>${entries.length === 1 ? "1 entry" : `${entries.length} entries`} &middot; ${totalHours.toFixed(2)} selected-period hours</p>
+              <p>${entries.length === 1 ? "1 entry" : `${entries.length} entries`} &middot; ${totalHours.toFixed(2)} selected-period hours${activePunch ? ` &middot; active punch on ${escapeHtml(activePunch["Clock In At"] || "")}` : ""}</p>
             </div>
           </section>
           <section class="side-layout" data-sidebar-collapsed="${state.timeSidebarCollapsed ? "true" : "false"}">
@@ -2881,28 +2920,64 @@
               <label>Entries Period <select data-time-filter="payPeriodId">${renderPayPeriodOptions(state.timeFilters.payPeriodId, false)}</select></label>
             `)}
             <div class="stack">
+              ${renderActivePunchBanner(activePunch)}
               <section class="panel">
-                <h3>Log Time</h3>
+                <h3>${punchMode ? "Punch Time" : "Log Time"}</h3>
                 <form data-form="time-entry" class="stack">
                   <div class="form-grid">
                     <label>User <input value="${escapeHtml(selectedUser["Full Name"] || data.context.fullName)}" disabled></label>
-                    <label>Entry Type <select name="entryType">
-                      <option value="Task">Task Time</option>
-                      <option value="General Time">General Time</option>
+                    <label>Mode <select name="timeMode">
+                      <option value="Log" ${mode === "Log" ? "selected" : ""}>Log</option>
+                      <option value="Punch" ${mode === "Punch" ? "selected" : ""}>Punch</option>
                     </select></label>
-                    <label>Date <input name="date" type="date" value="${escapeHtml(defaultEntryDate)}"></label>
-                    <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" required></label>
+                    <label>Entry Type <select name="entryType">
+                      <option value="Task" ${entryType === "Task" ? "selected" : ""}>Task Time</option>
+                      <option value="General Time" ${entryType === "General Time" ? "selected" : ""}>General Time</option>
+                    </select></label>
+                    ${punchMode ? "" : `<label>Date <input name="date" type="date" value="${escapeHtml(defaultEntryDate)}"></label>`}
+                    ${punchMode ? "" : `<label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" required></label>`}
                   </div>
-                  <div class="form-grid two" data-time-mode="task">
-                    <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Display Name", "", false)}</select></label>
-                    <label>Notes <input name="notes" placeholder="Optional notes"></label>
-                  </div>
-                  <div class="form-grid two hidden" data-time-mode="general">
-                    <label>Category <select name="categoryId">${options(tracker.categories || [], "Category ID", "Category", "", false)}</select></label>
-                    <label>Notes <input name="generalNotes" placeholder="Optional notes"></label>
-                  </div>
-                  <div data-time-lock-fields>${renderTimeLockFields(periodLocked ? selectedPeriod : null)}</div>
-                  <div class="actions"><button class="primary" type="submit">Save Time</button></div>
+                  ${punchMode && activePunch ? `
+                    <div class="panel" style="box-shadow:none;margin:0;background:var(--surface-muted);">
+                      <h3 style="margin-top:0;">Open Punch</h3>
+                      <div class="help">${escapeHtml(activePunch["Task / Category"] || "Unassigned")} &middot; ${escapeHtml(activePunch["Project Name"] || "")}</div>
+                      <div class="help">In at ${escapeHtml(activePunch["Clock In At"] || "")}</div>
+                      ${tracker.activePunchWarning ? `<div class="help" style="color:var(--warning);">${escapeHtml(tracker.activePunchWarning)}</div>` : ""}
+                    </div>
+                    <div class="help">Use Transfer to end the current punch and start another at the same time.</div>
+                    <div class="form-grid two ${showTaskFields ? "" : "hidden"}" data-time-mode="task">
+                      <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Display Name", "", false)}</select></label>
+                      <label>Notes <input name="notes" placeholder="Optional notes for the new punch"></label>
+                    </div>
+                    <div class="form-grid two ${showTaskFields ? "hidden" : ""}" data-time-mode="general">
+                      <label>Category <select name="categoryId">${options(tracker.categories || [], "Category ID", "Category", "", false)}</select></label>
+                      <label>Notes <input name="generalNotes" placeholder="Optional notes for the new punch"></label>
+                    </div>
+                    <div class="actions">
+                      <button class="secondary" type="submit" data-punch-action="clockOut">Clock Out</button>
+                      <button class="primary" type="submit" data-punch-action="transfer">Transfer</button>
+                    </div>
+                  ` : punchMode ? `
+                    <div class="form-grid two ${showTaskFields ? "" : "hidden"}" data-time-mode="task">
+                      <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Display Name", "", false)}</select></label>
+                      <label>Notes <input name="notes" placeholder="Optional notes"></label>
+                    </div>
+                    <div class="form-grid two ${showTaskFields ? "hidden" : ""}" data-time-mode="general">
+                      <label>Category <select name="categoryId">${options(tracker.categories || [], "Category ID", "Category", "", false)}</select></label>
+                      <label>Notes <input name="generalNotes" placeholder="Optional notes"></label>
+                    </div>
+                  ` : `
+                    <div class="form-grid two ${showTaskFields ? "" : "hidden"}" data-time-mode="task">
+                      <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Display Name", "", false)}</select></label>
+                      <label>Notes <input name="notes" placeholder="Optional notes"></label>
+                    </div>
+                    <div class="form-grid two ${showTaskFields ? "hidden" : ""}" data-time-mode="general">
+                      <label>Category <select name="categoryId">${options(tracker.categories || [], "Category ID", "Category", "", false)}</select></label>
+                      <label>Notes <input name="generalNotes" placeholder="Optional notes"></label>
+                    </div>
+                    <div data-time-lock-fields>${renderTimeLockFields(periodLocked ? selectedPeriod : null)}</div>
+                  `}
+                  <div class="actions"><button class="primary" type="submit">${punchButtonLabel}</button></div>
                 </form>
               </section>
               <section class="panel">
@@ -2995,8 +3070,10 @@
                     <td data-label="Entry">
                       <span class="task-title-row">
                         <strong>${escapeHtml(entry["Task / Category"])}</strong>
+                        ${renderTimeSourceBadge(entry["Entry Source"])}
                         ${renderNoteIcon(entry.Notes, "Time entry note")}
                       </span>
+                      ${renderTimeEntrySubtitle(entry)}
                     </td>
                     <td data-label="Project">${escapeHtml(entry["Project Name"])}</td>
                     <td data-label="Hours">${escapeHtml(entry.Hours)}</td>
@@ -3945,11 +4022,13 @@
         const tracker = data.tracker || {};
         const selectedPeriod = findClientPayPeriodForDate(entry.Date) || tracker.selectedPayPeriod || data.currentPayPeriod || {};
         const canSelectUser = data.permissions.canCreateTimeForAnyUser;
+        const entrySource = entry["Entry Source"] || "Logged";
+        const isClocked = entrySource === "Clocked";
         setModal(`
           <div class="modal-backdrop">
             <form class="modal stack" data-form="time-modal">
               <div class="modal-header">
-                <h3>Edit Time Entry</h3>
+                <h3>Edit Time Entry ${renderTimeSourceBadge(entrySource)}</h3>
                 <button type="button" data-action="close-modal">Close</button>
               </div>
               <input type="hidden" name="timeEntryId" value="${escapeHtml(entry["Time Entry ID"])}">
@@ -3959,8 +4038,15 @@
                   <option value="Task" ${entry["Entry Type"] === "Task" ? "selected" : ""}>Task Time</option>
                   <option value="General Time" ${entry["Entry Type"] === "General Time" ? "selected" : ""}>General Time</option>
                 </select></label>
-                <label>Date <input name="date" type="date" value="${escapeHtml(entry.Date)}"></label>
-                <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" value="${escapeHtml(entry.Hours)}"></label>
+                ${isClocked ? `
+                  <label>Date <input name="date" type="date" value="${escapeHtml(entry.Date)}"></label>
+                  <label>Clock In At <input name="clockInAt" type="datetime-local" step="1" value="${escapeHtml(toDateTimeInputValue(entry["Clock In At"]))}"></label>
+                  <label>Clock Out At <input name="clockOutAt" type="datetime-local" step="1" value="${escapeHtml(toDateTimeInputValue(entry["Clock Out At"]))}"></label>
+                  <label>Hours <input value="${escapeHtml(entry.Hours)}" disabled></label>
+                ` : `
+                  <label>Date <input name="date" type="date" value="${escapeHtml(entry.Date)}"></label>
+                  <label>Hours <input name="hours" type="number" min="0.1" max="24" step="0.1" value="${escapeHtml(entry.Hours)}"></label>
+                `}
               </div>
               <div class="form-grid two">
                 <label>Task <select name="taskId">${options(tracker.availableTasks || [], "Task ID", "Display Name", entry["Task ID"], true)}</select></label>
@@ -4194,7 +4280,13 @@
                   hours: (entry) => entry.Hours
                 }).map((entry) => `<tr>
                   <td data-label="Date">${escapeHtml(entry.Date)}</td>
-                  <td data-label="Entry">${escapeHtml(entry["Task / Category"])}</td>
+                  <td data-label="Entry">
+                    <span class="task-title-row">
+                      <strong>${escapeHtml(entry["Task / Category"])}</strong>
+                      ${renderTimeSourceBadge(entry["Entry Source"])}
+                    </span>
+                    ${renderTimeEntrySubtitle(entry)}
+                  </td>
                   <td data-label="Project">${escapeHtml(entry["Project Name"])}</td>
                   <td data-label="Hours">${escapeHtml(entry.Hours)}</td>
                 </tr>`).join("")}</tbody>
@@ -4640,10 +4732,19 @@
             setStatus(error.message || String(error));
           }
         }
+        if (event.target.name === "timeMode") {
+          state.timeMode = event.target.value === "Punch" ? "Punch" : "Log";
+          saveStoredString("timeMode", state.timeMode);
+          render();
+        }
         if (event.target.name === "entryType") {
           const form = event.target.closest("form");
-          form?.querySelector('[data-time-mode="task"]')?.classList.toggle("hidden", event.target.value !== "Task");
-          form?.querySelector('[data-time-mode="general"]')?.classList.toggle("hidden", event.target.value !== "General Time");
+          if (form?.dataset.form === "time-entry") {
+            state.timeEntryType = event.target.value === "General Time" ? "General Time" : "Task";
+            saveStoredString("timeEntryType", state.timeEntryType);
+            form?.querySelector('[data-time-mode="task"]')?.classList.toggle("hidden", event.target.value !== "Task");
+            form?.querySelector('[data-time-mode="general"]')?.classList.toggle("hidden", event.target.value !== "General Time");
+          }
         }
         if (event.target.matches("[data-time-filter]")) {
           state.timeFilters[event.target.dataset.timeFilter] = event.target.value;
@@ -4834,29 +4935,63 @@
             clearModals();
             await refreshBoardData("Task saved.");
           } else if (formType === "time-entry") {
+            const userId = state.timeFilters.userId || state.data.context.userId;
             const entryType = form.entryType.value;
+            const submitter = event.submitter || document.activeElement;
+            const punchAction = submitter?.dataset?.punchAction || submitter?.value || submitter?.name || "";
             const payload = {
-              userId: state.timeFilters.userId || state.data.context.userId,
-              entryType: entryType,
-              date: form.date.value,
-              hours: form.hours.value,
+              userId,
+              entryType,
               taskId: form.taskId?.value || "",
               categoryId: form.categoryId?.value || "",
-              notes: entryType === "Task" ? form.notes.value : form.generalNotes.value,
+              notes: entryType === "Task" ? (form.notes?.value || "") : (form.generalNotes?.value || ""),
               overrideReason: form.overrideReason?.value || "",
               requestReason: form.requestReason?.value || ""
             };
-            const savedTime = await callServer("createTimeEntry", payload);
-            const savedPeriodId = savedTime["Pay Period ID"] || savedTime.request?.["Pay Period ID"];
-            if (savedPeriodId) state.timeFilters.payPeriodId = savedPeriodId;
-            await refreshTrackerData("Time saved or request created.");
+            if (state.timeMode === "Punch") {
+              if (state.data.tracker?.activePunch) {
+                const punchSessionId = state.data.tracker.activePunch["Punch Session ID"];
+                if (punchAction === "transfer") {
+                  const result = await callServer("clockTransferPunch", Object.assign({}, payload, {
+                    userId,
+                    punchSessionId
+                  }));
+                  const savedPeriodId = result.entries?.[0]?.["Pay Period ID"] || result.requests?.[0]?.["Pay Period ID"];
+                  if (savedPeriodId) state.timeFilters.payPeriodId = savedPeriodId;
+                  const message = result.requests?.length ? "Punch transferred. Some slices were sent for approval." : "Punch transferred.";
+                  await refreshTrackerData(result.warning ? `${message} ${result.warning}` : message);
+                } else {
+                  const result = await callServer("clockOutPunch", {
+                    userId,
+                    punchSessionId
+                  });
+                  const savedPeriodId = result.entries?.[0]?.["Pay Period ID"] || result.requests?.[0]?.["Pay Period ID"];
+                  if (savedPeriodId) state.timeFilters.payPeriodId = savedPeriodId;
+                  await refreshTrackerData(result.requests?.length ? "Punch clocked out. Some slices were sent for approval." : "Punch clocked out.");
+                }
+              } else {
+                const result = await callServer("clockInPunch", payload);
+                await refreshTrackerData(result.warning ? `Punch clocked in. ${result.warning}` : "Punch clocked in.");
+              }
+            } else {
+              Object.assign(payload, {
+                date: form.date.value,
+                hours: form.hours.value
+              });
+              const savedTime = await callServer("createTimeEntry", payload);
+              const savedPeriodId = savedTime["Pay Period ID"] || savedTime.request?.["Pay Period ID"];
+              if (savedPeriodId) state.timeFilters.payPeriodId = savedPeriodId;
+              await refreshTrackerData("Time saved or request created.");
+            }
           } else if (formType === "time-modal") {
             await callServer("updateTimeEntry", {
               timeEntryId: form.timeEntryId.value,
               userId: form.userId?.value || undefined,
               entryType: form.entryType.value,
               date: form.date.value,
-              hours: form.hours.value,
+              hours: form.hours?.value || "",
+              clockInAt: form.clockInAt?.value || "",
+              clockOutAt: form.clockOutAt?.value || "",
               taskId: form.taskId?.value || "",
               categoryId: form.categoryId?.value || "",
               projectId: form.projectId?.value || "",

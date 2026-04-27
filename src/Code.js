@@ -178,6 +178,18 @@ function createTimeEntry(payload) {
   return TrustOpsTimeService.createTimeEntry(requireTrustOpsContext_(), payload || {});
 }
 
+function clockInPunch(payload) {
+  return TrustOpsTimeService.clockIn(requireTrustOpsContext_(), payload || {});
+}
+
+function clockOutPunch(payload) {
+  return TrustOpsTimeService.clockOut(requireTrustOpsContext_(), payload || {});
+}
+
+function clockTransferPunch(payload) {
+  return TrustOpsTimeService.clockTransfer(requireTrustOpsContext_(), payload || {});
+}
+
 function updateTimeEntry(payload) {
   return TrustOpsTimeService.updateTimeEntry(requireTrustOpsContext_(), payload || {});
 }

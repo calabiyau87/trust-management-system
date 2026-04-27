@@ -12,7 +12,7 @@ var TrustOpsProjectService = (function () {
   }
 
   function readEntries() {
-    return TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.TIME_ENTRIES);
+    return TrustOpsTimeService.normalizeTimeEntryRecords(TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.TIME_ENTRIES));
   }
 
   function mapById(records, idField) {

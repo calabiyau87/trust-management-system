@@ -420,12 +420,16 @@ var TrustOpsPayService = (function () {
     var user = TrustOpsAuthService.getUserById(userId);
     if (!user) throw new Error("User not found.");
     var range = resolveSummaryRange(payload);
-    var entries = timeEntriesForRange(TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.TIME_ENTRIES), range).filter(function (entry) {
+    var entries = TrustOpsTimeService.normalizeTimeEntryRecords(
+      timeEntriesForRange(TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.TIME_ENTRIES), range)
+    ).filter(function (entry) {
       return String(entry["User ID"]) === String(userId);
     });
     entries.sort(function (a, b) {
-      if (a.Date === b.Date) return String(a["Task / Category"]).localeCompare(String(b["Task / Category"]));
-      return String(a.Date).localeCompare(String(b.Date));
+      var aSort = a["Clock Out At"] || a["Clock In At"] || a.Date || "";
+      var bSort = b["Clock Out At"] || b["Clock In At"] || b.Date || "";
+      if (aSort === bSort) return String(a["Task / Category"]).localeCompare(String(b["Task / Category"]));
+      return String(aSort).localeCompare(String(bSort));
     });
     var summary = calculateUserSummaryFromEntries(user, range, entries);
     var dayCount = Math.max(1, TrustOpsUtils.daysBetween(range.startDate, range.endDate) + 1);
