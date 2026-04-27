@@ -377,6 +377,12 @@ var TrustOpsTaskService = (function () {
       TrustOpsPermissionService.canCompleteTask(context, existing),
       "Only Owner/Admin/Manager can complete tasks."
     );
+    var hierarchy = buildVisibleTaskContext(false);
+    var decorated = decorateTask(context, existing, hierarchy);
+    if (Number(decorated["Child Task Count"] || 0) > 0 &&
+        Number(decorated["Completed Child Task Count"] || 0) !== Number(decorated["Child Task Count"] || 0)) {
+      throw new Error("Complete all subtasks before marking this parent task complete.");
+    }
     var saved = TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.TASKS, taskId, {
       "Status": "Complete",
       "Completed By User ID": context.userId,

@@ -91,6 +91,13 @@ var TrustOpsPayService = (function () {
     var now = new Date();
     var year = now.getFullYear();
     var month = now.getMonth();
+    if (mode === "last-week") {
+      return {
+        startDate: TrustOpsUtils.formatDate(TrustOpsUtils.addDays(now, -7)),
+        endDate: TrustOpsUtils.formatDate(now),
+        label: "Last Week"
+      };
+    }
     if (mode === "last-month") {
       var lastMonthStart = new Date(year, month - 1, 1);
       var lastMonthEnd = new Date(year, month, 0);
@@ -112,6 +119,13 @@ var TrustOpsPayService = (function () {
         startDate: TrustOpsUtils.formatDate(new Date(year, 0, 1)),
         endDate: TrustOpsUtils.formatDate(mode === "ytd" ? now : new Date(year, 11, 31)),
         label: mode === "ytd" ? "Year to Date" : "This Year"
+      };
+    }
+    if (mode === "all-time") {
+      return {
+        startDate: TrustOpsUtils.formatDate(new Date(1900, 0, 1)),
+        endDate: TrustOpsUtils.formatDate(now),
+        label: "All Time"
       };
     }
     return null;
@@ -178,6 +192,57 @@ var TrustOpsPayService = (function () {
     });
   }
 
+  function payPeriodLengthDays() {
+    return TrustOpsUtils.toNumber(
+      TrustOpsSettingsService.getSetting("DEFAULT_PAY_PERIOD_DAYS", TrustOpsConfig.PAY_PERIOD_DAYS)
+    ) || TrustOpsConfig.PAY_PERIOD_DAYS;
+  }
+
+  function daysInMonth(dateValue) {
+    var date = TrustOpsUtils.parseDate(dateValue);
+    if (!date) return 0;
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  }
+
+  function daysInYear(dateValue) {
+    var date = TrustOpsUtils.parseDate(dateValue);
+    if (!date) return 365;
+    var year = date.getFullYear();
+    return ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) ? 366 : 365;
+  }
+
+  function prorateSalaryForDateRange(salaryAmount, salaryFrequency, range) {
+    var start = TrustOpsUtils.parseDate(range.startDate);
+    var end = TrustOpsUtils.parseDate(range.endDate);
+    if (!start || !end) return 0;
+    var current = new Date(start.getTime());
+    var total = 0;
+    if (salaryFrequency === "Per Pay Period") {
+      return salaryAmount * ((TrustOpsUtils.daysBetween(start, end) + 1) / payPeriodLengthDays());
+    }
+    if (salaryFrequency === "Monthly") {
+      while (current.getTime() <= end.getTime()) {
+        var monthBoundary = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+        var segmentEnd = monthBoundary.getTime() < end.getTime() ? monthBoundary : end;
+        var segmentDays = TrustOpsUtils.daysBetween(current, segmentEnd) + 1;
+        total += salaryAmount * (segmentDays / daysInMonth(current));
+        current = TrustOpsUtils.addDays(segmentEnd, 1);
+      }
+      return total;
+    }
+    if (salaryFrequency === "Annual") {
+      while (current.getTime() <= end.getTime()) {
+        var yearBoundary = new Date(current.getFullYear(), 11, 31);
+        var yearSegmentEnd = yearBoundary.getTime() < end.getTime() ? yearBoundary : end;
+        var yearSegmentDays = TrustOpsUtils.daysBetween(current, yearSegmentEnd) + 1;
+        total += salaryAmount * (yearSegmentDays / daysInYear(current));
+        current = TrustOpsUtils.addDays(yearSegmentEnd, 1);
+      }
+      return total;
+    }
+    return salaryAmount;
+  }
+
   function calculateUserSummaryFromEntries(user, range, entries) {
     var totalHours = (entries || []).reduce(function (sum, entry) {
       return sum + TrustOpsUtils.toNumber(entry.Hours);
@@ -189,14 +254,18 @@ var TrustOpsPayService = (function () {
     if (payType === "Hourly") {
       grossPay = totalHours * hourlyRate;
     } else if (payType === "Salary") {
-      if (user["Salary Frequency"] === "Per Pay Period") {
-        grossPay = salaryAmount;
-      } else if (user["Salary Frequency"] === "Monthly") {
-        grossPay = salaryAmount / 2;
-      } else if (user["Salary Frequency"] === "Annual") {
-        grossPay = salaryAmount / 26;
+      if (range.payPeriod) {
+        if (user["Salary Frequency"] === "Per Pay Period") {
+          grossPay = salaryAmount;
+        } else if (user["Salary Frequency"] === "Monthly") {
+          grossPay = salaryAmount / 2;
+        } else if (user["Salary Frequency"] === "Annual") {
+          grossPay = salaryAmount / 26;
+        } else {
+          grossPay = salaryAmount;
+        }
       } else {
-        grossPay = salaryAmount;
+        grossPay = prorateSalaryForDateRange(salaryAmount, user["Salary Frequency"], range);
       }
     }
     return {

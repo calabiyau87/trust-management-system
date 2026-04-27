@@ -557,6 +557,26 @@ var TrustOpsProjectService = (function () {
         locked: false
       };
     }
+    if (mode === "last-week") {
+      return {
+        mode: mode,
+        label: "Last Week",
+        startDate: TrustOpsUtils.formatDate(TrustOpsUtils.addDays(new Date(), -7)),
+        endDate: TrustOpsUtils.formatDate(new Date()),
+        payPeriod: null,
+        locked: false
+      };
+    }
+    if (mode === "all-time") {
+      return {
+        mode: mode,
+        label: "All Time",
+        startDate: TrustOpsUtils.formatDate(new Date(1900, 0, 1)),
+        endDate: TrustOpsUtils.formatDate(new Date()),
+        payPeriod: null,
+        locked: false
+      };
+    }
     throw new Error("Unsupported project dashboard range.");
   }
 

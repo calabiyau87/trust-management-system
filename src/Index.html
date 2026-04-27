@@ -14,6 +14,10 @@
         --surface: #ffffff;
         --surface-strong: #ffffff;
         --surface-muted: #f4f7f9;
+        --icon-surface: #eef3f7;
+        --icon-border: #cfd9e1;
+        --icon-neutral: #5c6b78;
+        --icon-neutral-strong: #24313a;
         --table-head: #e8edf2;
         --text: #13212d;
         --muted: #5f6f7d;
@@ -23,6 +27,8 @@
         --danger: #b04545;
         --warning: #99681b;
         --ok: #2f7351;
+        --hierarchy-child-row-bg: rgba(95, 109, 122, 0.08);
+        --hierarchy-child-row-hover-bg: rgba(95, 109, 122, 0.12);
         --shadow: 0 10px 30px rgba(21, 34, 50, 0.08);
         --shadow-soft: 0 4px 14px rgba(21, 34, 50, 0.05);
         --radius-sm: 8px;
@@ -43,6 +49,10 @@
         --surface: #171d22;
         --surface-strong: #1a2127;
         --surface-muted: #202930;
+        --icon-surface: #202930;
+        --icon-border: #3a4650;
+        --icon-neutral: #b3bec8;
+        --icon-neutral-strong: #f0f4f7;
         --table-head: #1d252c;
         --text: #edf2f7;
         --muted: #a0aebb;
@@ -52,6 +62,8 @@
         --danger: #e38181;
         --warning: #e8c268;
         --ok: #7bc99f;
+        --hierarchy-child-row-bg: rgba(150, 165, 178, 0.13);
+        --hierarchy-child-row-hover-bg: rgba(150, 165, 178, 0.18);
         --shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
         --shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.2);
         --focus-ring: 0 0 0 3px rgba(87, 172, 161, 0.18);
@@ -520,13 +532,26 @@
         flex-wrap: wrap;
       }
 
+      .hierarchy-title-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        min-width: 0;
+      }
+
+      .hierarchy-title-badges {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+
       .task-note-icon {
         width: 22px;
         height: 22px;
+        min-height: 22px;
         border-radius: 50%;
-        border: 1px solid var(--border);
-        background: var(--surface-muted);
-        color: var(--muted);
         padding: 0;
         font-size: 12px;
         line-height: 1;
@@ -536,8 +561,9 @@
 
       .task-note-icon:hover,
       .task-note-icon:focus-visible {
-        color: var(--text);
-        border-color: var(--accent);
+        color: var(--icon-neutral-strong);
+        background: var(--surface);
+        border-color: var(--border);
       }
 
       .action-popover {
@@ -580,12 +606,21 @@
         box-shadow: var(--shadow);
       }
 
-      .action-popover:hover .action-popover-menu,
-      .action-popover:focus-within .action-popover-menu,
+      .action-popover[data-open-direction="up"] .action-popover-menu {
+        top: auto;
+        bottom: calc(100% + 6px);
+      }
+
       .action-popover[data-hover-open="true"] .action-popover-menu,
       .action-popover[data-open="true"] .action-popover-menu {
         display: grid;
         gap: 4px;
+      }
+
+      .action-popover[data-measuring="true"] .action-popover-menu {
+        display: grid;
+        visibility: hidden;
+        pointer-events: none;
       }
 
       .action-popover-menu button {
@@ -612,6 +647,17 @@
         color: var(--danger);
       }
 
+      .table-wrap td[data-label="Actions"] {
+        position: relative;
+        overflow: visible;
+        white-space: nowrap;
+      }
+
+      .table-wrap td[data-label="Actions"] .action-popover {
+        width: 100%;
+        justify-content: flex-end;
+      }
+
       tr:last-child td {
         border-bottom: 0;
       }
@@ -632,6 +678,7 @@
         align-items: flex-start;
         gap: 8px;
         min-width: 0;
+        padding-left: calc(var(--hierarchy-level, 0) * 14px);
       }
 
       .hierarchy-toggle,
@@ -680,7 +727,6 @@
         gap: 8px;
       }
 
-      .hierarchy-child-row td:first-child,
       .hierarchy-parent-row td:first-child {
         background: transparent;
       }
@@ -689,8 +735,53 @@
         color: var(--text);
       }
 
+      .hierarchy-parent-row td,
+      .hierarchy-child-row td {
+        transition: background-color 140ms ease, box-shadow 140ms ease;
+      }
+
+      .hierarchy-child-row td {
+        background: var(--hierarchy-child-row-bg);
+      }
+
+      .hierarchy-child-row td:first-child {
+        background: var(--hierarchy-child-row-bg);
+      }
+
       .hierarchy-child-row:hover td {
-        background: rgba(127, 143, 156, 0.04);
+        background: var(--hierarchy-child-row-hover-bg);
+      }
+
+      .hierarchy-parent-row .hierarchy-meta .badge {
+        font-weight: 700;
+      }
+
+      .hierarchy-parent-row .hierarchy-meta .hierarchy-count-badge {
+        padding-left: 8px;
+        padding-right: 8px;
+        gap: 4px;
+        height: 22px;
+        min-height: 22px;
+        font-weight: 700;
+      }
+
+      .hierarchy-count-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 0 8px;
+        font-size: 12px;
+        line-height: 1;
+      }
+
+      .hierarchy-count-icon {
+        font-size: 12px;
+        line-height: 1;
+      }
+
+      .hierarchy-parent-row .task-title-row strong,
+      .hierarchy-parent-row strong {
+        letter-spacing: 0.01em;
       }
 
       .help {
@@ -710,6 +801,65 @@
         color: var(--text);
         background: var(--surface-muted);
         font-size: 12px;
+      }
+
+      .badge.hierarchy-count-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        min-height: 22px;
+        height: 22px;
+        padding: 0 8px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--icon-neutral);
+        background: var(--icon-surface);
+        border-color: var(--icon-border);
+        font-variant-emoji: text;
+      }
+
+      .sidebar-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .sidebar-actions .danger {
+        border-color: rgba(176, 69, 69, 0.34);
+      }
+
+      .actions-header {
+        width: 1%;
+        white-space: nowrap;
+      }
+
+      .settings-actions-table .actions-header,
+      .settings-actions-table td[data-label="Actions"] {
+        width: 64px;
+        min-width: 64px;
+        max-width: 64px;
+      }
+
+      .settings-actions-table td[data-label="Actions"] {
+        padding-right: 10px;
+      }
+
+      .settings-actions-table td[data-label="Actions"] .action-popover {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
       }
 
       .person-chip {
@@ -789,6 +939,24 @@
         height: 34px;
         padding: 0;
         border-radius: 999px;
+      }
+
+      .icon-button:not(.danger),
+      .task-note-icon,
+      .hierarchy-count-badge {
+        color: var(--icon-neutral);
+        background: var(--icon-surface);
+        border-color: var(--icon-border);
+        font-variant-emoji: text;
+      }
+
+      .icon-button:not(.danger):hover,
+      .icon-button:not(.danger):focus-visible,
+      .task-note-icon:hover,
+      .task-note-icon:focus-visible {
+        color: var(--icon-neutral-strong);
+        background: var(--surface);
+        border-color: var(--border);
       }
 
       .avatar {
@@ -898,6 +1066,13 @@
         justify-content: space-between;
         gap: 8px;
         min-height: 34px;
+      }
+
+      .sidebar-head-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex: 0 0 auto;
       }
 
       .side-pane .sidebar-body {
@@ -1943,6 +2118,29 @@
           </th>`;
       }
 
+      function renderActionsHeader() {
+        return '<th class="actions-header" scope="col"><span class="sr-only">Actions</span></th>';
+      }
+
+      function renderActionMenuItem(item) {
+        const attrs = Object.entries(item.attrs || {}).map(([key, value]) => `${escapeHtml(key)}="${escapeHtml(value)}"`).join(" ");
+        return `
+          <button type="button" class="${item.danger ? "danger" : ""}" data-action="${escapeHtml(item.action)}" ${attrs}>
+            <span>${item.symbol || ""}</span><span>${escapeHtml(item.label || "")}</span>
+          </button>`;
+      }
+
+      function renderActionMenu(items, triggerLabel = "Actions", triggerSymbol = "&#8250;") {
+        if (!items || !items.length) return "";
+        return `
+          <div class="action-popover" data-action-popover>
+            <button type="button" class="icon-button action-popover-trigger" data-action-menu-trigger aria-label="${escapeHtml(triggerLabel)}" aria-haspopup="menu" aria-expanded="false" title="${escapeHtml(triggerLabel)}">${triggerSymbol}</button>
+            <div class="action-popover-menu">
+              ${items.map((item) => renderActionMenuItem(item)).join("")}
+            </div>
+          </div>`;
+      }
+
       function boardGroupStateKey(groupKey) {
         return `${state.boardGrouping || ""}::${String(groupKey || "")}`;
       }
@@ -1970,53 +2168,80 @@
         return `<button type="button" class="icon-button" data-action="toggle-sidebar" data-sidebar-key="${escapeHtml(key)}" title="${collapsed ? "Expand sidebar" : "Collapse sidebar"}" aria-label="${collapsed ? "Expand sidebar" : "Collapse sidebar"}" aria-expanded="${collapsed ? "false" : "true"}">${collapsed ? "&#9654;" : "&#9664;"}</button>`;
       }
 
-      function renderLayoutSidebar(title, key, innerHtml) {
+      function renderLayoutSidebar(title, key, innerHtml, headerActionsHtml = "") {
+        const collapsed = Boolean(state[key]);
         return `
-          <aside class="panel side-pane">
+          <aside class="panel side-pane" data-popover-boundary>
             <div class="sidebar-head">
               <strong>${escapeHtml(title)}</strong>
-              ${renderSidebarToggle(key)}
+              <span class="sidebar-head-actions">
+                ${collapsed ? "" : headerActionsHtml}
+                ${renderSidebarToggle(key)}
+              </span>
             </div>
             <div class="sidebar-body">${innerHtml}</div>
           </aside>`;
       }
 
-      function renderTaskNoteIcon(note) {
+      function renderNoteIcon(note, ariaLabel = "Note") {
         const text = String(note || "").trim();
         if (!text) return "";
-        return `<button type="button" class="task-note-icon" title="${escapeHtml(text)}" aria-label="Task note">&#128221;</button>`;
+        return `<button type="button" class="task-note-icon" title="${escapeHtml(text)}" aria-label="${escapeHtml(ariaLabel)}">&#128221;</button>`;
+      }
+
+      function renderTaskNoteIcon(note) {
+        return renderNoteIcon(note, "Task note");
+      }
+
+      function renderHierarchyCountBadge(count, noun) {
+        const total = Number(count || 0);
+        if (!total) return "";
+        const label = total === 1 ? noun : `${noun}s`;
+        return `<span class="badge hierarchy-count-badge" title="${escapeHtml(`${total} ${label}`)}" aria-label="${escapeHtml(`${total} ${label}`)}"><span class="hierarchy-count-icon" aria-hidden="true">&#128118;</span><span class="hierarchy-count-value">${escapeHtml(total)}</span></span>`;
+      }
+
+      function renderHierarchyTitleBadges(note, count, noun) {
+        const badges = [];
+        const countBadge = renderHierarchyCountBadge(count, noun);
+        if (countBadge) badges.push(countBadge);
+        const noteBadge = renderTaskNoteIcon(note);
+        if (noteBadge) badges.push(noteBadge);
+        if (!badges.length) return "";
+        return `<span class="hierarchy-title-badges">${badges.join("")}</span>`;
       }
 
       function renderTaskActionMenu(task) {
-        const taskId = escapeHtml(task["Task ID"]);
+        const taskId = task["Task ID"];
         const actions = [];
         if (task._permissions?.canComplete && task.Status !== "Complete") {
-          actions.push(["complete-task", "&#10003;", "Complete task", false]);
+          actions.push({ action: "complete-task", symbol: "&#10003;", label: "Complete task", attrs: { "data-task-id": taskId } });
         }
         if (task._permissions?.canAddTime) {
-          actions.push(["add-time", "&#128336;", "Add time", false]);
+          actions.push({ action: "add-time", symbol: "&#128336;", label: "Add time", attrs: { "data-task-id": taskId } });
         }
         if (state.data.permissions.canCreateTask && !String(task["Parent Task ID"] || "")) {
-          actions.push(["new-subtask", "&#10133;", "Add subtask", false]);
+          actions.push({ action: "new-subtask", symbol: "&#10133;", label: "Add subtask", attrs: { "data-task-id": taskId } });
         }
         if (task._permissions?.canEdit) {
-          actions.push(["edit-task", "&#9998;", "Edit task", false]);
+          actions.push({ action: "edit-task", symbol: "&#9998;", label: "Edit task", attrs: { "data-task-id": taskId } });
         }
         if (task._permissions?.canDelete) {
-          actions.push(["delete-task", "&#128465;", "Delete task", true]);
+          actions.push({ action: "delete-task", symbol: "&#128465;", label: "Delete task", danger: true, attrs: { "data-task-id": taskId } });
         }
-        if (!actions.length) return "";
-        return `
-          <div class="action-popover" data-action-popover>
-            <button type="button" class="icon-button action-popover-trigger" data-action-menu-trigger aria-label="Task actions" aria-haspopup="menu" aria-expanded="false" title="Task actions">&#8250;</button>
-            <div class="action-popover-menu">
-              ${actions.map(([action, symbol, label, danger]) => `
-                <button type="button" class="${danger ? "danger" : ""}" data-action="${escapeHtml(action)}" data-task-id="${taskId}">
-                  <span>${symbol}</span><span>${escapeHtml(label)}</span>
-                </button>
-              `).join("")}
-            </div>
-          </div>`;
+        return renderActionMenu(actions, "Task actions");
+      }
+
+      function renderPayPeriodOptions(selectedValue, includeBlank) {
+        const currentPeriodId = String(state.data?.currentPayPeriod?.["Pay Period ID"] || "");
+        const blank = includeBlank ? '<option value="">All</option>' : "";
+        return blank + (state.data?.payPeriods || []).map((period) => {
+          const value = period["Pay Period ID"];
+          const selected = String(value) === String(selectedValue || "") ? "selected" : "";
+          const locked = String(period.Locked) === "true" || String(period.Status) === "Locked";
+          const current = String(value) === currentPeriodId ? " (current)" : "";
+          const prefix = locked ? String.fromCodePoint(128274) : String.fromCodePoint(128275);
+          return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(`${prefix} ${period["Pay Period Label"] || value}${current}`)}</option>`;
+        }).join("");
       }
 
       function setModal(html) {
@@ -2042,11 +2267,90 @@
       }
 
       function closeActionMenus() {
-        document.querySelectorAll("[data-action-popover][data-open='true']").forEach((menu) => {
+        document.querySelectorAll("[data-action-popover]").forEach((menu) => {
           menu.dataset.open = "false";
+          menu.dataset.hoverOpen = "false";
+          menu.dataset.measuring = "false";
         });
         document.querySelectorAll("[data-action-menu-trigger]").forEach((button) => {
           button.setAttribute("aria-expanded", "false");
+        });
+      }
+
+      function findActionPopoverBoundary(popover) {
+        if (!popover) return null;
+        const preferred = popover.closest("[data-popover-boundary], .table-wrap, .side-pane, .modal, .collapsible-body, .board-group-body, .panel");
+        if (preferred) return preferred;
+        let element = popover.parentElement;
+        while (element && element !== document.body) {
+          const styles = window.getComputedStyle(element);
+          const overflowY = styles.overflowY || styles.overflow;
+          if (/(auto|scroll|hidden|clip|overlay)/.test(overflowY)) {
+            return element;
+          }
+          element = element.parentElement;
+        }
+        return null;
+      }
+
+      function measureActionPopover(popover) {
+        if (!popover) return "down";
+        const trigger = popover.querySelector("[data-action-menu-trigger]");
+        const menu = popover.querySelector(".action-popover-menu");
+        if (!trigger || !menu) return "down";
+        const rect = trigger.getBoundingClientRect();
+        const menuHeight = menu.scrollHeight || menu.getBoundingClientRect().height || 0;
+        const boundary = findActionPopoverBoundary(popover);
+        const boundaryRect = boundary ? boundary.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
+        const safetyMargin = Math.max(16, Math.min(24, Math.round(menuHeight * 0.1)));
+        const spaceBelow = boundaryRect.bottom - rect.bottom;
+        const spaceAbove = rect.top - boundaryRect.top;
+        let openUp = false;
+        if (spaceBelow >= menuHeight + safetyMargin) {
+          openUp = false;
+        } else if (spaceAbove >= menuHeight + safetyMargin) {
+          openUp = true;
+        } else {
+          openUp = spaceAbove > spaceBelow;
+        }
+        popover.dataset.openDirection = openUp ? "up" : "down";
+        return popover.dataset.openDirection;
+      }
+
+      function setActionPopoverState(popover, open, mode = "click") {
+        if (!popover) return;
+        const trigger = popover.querySelector("[data-action-menu-trigger]");
+        if (!open) {
+          popover.dataset.open = "false";
+          popover.dataset.hoverOpen = "false";
+          popover.dataset.measuring = "false";
+          if (trigger) trigger.setAttribute("aria-expanded", "false");
+          return;
+        }
+        closeActionMenus();
+        popover.dataset.openDirection = popover.dataset.openDirection || "down";
+        if (mode === "hover") popover.dataset.hoverOpen = "true";
+        else popover.dataset.open = "true";
+        popover.dataset.measuring = "true";
+        if (trigger) trigger.setAttribute("aria-expanded", "true");
+        requestAnimationFrame(() => {
+          if (!popover.isConnected) return;
+          if (popover.dataset.open !== "true" && popover.dataset.hoverOpen !== "true") return;
+          measureActionPopover(popover);
+          popover.dataset.measuring = "false";
+        });
+      }
+
+      function toggleActionPopover(popover) {
+        if (!popover) return;
+        const isOpen = popover.dataset.open === "true";
+        if (isOpen) closeActionMenus();
+        else setActionPopoverState(popover, true, "click");
+      }
+
+      function syncActionPopoverPlacement() {
+        document.querySelectorAll("[data-action-popover][data-open='true'], [data-action-popover][data-hover-open='true']").forEach((popover) => {
+          measureActionPopover(popover);
         });
       }
 
@@ -2436,9 +2740,6 @@
               </div>
               <div class="actions">
                 ${data.permissions.canCreateTask ? renderIcon("new-task", "", "", "Create Task", "&#10133;", false) : ""}
-                ${renderIcon("save-board-view", "", "", "Save View", "&#128190;")}
-                ${canDeleteSelectedView ? renderIcon("delete-board-view", "", "", "Delete saved view", "&#128465;", true) : ""}
-                ${renderIcon("clear-board-filters", "", "", "Clear Filters", "&#10006;")}
               </div>
             </section>
           </div>
@@ -2457,6 +2758,10 @@
               <label>Group By <select data-board-grouping>
                 ${constantOptions(["", "Status", "Project", "Assignee", "Priority", "Due Week", "Tag"], state.boardGrouping, false)}
               </select></label>
+            `, `
+              ${renderIcon("save-board-view", "", "", "Save View", "&#128190;")}
+              ${canDeleteSelectedView ? renderIcon("delete-board-view", "", "", "Delete View", "&#128465;", true) : ""}
+              ${renderIcon("clear-board-filters", "", "", "Clear Filters", "&#10006;")}
             `)}
             <div>
               <section class="panel" id="board-results">
@@ -2493,13 +2798,12 @@
                 <div class="hierarchy-cell"${hierarchyLevelStyle(level)}>
                   ${hasChildren ? `<button type="button" class="hierarchy-toggle" data-action="toggle-task-node" data-task-id="${escapeHtml(task["Task ID"])}" aria-label="${expanded ? "Collapse" : "Expand"} subtasks">${expanded ? "&#9660;" : "&#9654;"}</button>` : `<span class="hierarchy-toggle-spacer"></span>`}
                   <div class="hierarchy-main">
-                    <div class="task-title-row">
+                    <div class="hierarchy-title-row">
                       <strong>${escapeHtml(taskDisplayName(task))}</strong>
-                      ${renderTaskNoteIcon(task.Notes)}
+                      ${renderHierarchyTitleBadges(task.Notes, task["Child Task Count"], "subtask")}
                     </div>
                     ${task["Parent Task ID"] && !level ? `<div class="hierarchy-subtitle">Parent: ${escapeHtml(task["Parent Task Title"] || task["Parent Task ID"])}</div>` : ""}
                     <div class="hierarchy-meta">
-                      ${task["Child Task Count"] ? `<span class="badge">${escapeHtml(task["Child Task Count"])} subtask${task["Child Task Count"] === 1 ? "" : "s"}</span>` : ""}
                       ${task["Child Task Count"] ? `<span class="badge">${escapeHtml(task["Progress Percent"])}%</span>` : ""}
                       ${task.Tags ? `<span class="badge">${escapeHtml(task.Tags)}</span>` : ""}
                     </div>
@@ -2518,7 +2822,7 @@
             ${expanded ? childTasks.map((child) => renderTaskNode(child, level + 1)).join("") : ""}`;
         }
         return `
-          <div class="table-wrap">
+          <div class="table-wrap" data-popover-boundary>
             <table class="${isProjectTaskTable ? "project-task-table" : "board-table"}">
               <thead>
                 <tr>
@@ -2528,7 +2832,7 @@
                   ${isProjectTaskTable ? "" : renderSortHeader(tableKey, "project", "Project")}
                   ${renderSortHeader(tableKey, "priority", "Priority")}
                   ${isProjectTaskTable ? "" : renderSortHeader(tableKey, "due", "Due")}
-                  <th>Actions</th>
+                  ${renderActionsHeader()}
                 </tr>
               </thead>
               <tbody>
@@ -2574,7 +2878,7 @@
           <section class="side-layout" data-sidebar-collapsed="${state.timeSidebarCollapsed ? "true" : "false"}">
             ${renderLayoutSidebar("Filters", "timeSidebarCollapsed", `
               ${canSelectUser ? `<label>User <select data-time-filter="userId">${options(data.users, "User ID", "Full Name", targetUserId, false)}</select></label>` : `<label>User <input value="${escapeHtml(selectedUser["Full Name"] || data.context.fullName)}" disabled></label>`}
-              <label>Entries Period <select data-time-filter="payPeriodId">${options(data.payPeriods, "Pay Period ID", "Pay Period Label", state.timeFilters.payPeriodId, false)}</select></label>
+              <label>Entries Period <select data-time-filter="payPeriodId">${renderPayPeriodOptions(state.timeFilters.payPeriodId, false)}</select></label>
             `)}
             <div class="stack">
               <section class="panel">
@@ -2637,11 +2941,12 @@
         return Object.keys(grouped).sort().reverse().map((date) => {
           const dayEntries = grouped[date];
           const total = dayEntries.reduce((sum, entry) => sum + Number(entry.Hours || 0), 0);
-          return `
-            <div class="grouped-day">
-              <div class="day-heading"><span>${escapeHtml(date)}</span><span>${total.toFixed(2)} hours</span></div>
-              ${renderTimeEntriesTable(dayEntries, "timeEntries")}
-            </div>`;
+          return renderCollapsibleSection(
+            date,
+            renderTimeEntriesTable(dayEntries, "timeEntries"),
+            `${total.toFixed(2)} hours`,
+            true
+          );
         }).join("");
       }
 
@@ -2653,9 +2958,9 @@
           reason: (request) => request.Reason
         });
         return `
-          <div class="table-wrap">
+          <div class="table-wrap" data-popover-boundary>
             <table class="time-table">
-              <thead><tr>${renderSortHeader("timeRequests", "request", "Request")}${renderSortHeader("timeRequests", "user", "User")}${renderSortHeader("timeRequests", "payPeriod", "Pay Period")}${renderSortHeader("timeRequests", "reason", "Reason")}<th>Actions</th></tr></thead>
+              <thead><tr>${renderSortHeader("timeRequests", "request", "Request")}${renderSortHeader("timeRequests", "user", "User")}${renderSortHeader("timeRequests", "payPeriod", "Pay Period")}${renderSortHeader("timeRequests", "reason", "Reason")}${renderActionsHeader()}</tr></thead>
               <tbody>${sortedRequests.map((request) => `
                 <tr>
                   <td data-label="Request">${escapeHtml(request["Request Type"])} &middot; ${escapeHtml(request.Status)}</td>
@@ -2663,9 +2968,10 @@
                   <td data-label="Pay Period">${escapeHtml(request["Pay Period Label"])}</td>
                   <td data-label="Reason">${escapeHtml(request.Reason)}</td>
                   <td data-label="Actions">
-                    ${state.data.permissions.canApproveTimeRequests && request.Status === "Pending" ? `
-                      ${renderIcon("approve-time-request", "data-request-id", request["Time Edit Request ID"], "Approve", "&#10003;")}
-                      ${renderIcon("reject-time-request", "data-request-id", request["Time Edit Request ID"], "Reject", "&#10005;", true)}` : ""}
+                    ${renderActionMenu((state.data.permissions.canApproveTimeRequests && request.Status === "Pending") ? [
+                      { action: "approve-time-request", symbol: "&#10003;", label: "Approve", attrs: { "data-request-id": request["Time Edit Request ID"] } },
+                      { action: "reject-time-request", symbol: "&#10005;", label: "Reject", danger: true, attrs: { "data-request-id": request["Time Edit Request ID"] } }
+                    ] : [], "Time request actions")}
                   </td>
                 </tr>`).join("")}</tbody>
             </table>
@@ -2680,21 +2986,26 @@
           payPeriod: (entry) => entry["Pay Period Label"]
         });
         return `
-          <div class="table-wrap">
+          <div class="table-wrap" data-popover-boundary>
             <table class="time-table">
-              <thead><tr>${renderSortHeader(tableKey, "entry", "Entry")}${renderSortHeader(tableKey, "project", "Project")}${renderSortHeader(tableKey, "hours", "Hours")}${renderSortHeader(tableKey, "payPeriod", "Pay Period")}<th>Actions</th></tr></thead>
+              <thead><tr>${renderSortHeader(tableKey, "entry", "Entry")}${renderSortHeader(tableKey, "project", "Project")}${renderSortHeader(tableKey, "hours", "Hours")}${renderSortHeader(tableKey, "payPeriod", "Pay Period")}${renderActionsHeader()}</tr></thead>
               <tbody>
                 ${sortedEntries.map((entry) => `
                   <tr>
-                    <td data-label="Entry"><strong>${escapeHtml(entry["Task / Category"])}</strong></td>
+                    <td data-label="Entry">
+                      <span class="task-title-row">
+                        <strong>${escapeHtml(entry["Task / Category"])}</strong>
+                        ${renderNoteIcon(entry.Notes, "Time entry note")}
+                      </span>
+                    </td>
                     <td data-label="Project">${escapeHtml(entry["Project Name"])}</td>
                     <td data-label="Hours">${escapeHtml(entry.Hours)}</td>
                     <td data-label="Pay Period">${escapeHtml(entry["Pay Period Label"])}</td>
                     <td data-label="Actions">
-                      <div class="actions">
-                        ${entry._permissions?.canEdit ? renderIcon("edit-time", "data-entry-id", entry["Time Entry ID"], "Edit time entry", "&#9998;") : ""}
-                        ${entry._permissions?.canDelete ? renderIcon("delete-time", "data-entry-id", entry["Time Entry ID"], "Delete time entry", "&#128465;", true) : ""}
-                      </div>
+                      ${renderActionMenu([
+                        entry._permissions?.canEdit ? { action: "edit-time", symbol: "&#9998;", label: "Edit time entry", attrs: { "data-entry-id": entry["Time Entry ID"] } } : null,
+                        entry._permissions?.canDelete ? { action: "delete-time", symbol: "&#128465;", label: "Delete time entry", danger: true, attrs: { "data-entry-id": entry["Time Entry ID"] } } : null
+                      ].filter(Boolean), "Time entry actions")}
                     </td>
                   </tr>`).join("")}
               </tbody>
@@ -2707,27 +3018,37 @@
           ["current", "Current Pay Period"],
           ["last", "Last Pay Period"]
         ];
-        const periods = (state.data.payPeriods || []).map((period) => [`period:${period["Pay Period ID"]}`, period["Pay Period Label"]]);
         const ranges = [
+          ["last-week", "Last Week"],
           ["this-year", "This Year"],
           ["last-year", "Last Year"],
           ["last-month", "Last Month"],
           ["ytd", "Year to Date"],
+          ["all-time", "All Time"],
           ["custom", "Custom Range"]
         ];
-        return fixed.concat(periods, ranges).map(([value, label]) => `<option value="${escapeHtml(value)}" ${String(value) === String(selected) ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
+        const normalized = String(selected || "").startsWith("period:") ? "current" : String(selected || "current");
+        return fixed.concat(ranges).map(([value, label]) => `<option value="${escapeHtml(value)}" ${String(value) === normalized ? "selected" : ""}>${escapeHtml(label)}</option>`).join("");
+      }
+
+      function normalizedRangeMode(mode) {
+        const value = String(mode || "current");
+        if (value === "current" || value === "last" || value === "last-week" || value === "this-year" || value === "last-year" || value === "last-month" || value === "ytd" || value === "all-time" || value === "custom") {
+          return value;
+        }
+        return "current";
       }
 
       function payRangeOptions() {
-        return rangeOptions(state.payFilters.rangeMode || "current");
+        return rangeOptions(normalizedRangeMode(state.payFilters.rangeMode));
       }
 
       function projectRangeOptions() {
-        return rangeOptions(state.projectFilters.rangeMode || "current");
+        return rangeOptions(normalizedRangeMode(state.projectFilters.rangeMode));
       }
 
       function buildPayFilters(extra = {}) {
-        const rangeMode = state.payFilters.rangeMode || "current";
+        const rangeMode = normalizedRangeMode(state.payFilters.rangeMode);
         const filters = {
           userId: state.payFilters.userId || "",
           rangeMode: rangeMode
@@ -2759,6 +3080,7 @@
             rangeMode: "current"
           };
         }
+        filters.rangeMode = normalizedRangeMode(filters.rangeMode);
         return filters;
       }
 
@@ -2808,7 +3130,7 @@
             <div class="stack">
               <section class="panel">
                 ${summary.summaries?.length ? `
-                  <div class="table-wrap">
+                  <div class="table-wrap" data-popover-boundary>
                     <table class="pay-table">
                       <thead><tr>${renderSortHeader("paySummary", "user", "User")}${renderSortHeader("paySummary", "totalHours", "Total Hours")}${renderSortHeader("paySummary", "payType", "Pay Type")}${renderSortHeader("paySummary", "rate", "Rate/Salary")}${renderSortHeader("paySummary", "effectiveHourly", "Effective Hourly")}${renderSortHeader("paySummary", "grossPay", "Gross Pay")}</tr></thead>
                       <tbody>
@@ -2860,11 +3182,11 @@
                   <div class="hierarchy-cell"${hierarchyLevelStyle(level)}>
                   ${hasChildren ? `<button type="button" class="hierarchy-toggle" data-action="toggle-project-node" data-project-id="${escapeHtml(project["Project ID"])}" aria-label="${expanded ? "Collapse" : "Expand"} subprojects">${expanded ? "&#9660;" : "&#9654;"}</button>` : `<span class="hierarchy-toggle-spacer"></span>`}
                   <div class="hierarchy-main">
-                    <strong>${escapeHtml(projectDisplayName(project))}</strong>
-                    ${project["Parent Project ID"] && !level ? `<div class="hierarchy-subtitle">Parent: ${escapeHtml(project["Parent Project Name"] || project["Parent Project ID"])}</div>` : ""}
-                    <div class="hierarchy-meta">
-                      ${project["Child Project Count"] ? `<span class="badge">${escapeHtml(project["Child Project Count"])} subproject${project["Child Project Count"] === 1 ? "" : "s"}</span>` : ""}
+                    <div class="hierarchy-title-row">
+                      <strong>${escapeHtml(projectDisplayName(project))}</strong>
+                      ${renderHierarchyTitleBadges(project.Notes, project["Child Project Count"], "subproject")}
                     </div>
+                    ${project["Parent Project ID"] && !level ? `<div class="hierarchy-subtitle">Parent: ${escapeHtml(project["Parent Project Name"] || project["Parent Project ID"])}</div>` : ""}
                   </div>
                 </div>
               </td>
@@ -2874,12 +3196,12 @@
               <td data-label="Hours">${escapeHtml(project["Total Hours"])}</td>
               <td data-label="Users">${escapeHtml(project["User Count"])}</td>
               <td data-label="Actions">
-                <div class="actions">
-                  ${renderIcon("select-project-dashboard", "data-project-id", project["Project ID"], "View project details", "&#128065;")}
-                  ${data.permissions.canManageProjects ? renderIcon("edit-project-dashboard", "data-project-id", project["Project ID"], "Edit project", "&#9998;") : ""}
-                  ${data.permissions.canManageProjects && !String(project["Parent Project ID"] || "") ? renderIcon("new-subproject", "data-project-id", project["Project ID"], "Add subproject", "&#10133;") : ""}
-                  ${data.permissions.canManageProjects ? (project.Archived ? renderIcon("unarchive-project", "data-project-id", project["Project ID"], "Restore project", "&#10133;") : renderIcon("archive-project-dashboard", "data-project-id", project["Project ID"], "Archive project", "&#128465;", true)) : ""}
-                </div>
+                ${renderActionMenu([
+                  { action: "select-project-dashboard", symbol: "&#128065;", label: "View project details", attrs: { "data-project-id": project["Project ID"] } },
+                  data.permissions.canManageProjects ? { action: "edit-project-dashboard", symbol: "&#9998;", label: "Edit project", attrs: { "data-project-id": project["Project ID"] } } : null,
+                  data.permissions.canManageProjects && !String(project["Parent Project ID"] || "") ? { action: "new-subproject", symbol: "&#10133;", label: "Add subproject", attrs: { "data-project-id": project["Project ID"] } } : null,
+                  data.permissions.canManageProjects ? (project.Archived ? { action: "unarchive-project", symbol: "&#10133;", label: "Restore project", attrs: { "data-project-id": project["Project ID"] } } : { action: "archive-project-dashboard", symbol: "&#128465;", label: "Archive project", danger: true, attrs: { "data-project-id": project["Project ID"] } }) : null
+                ].filter(Boolean), "Project actions")}
               </td>
             </tr>
             ${expanded ? childProjects.map((childProject) => renderProjectNode(childProject, level + 1)).join("") : ""}`;
@@ -2913,7 +3235,7 @@
               <label>Range <select data-project-filter="rangeMode">${projectRangeOptions()}</select></label>
               <label class="checkbox-row"><input type="checkbox" data-project-filter="includeArchived" ${state.projectFilters.includeArchived ? "checked" : ""}> Include Archived</label>
               ${state.projectFilters.rangeMode === "custom" ? `
-                <div class="form-grid two" style="margin:0;">
+                <div class="stack" style="margin:0;">
                   <label>Start Date <input type="date" data-project-filter="startDate" value="${escapeHtml(state.projectFilters.startDate || "")}"></label>
                   <label>End Date <input type="date" data-project-filter="endDate" value="${escapeHtml(state.projectFilters.endDate || "")}"></label>
                 </div>` : ""}
@@ -2921,9 +3243,9 @@
             <div class="stack">
               <section class="panel">
               ${(dashboard.projects || []).length ? `
-                  <div class="table-wrap">
+                  <div class="table-wrap" data-popover-boundary>
                     <table class="project-dashboard-table">
-                      <thead><tr>${renderSortHeader("projects", "project", "Project")}${renderSortHeader("projects", "status", "Status")}${renderSortHeader("projects", "tasks", "Tasks")}${renderSortHeader("projects", "progress", "Progress")}${renderSortHeader("projects", "hours", "Hours")}${renderSortHeader("projects", "users", "Users")}<th>Actions</th></tr></thead>
+                      <thead><tr>${renderSortHeader("projects", "project", "Project")}${renderSortHeader("projects", "status", "Status")}${renderSortHeader("projects", "tasks", "Tasks")}${renderSortHeader("projects", "progress", "Progress")}${renderSortHeader("projects", "hours", "Hours")}${renderSortHeader("projects", "users", "Users")}${renderActionsHeader()}</tr></thead>
                       <tbody>
                         ${sortedProjects.filter((project) => !String(project["Parent Project ID"] || "") || !sortedProjects.some((candidate) => String(candidate["Project ID"]) === String(project["Parent Project ID"]))).map((project) => renderProjectNode(project, 0)).join("")}
                       </tbody>
@@ -2938,10 +3260,12 @@
                       <p>${renderProjectStatusBadge(selectedProject.project.Status)} &middot; ${escapeHtml(selectedProject.summary["Progress Percent"])}% complete${selectedProject.summary["Child Project Count"] ? ` &middot; ${escapeHtml(selectedProject.summary["Child Project Count"])} subproject${selectedProject.summary["Child Project Count"] === 1 ? "" : "s"}` : ""}</p>
                     </div>
                     <div class="actions">
-                      ${data.permissions.canManageProjects && !String(selectedProject.project["Parent Project ID"] || "") ? renderIcon("new-subproject", "data-project-id", selectedProject.project["Project ID"], "Add subproject", "&#10133;") : ""}
-                      ${data.permissions.canManageProjects ? renderIcon("edit-project-dashboard", "data-project-id", selectedProject.project["Project ID"], "Edit project", "&#9998;") : ""}
-                      ${data.permissions.canManageProjects ? (selectedProject.project.Archived ? renderIcon("unarchive-project", "data-project-id", selectedProject.project["Project ID"], "Restore project", "&#10133;") : renderIcon("archive-project-dashboard", "data-project-id", selectedProject.project["Project ID"], "Archive project", "&#128465;", true)) : ""}
-                      ${renderIcon("clear-project-filter", "", "", "Clear project selection", "&#10006;")}
+                      ${renderActionMenu([
+                        data.permissions.canManageProjects && !String(selectedProject.project["Parent Project ID"] || "") ? { action: "new-subproject", symbol: "&#10133;", label: "Add subproject", attrs: { "data-project-id": selectedProject.project["Project ID"] } } : null,
+                        data.permissions.canManageProjects ? { action: "edit-project-dashboard", symbol: "&#9998;", label: "Edit project", attrs: { "data-project-id": selectedProject.project["Project ID"] } } : null,
+                        data.permissions.canManageProjects ? (selectedProject.project.Archived ? { action: "unarchive-project", symbol: "&#10133;", label: "Restore project", attrs: { "data-project-id": selectedProject.project["Project ID"] } } : { action: "archive-project-dashboard", symbol: "&#128465;", label: "Archive project", danger: true, attrs: { "data-project-id": selectedProject.project["Project ID"] } }) : null,
+                        { action: "clear-project-filter", symbol: "&#10006;", label: "Clear project selection" }
+                      ].filter(Boolean), "Selected project actions")}
                     </div>
                   </div>
                   <div class="metric-grid">
@@ -2953,7 +3277,7 @@
                   <h3>Tasks</h3>
                   ${selectedProject.tasks?.length ? `
                     ${renderTaskTable(selectedProject.tasks, "projectTasks")}` : '<div class="empty">No related tasks.</div>'}
-                  ${selectedProject.childProjects?.length ? `
+                      ${selectedProject.childProjects?.length ? `
                     <h3>Subprojects</h3>
                     <div class="stack">
                       ${selectedProject.childProjects.map((childProject) => renderCollapsibleSection(
@@ -2969,7 +3293,8 @@
                           ${childProject.tasks?.length ? renderTaskTable(childProject.tasks, "projectTasks") : '<div class="empty">No related tasks.</div>'}
                         `,
                         `${childProject.summary["Task Count"]} leaf task${childProject.summary["Task Count"] === 1 ? "" : "s"}`,
-                        false
+                        false,
+                        true
                       )).join("")}
                     </div>` : ""}
                   <div class="detail-grid" style="margin-top: 12px;">
@@ -3020,7 +3345,7 @@
             </div>
           </section>
           <section class="settings-layout" data-sidebar-collapsed="${state.settingsSidebarCollapsed ? "true" : "false"}">
-            <aside class="panel side-pane">
+            <aside class="panel side-pane" data-popover-boundary>
               <button type="button" class="icon-button" data-action="toggle-settings-sidebar" title="${state.settingsSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}" aria-label="${state.settingsSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}">${state.settingsSidebarCollapsed ? "&#9654;" : "&#9664;"}</button>
               ${sections.map(([id, label]) => {
                 if (id === "organization-group") {
@@ -3096,12 +3421,17 @@
         const data = state.data;
         return `
           <section class="panel">
-            <div class="toolbar"><h3>Users</h3><button class="primary" data-action="new-user">Create User</button></div>
+            <div class="toolbar">
+              <h3>Users</h3>
+              <div class="actions">
+                ${renderIcon("new-user", "", "", "Create User", "&#10133;")}
+                <button type="button" class="link" data-action="diagnose-user">Diagnose Email</button>
+              </div>
+            </div>
             <label>User Lookup <input data-diagnostic-email placeholder="email@example.com"></label>
-            <div class="actions"><button data-action="diagnose-user">Diagnose Email</button></div>
-            <div class="table-wrap">
+            <div class="table-wrap settings-actions-table" data-popover-boundary>
               <table>
-                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tracking</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tracking</th>${renderActionsHeader()}</tr></thead>
                 <tbody>${data.users.map((user) => `
                   <tr>
                     <td data-label="Name"><span class="user-cell">${avatarForUser(user)}${escapeHtml(user["Full Name"])}</span></td>
@@ -3109,9 +3439,11 @@
                     <td data-label="Role">${escapeHtml(user.Role)}</td>
                     <td data-label="Tracking">Time: ${escapeHtml(user["Track Time"])} / Pay: ${escapeHtml(user["Track Pay"])}</td>
                     <td data-label="Actions">
-                      ${renderIcon("edit-user", "data-user-id", user["User ID"], "Edit user", "&#9998;")}
-                      ${data.userPermissions?.length ? renderIcon("share-user-spreadsheet", "data-user-id", user["User ID"], "Share spreadsheet", "&#128279;") : ""}
-                      ${renderIcon("delete-user", "data-user-id", user["User ID"], "Delete user", "&#128465;", true)}
+                      ${renderActionMenu([
+                        { action: "edit-user", symbol: "&#9998;", label: "Edit user", attrs: { "data-user-id": user["User ID"] } },
+                        data.userPermissions?.length ? { action: "share-user-spreadsheet", symbol: "&#128279;", label: "Share spreadsheet", attrs: { "data-user-id": user["User ID"] } } : null,
+                        { action: "delete-user", symbol: "&#128465;", label: "Delete user", danger: true, attrs: { "data-user-id": user["User ID"] } }
+                      ].filter(Boolean), "User actions")}
                     </td>
                   </tr>`).join("")}</tbody>
               </table>
@@ -3123,18 +3455,25 @@
         const data = state.data;
         return `
           <section class="panel">
-            <div class="toolbar"><h3>Projects</h3><button class="primary" data-action="new-project">Create Project</button></div>
-            <div class="table-wrap">
+            <div class="toolbar">
+              <h3>Projects</h3>
+              <div class="actions">
+                ${renderIcon("new-project", "", "", "Create Project", "&#10133;")}
+              </div>
+            </div>
+            <div class="table-wrap settings-actions-table" data-popover-boundary>
               <table>
-                <thead><tr><th>Project</th><th>Status</th><th>Active</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Project</th><th>Status</th><th>Active</th>${renderActionsHeader()}</tr></thead>
                 <tbody>${data.projects.map((project) => `
                   <tr>
                     <td data-label="Project">${escapeHtml(projectDisplayName(project))}</td>
                     <td data-label="Status">${renderProjectStatusBadge(project.Status)}</td>
                     <td data-label="Active">${escapeHtml(project.Active)}</td>
                     <td data-label="Actions">
-                      ${renderIcon("edit-project", "data-project-id", project["Project ID"], "Edit project", "&#9998;")}
-                      ${renderIcon("delete-project", "data-project-id", project["Project ID"], "Delete project", "&#128465;", true)}
+                      ${renderActionMenu([
+                        { action: "edit-project", symbol: "&#9998;", label: "Edit project", attrs: { "data-project-id": project["Project ID"] } },
+                        { action: "delete-project", symbol: "&#128465;", label: "Delete project", danger: true, attrs: { "data-project-id": project["Project ID"] } }
+                      ], "Project actions")}
                     </td>
                   </tr>`).join("")}</tbody>
               </table>
@@ -3146,18 +3485,25 @@
         const data = state.data;
         return `
           <section class="panel">
-            <div class="toolbar"><h3>Time Categories</h3><button class="primary" data-action="new-category">Create Category</button></div>
-            <div class="table-wrap">
+            <div class="toolbar">
+              <h3>Time Categories</h3>
+              <div class="actions">
+                ${renderIcon("new-category", "", "", "Create Category", "&#10133;")}
+              </div>
+            </div>
+            <div class="table-wrap settings-actions-table" data-popover-boundary>
               <table>
-                <thead><tr><th>Category</th><th>Default Project</th><th>Active</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Category</th><th>Default Project</th><th>Active</th>${renderActionsHeader()}</tr></thead>
                 <tbody>${data.categories.map((category) => `
                   <tr>
                     <td data-label="Category">${escapeHtml(category.Category)}</td>
                     <td data-label="Default Project">${escapeHtml(category["Default Project"])}</td>
                     <td data-label="Active">${escapeHtml(category.Active)}</td>
                     <td data-label="Actions">
-                      ${renderIcon("edit-category", "data-category-id", category["Category ID"], "Edit category", "&#9998;")}
-                      ${renderIcon("delete-category", "data-category-id", category["Category ID"], "Delete category", "&#128465;", true)}
+                      ${renderActionMenu([
+                        { action: "edit-category", symbol: "&#9998;", label: "Edit category", attrs: { "data-category-id": category["Category ID"] } },
+                        { action: "delete-category", symbol: "&#128465;", label: "Delete category", danger: true, attrs: { "data-category-id": category["Category ID"] } }
+                      ], "Time category actions")}
                     </td>
                   </tr>`).join("")}</tbody>
               </table>
@@ -3169,18 +3515,25 @@
         const data = state.data;
         return `
           <section class="panel">
-            <div class="toolbar"><h3>Tags</h3><button class="primary" data-action="new-tag">Create Tag</button></div>
-            <div class="table-wrap">
+            <div class="toolbar">
+              <h3>Tags</h3>
+              <div class="actions">
+                ${renderIcon("new-tag", "", "", "Create Tag", "&#10133;")}
+              </div>
+            </div>
+            <div class="table-wrap settings-actions-table" data-popover-boundary>
               <table>
-                <thead><tr><th>Tag</th><th>Color</th><th>Description</th><th>Actions</th></tr></thead>
+                <thead><tr><th>Tag</th><th>Color</th><th>Description</th>${renderActionsHeader()}</tr></thead>
                 <tbody>${(data.tags || []).map((tag) => `
                   <tr>
                     <td data-label="Tag">${escapeHtml(tag.Tag)}</td>
                     <td data-label="Color"><span class="swatch" style="background:${escapeHtml(normalizeHex(tag.Color, "#1f6f68"))}"></span> ${escapeHtml(tag.Color)}</td>
                     <td data-label="Description">${escapeHtml(tag.Description)}</td>
                     <td data-label="Actions">
-                      ${renderIcon("edit-tag", "data-tag-id", tag["Tag ID"], "Edit tag", "&#9998;")}
-                      ${renderIcon("delete-tag", "data-tag-id", tag["Tag ID"], "Delete tag", "&#128465;", true)}
+                      ${renderActionMenu([
+                        { action: "edit-tag", symbol: "&#9998;", label: "Edit tag", attrs: { "data-tag-id": tag["Tag ID"] } },
+                        { action: "delete-tag", symbol: "&#128465;", label: "Delete tag", danger: true, attrs: { "data-tag-id": tag["Tag ID"] } }
+                      ], "Tag actions")}
                     </td>
                   </tr>`).join("")}</tbody>
               </table>
@@ -3241,7 +3594,7 @@
                 <label><input name="trackPay" type="checkbox"> Track Pay</label>
                 <button class="primary" type="submit">Save User</button>
               </form>
-              <div class="table-wrap">
+              <div class="table-wrap" data-popover-boundary>
                 <table>
                   <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Tracking</th></tr></thead>
                   <tbody>${data.users.map((user) => `
@@ -3271,7 +3624,7 @@
                 <label><input name="active" type="checkbox" checked> Active</label>
                 <button class="primary" type="submit">Save Project</button>
               </form>
-              <div class="table-wrap">
+              <div class="table-wrap" data-popover-boundary>
                 <table>
                   <thead><tr><th>Project</th><th>Status</th><th>Active</th></tr></thead>
                   <tbody>${data.projects.map((project) => `
@@ -3299,7 +3652,7 @@
                 <label><input name="active" type="checkbox" checked> Active</label>
                 <button class="primary" type="submit">Save Category</button>
               </form>
-              <div class="table-wrap">
+              <div class="table-wrap" data-popover-boundary>
                 <table>
                   <thead><tr><th>Category</th><th>Default Project</th><th>Active</th></tr></thead>
                   <tbody>${data.categories.map((category) => `
@@ -3326,7 +3679,7 @@
                 <label>Description <input name="description"></label>
                 <button class="primary" type="submit">Save Setting</button>
               </form>
-              <div class="table-wrap">
+              <div class="table-wrap" data-popover-boundary>
                 <table>
                   <thead><tr><th>Key</th><th>Value</th><th>Description</th></tr></thead>
                   <tbody>${data.settings.map((setting) => `
@@ -3801,16 +4154,16 @@
           name: (row) => row.label,
           hours: (row) => row.hours
         });
-        return `<div class="table-wrap"><table><thead><tr>${renderSortHeader(tableKey, "name", "Name")}${renderSortHeader(tableKey, "hours", "Hours")}</tr></thead><tbody>
+        return `<div class="table-wrap" data-popover-boundary><table><thead><tr>${renderSortHeader(tableKey, "name", "Name")}${renderSortHeader(tableKey, "hours", "Hours")}</tr></thead><tbody>
           ${sortedRows.map((row) => `<tr><td data-label="Name">${escapeHtml(row.label)}</td><td data-label="Hours">${escapeHtml(row.hours)}</td></tr>`).join("")}
         </tbody></table></div>`;
       }
 
-      function renderCollapsibleSection(title, bodyHtml, meta = "", open = false) {
+      function renderCollapsibleSection(title, bodyHtml, meta = "", open = false, titleIsHtml = false) {
         return `
           <details class="collapsible-section"${open ? " open" : ""}>
             <summary>
-              <span>${escapeHtml(title)}</span>
+              <span>${titleIsHtml ? title : escapeHtml(title)}</span>
               ${meta ? `<span class="collapsible-meta">${escapeHtml(meta)}</span>` : ""}
             </summary>
             <div class="collapsible-body">${bodyHtml}</div>
@@ -3832,7 +4185,7 @@
               </div>
               ${renderCollapsibleSection("Task Time", renderHoursList(detail.taskTotals, "No task time in this range.", "payDetailTaskTotals"), `${taskTotalCount} item${taskTotalCount === 1 ? "" : "s"}`)}
               ${renderCollapsibleSection("Project Time", renderHoursList(detail.projectTotals, "No project time in this range.", "payDetailProjectTotals"), `${projectTotalCount} item${projectTotalCount === 1 ? "" : "s"}`)}
-              ${renderCollapsibleSection("Entries", `<div class="table-wrap"><table>
+              ${renderCollapsibleSection("Entries", `<div class="table-wrap" data-popover-boundary><table>
                 <thead><tr>${renderSortHeader("payDetailEntries", "date", "Date")}${renderSortHeader("payDetailEntries", "entry", "Entry")}${renderSortHeader("payDetailEntries", "project", "Project")}${renderSortHeader("payDetailEntries", "hours", "Hours")}</tr></thead>
                 <tbody>${sortTableRows(detail.entries || [], "payDetailEntries", {
                   date: (entry) => entry.Date,
@@ -3904,10 +4257,7 @@
         if (actionMenuTrigger) {
           const menu = actionMenuTrigger.closest("[data-action-popover]");
           if (menu) {
-            const isOpen = menu.dataset.open === "true";
-            closeActionMenus();
-            menu.dataset.open = isOpen ? "false" : "true";
-            actionMenuTrigger.setAttribute("aria-expanded", isOpen ? "false" : "true");
+            toggleActionPopover(menu);
           }
           return;
         }
@@ -4183,6 +4533,41 @@
           syncDuplicateApplyAll();
         }
       });
+
+      document.addEventListener("mouseover", (event) => {
+        const trigger = event.target.closest("[data-action-menu-trigger]");
+        if (!trigger) return;
+        const popover = trigger.closest("[data-action-popover]");
+        if (!popover || popover.dataset.open === "true" || popover.dataset.hoverOpen === "true") return;
+        setActionPopoverState(popover, true, "hover");
+      });
+
+      document.addEventListener("mouseout", (event) => {
+        const popover = event.target.closest("[data-action-popover]");
+        if (!popover || popover.dataset.open === "true") return;
+        const related = event.relatedTarget;
+        if (related && popover.contains(related)) return;
+        setActionPopoverState(popover, false, "hover");
+      });
+
+      document.addEventListener("focusin", (event) => {
+        const trigger = event.target.closest("[data-action-menu-trigger]");
+        if (!trigger) return;
+        const popover = trigger.closest("[data-action-popover]");
+        if (!popover) return;
+        setActionPopoverState(popover, true, "hover");
+      });
+
+      document.addEventListener("focusout", (event) => {
+        const popover = event.target.closest("[data-action-popover]");
+        if (!popover || popover.dataset.open === "true") return;
+        const related = event.relatedTarget;
+        if (related && popover.contains(related)) return;
+        setActionPopoverState(popover, false, "hover");
+      });
+
+      window.addEventListener("scroll", syncActionPopoverPlacement, true);
+      window.addEventListener("resize", syncActionPopoverPlacement);
 
       document.addEventListener("change", async (event) => {
         if (event.target.matches("[data-filter]")) {
@@ -4677,3 +5062,4 @@
     </script>
   </body>
 </html>
+
