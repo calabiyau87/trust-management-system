@@ -1,4 +1,8 @@
 var TrustOpsAuthService = (function () {
+  var VERIFIED_TOKEN_CACHE_TTL_SECONDS = 10 * 60;
+  var VERIFIED_TOKEN_CACHE_GRACE_SECONDS = 30 * 60;
+  var verifiedTokenCache = {};
+
   function getGoogleClientId() {
     return TrustOpsUtils.normalizeText(
       PropertiesService.getScriptProperties().getProperty("GOOGLE_OAUTH_CLIENT_ID") ||
@@ -57,27 +61,74 @@ var TrustOpsAuthService = (function () {
     return TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.USERS, userId);
   }
 
-  function verifyGoogleIdToken(authToken) {
-    var token = TrustOpsUtils.normalizeText(authToken);
-    if (!token) {
-      throw new Error("Google Sign-In is required.");
+  function tokenCacheKey(token) {
+    var digest = Utilities.computeDigest(
+      Utilities.DigestAlgorithm.SHA_256,
+      String(token || ""),
+      Utilities.Charset.UTF_8
+    );
+    return "trust-ops:verified-token:" + Utilities.base64EncodeWebSafe(digest);
+  }
+
+  function cacheVerifiedClaims(token, claims) {
+    var normalizedClaims = TrustOpsUtils.clone(claims || {});
+    var now = Date.now();
+    var entry = {
+      claims: normalizedClaims,
+      expiresAt: now + (VERIFIED_TOKEN_CACHE_TTL_SECONDS * 1000),
+      staleUntil: now + ((VERIFIED_TOKEN_CACHE_TTL_SECONDS + VERIFIED_TOKEN_CACHE_GRACE_SECONDS) * 1000)
+    };
+    verifiedTokenCache[tokenCacheKey(token)] = entry;
+    try {
+      CacheService.getScriptCache().put(
+        tokenCacheKey(token),
+        JSON.stringify(entry),
+        VERIFIED_TOKEN_CACHE_TTL_SECONDS
+      );
+    } catch (error) {}
+  }
+
+  function getCachedVerifiedClaims(token, allowStale) {
+    var key = tokenCacheKey(token);
+    var now = Date.now();
+    var entry = verifiedTokenCache[key];
+    if (entry) {
+      if (entry.expiresAt > now || (allowStale && entry.staleUntil > now)) {
+        return TrustOpsUtils.clone(entry.claims);
+      }
     }
-    var clientId = getGoogleClientId();
-    if (!clientId) {
-      throw new Error("Google OAuth client ID is not configured.");
-    }
+    try {
+      var raw = CacheService.getScriptCache().get(key);
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (!parsed || !parsed.claims) return null;
+      verifiedTokenCache[key] = {
+        claims: TrustOpsUtils.clone(parsed.claims),
+        expiresAt: Number(parsed.expiresAt || 0),
+        staleUntil: Number(parsed.staleUntil || 0)
+      };
+      if (verifiedTokenCache[key].expiresAt > now || (allowStale && verifiedTokenCache[key].staleUntil > now)) {
+        return TrustOpsUtils.clone(verifiedTokenCache[key].claims);
+      }
+    } catch (error) {}
+    return null;
+  }
+
+  function fetchGoogleIdTokenClaims(token) {
     var response = UrlFetchApp.fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(token), {
       muteHttpExceptions: true
     });
     if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) {
       throw new Error("Google Sign-In token could not be verified.");
     }
-    var claims = {};
     try {
-      claims = JSON.parse(response.getContentText() || "{}");
+      return JSON.parse(response.getContentText() || "{}");
     } catch (error) {
       throw new Error("Google Sign-In token could not be verified.");
     }
+  }
+
+  function validateGoogleIdTokenClaims(claims, clientId) {
     var audience = TrustOpsUtils.normalizeText(claims.aud);
     var issuer = TrustOpsUtils.normalizeText(claims.iss);
     var email = TrustOpsUtils.normalizeEmail(claims.email);
@@ -96,6 +147,34 @@ var TrustOpsAuthService = (function () {
     claims.email = email;
     claims.aud = audience;
     claims.iss = issuer;
+    return claims;
+  }
+
+  function verifyGoogleIdToken(authToken) {
+    var token = TrustOpsUtils.normalizeText(authToken);
+    if (!token) {
+      throw new Error("Google Sign-In is required.");
+    }
+    var clientId = getGoogleClientId();
+    if (!clientId) {
+      throw new Error("Google OAuth client ID is not configured.");
+    }
+    var cachedClaims = getCachedVerifiedClaims(token, false);
+    if (cachedClaims) {
+      return validateGoogleIdTokenClaims(cachedClaims, clientId);
+    }
+    var claims = {};
+    try {
+      claims = fetchGoogleIdTokenClaims(token);
+    } catch (error) {
+      var staleClaims = getCachedVerifiedClaims(token, true);
+      if (staleClaims) {
+        return validateGoogleIdTokenClaims(staleClaims, clientId);
+      }
+      throw error;
+    }
+    claims = validateGoogleIdTokenClaims(claims, clientId);
+    cacheVerifiedClaims(token, claims);
     return claims;
   }
 

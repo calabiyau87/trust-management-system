@@ -201,6 +201,34 @@
         color: #6f7d89;
       }
 
+      .continue-step {
+        display: grid;
+        gap: 12px;
+      }
+
+      .continue-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 48px;
+        padding: 0 18px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+        color: #fff;
+        text-decoration: none;
+        font-weight: 700;
+        box-shadow: 0 10px 22px rgba(18, 24, 30, 0.14);
+      }
+
+      .continue-link:visited {
+        color: #fff;
+      }
+
+      .continue-link:focus-visible {
+        outline: 0;
+        box-shadow: 0 0 0 4px rgba(107, 183, 173, 0.2), 0 10px 22px rgba(18, 24, 30, 0.14);
+      }
+
       @media (max-width: 900px) {
         .card {
           grid-template-columns: 1fr;
@@ -259,7 +287,8 @@
         clientId: params.get("client_id") || "",
         returnUrl: params.get("return_url") || "",
         appName: params.get("app_name") || "Trust Ops",
-        initialized: false
+        initialized: false,
+        credential: ""
       };
 
       function escapeHtml(value) {
@@ -294,6 +323,22 @@
         }
       }
 
+      function renderContinueStep(token) {
+        const slot = document.getElementById("google-signin-button");
+        const redirectUrl = buildReturnUrl(token);
+        if (!slot) return;
+        if (!redirectUrl) {
+          slot.innerHTML = "<div class=\"hint\">Unable to build the return link. Open this page from Trust Ops again.</div>";
+          return;
+        }
+        state.credential = token;
+        slot.innerHTML = `
+          <div class="continue-step">
+            <a class="continue-link" href="${escapeHtml(redirectUrl)}" target="_top" rel="noopener noreferrer">Continue to Trust Ops</a>
+            <div class="hint">Sign-in is complete. Tap Continue to return to the app. If mobile keeps trying to open Google Drive, use the browser app directly and try again.</div>
+          </div>`;
+      }
+
       function handleCredentialResponse(response) {
         const token = response?.credential || "";
         if (!token) {
@@ -309,10 +354,8 @@
           app_name: state.appName,
           ts: Date.now()
         });
-        const redirectUrl = buildReturnUrl(token);
-        if (redirectUrl) {
-          window.location.replace(redirectUrl);
-        }
+        setError("");
+        renderContinueStep(token);
       }
 
       function renderButton() {

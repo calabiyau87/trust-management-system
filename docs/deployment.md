@@ -75,6 +75,7 @@ Host the sign-in page on GitHub Pages from this repository:
 - The published site root should be the login page.
 - Add `https://<your-github-user>.github.io` to the OAuth client's authorized JavaScript origins.
 - The login page receives `client_id` and `return_url` query parameters from the Apps Script app and redirects back with the Google ID token in the URL fragment.
+- On mobile, the login bridge now shows a `Continue to Trust Ops` button after sign-in instead of forcing an automatic redirect. That makes it less likely to get trapped by Google Drive or another in-app browser.
 - The Apps Script deployment should pass its canonical web app URL to the bridge; that keeps the return target on the actual deployed app instead of the internal iframe URL.
 
 Example deployment URL:
@@ -88,7 +89,7 @@ https://<your-github-user>.github.io/trust-management-system/
 Deploy as a web app:
 
 - Execute as: `Me`
-- Access: Anyone with a Google account
+- Access: Anyone, even anonymous
 - Set the script properties before sharing the URL:
   - `GOOGLE_OAUTH_CLIENT_ID`
   - `TRUST_OPS_GITHUB_PAGES_AUTH_URL`
@@ -130,10 +131,13 @@ If a newly added user cannot enter:
 
 - Confirm their `Users.Email` value exactly matches the Google account returned by Google Sign-In.
 - Confirm `Users.Active` is true and `Archived` is not true.
+- Confirm the web app deployment itself is public (`Anyone, even anonymous`) and not still set to `DOMAIN`, because Trust Ops now does its own allowlisting after load.
 - If you want operators to inspect the spreadsheet directly, share it manually as a viewer or editor. Regular users do not need direct spreadsheet sharing.
 - Running `setupTrustOps(...)` or `syncSpreadsheetAccess()` is optional and should be reserved for trusted operators who need sheet access.
 - If the app cannot load, confirm the deployment is still set to execute as `Me` and that the user has access to the web app URL.
 - If the login bridge says the client ID or return URL is missing, confirm the GitHub Pages site root is the login page and that the Apps Script app is passing both query parameters.
+- If sign-in or loading behaves differently on iPhone or Android, open the GitHub Pages login page directly in Safari/Chrome and try a private/incognito tab if multiple Google accounts are already signed in.
+- If the browser keeps trying to hand the page to Google Drive, finish sign-in on the GitHub Pages page and tap `Continue to Trust Ops` manually.
 - If the browser returns to a blank page after sign-in, confirm the bridge is targeting the deployed web app URL and not the internal `script.googleusercontent.com` iframe URL.
 
 ## OAuth Scope Notes

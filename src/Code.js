@@ -1,8 +1,23 @@
+function canonicalizeWebAppUrl_(url) {
+  var text = TrustOpsUtils.normalizeText(url);
+  if (!text) return "";
+  try {
+    var parsed = new URL(text);
+    parsed.hash = "";
+    parsed.search = "";
+    parsed.pathname = parsed.pathname.replace(/\/u\/\d+(?=\/)/g, "");
+    parsed.pathname = parsed.pathname.replace(/\/{2,}/g, "/");
+    return parsed.toString();
+  } catch (error) {
+    return text.replace(/\/u\/\d+(?=\/)/g, "/").split("#")[0].split("?")[0];
+  }
+}
+
 function doGet(e) {
   var template = HtmlService.createTemplateFromFile("Index");
   template.googleClientId = TrustOpsAuthService.getGoogleClientId();
   template.githubAuthUrl = TrustOpsAuthService.getGithubPagesAuthUrl();
-  template.webAppUrl = ScriptApp.getService().getUrl();
+  template.webAppUrl = canonicalizeWebAppUrl_(ScriptApp.getService().getUrl());
   template.initialAuthToken = "";
   if (e && e.parameter) {
     template.initialAuthToken = TrustOpsUtils.normalizeText(

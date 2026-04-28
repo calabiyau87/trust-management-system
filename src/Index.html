@@ -142,6 +142,38 @@
         background: var(--accent-strong);
       }
 
+      a.primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 38px;
+        padding: 8px 11px;
+        border: 1px solid var(--accent);
+        border-radius: var(--radius-sm);
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+        text-decoration: none;
+        touch-action: manipulation;
+        transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+      }
+
+      a.primary:hover {
+        border-color: var(--accent-strong);
+        background: var(--accent-strong);
+        box-shadow: var(--shadow-soft);
+        transform: translateY(-1px);
+      }
+
+      a.primary:focus-visible {
+        outline: 0;
+        box-shadow: var(--focus-ring);
+      }
+
+      a.primary:visited {
+        color: #fff;
+      }
+
       button.danger {
         color: var(--danger);
         border-color: #d9b6b6;
@@ -1574,6 +1606,12 @@
         color: var(--text);
       }
 
+      .error-hint {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
       .status-line {
         min-height: 22px;
         display: flex;
@@ -1826,7 +1864,8 @@
         .sort-header,
         .task-note-icon,
         .hierarchy-toggle,
-        .icon-button {
+        .icon-button,
+        a.primary {
           min-height: 44px;
         }
 
@@ -2105,33 +2144,83 @@
       };
 
       const AUTH_TOKEN_STORAGE_KEY = "trust-ops:auth-token";
+      const STORAGE_FALLBACK = Object.create(null);
+      const RETRYABLE_SERVER_METHODS = {
+        getInitialData: true,
+        refreshAppData: true,
+        getBoardData: true,
+        getProjectDashboard: true,
+        getProjectDetail: true,
+        getTimeEntries: true,
+        getTrackerData: true,
+        getPaySummary: true,
+        getPaySummaryDetail: true,
+        getPayPeriodForDate: true,
+        getAuthDiagnostic: true,
+        diagnoseUserAccess: true,
+        getLegacyMigrationPreview: true
+      };
 
       function storageKey(name) {
         return `trust-ops:${state.data?.context?.userId || "anonymous"}:${name}`;
       }
 
-      function loadStoredAuthToken() {
+      function safeStorageGet(areaAccessor, key, fallback = "") {
         try {
-          return sessionStorage.getItem(AUTH_TOKEN_STORAGE_KEY) || "";
+          const area = typeof areaAccessor === "function" ? areaAccessor() : areaAccessor;
+          if (!area) return fallback;
+          const value = area.getItem(key);
+          return value === null ? fallback : value;
         } catch (error) {
-          return "";
+          return Object.prototype.hasOwnProperty.call(STORAGE_FALLBACK, key) ? STORAGE_FALLBACK[key] : fallback;
         }
       }
 
-      function saveStoredAuthToken(token) {
+      function safeStorageSet(areaAccessor, key, value) {
+        const normalized = String(value ?? "");
         try {
-          if (token) {
-            sessionStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+          const area = typeof areaAccessor === "function" ? areaAccessor() : areaAccessor;
+          if (!area) return normalized;
+          if (normalized) {
+            area.setItem(key, normalized);
           } else {
-            sessionStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+            area.removeItem(key);
           }
         } catch (error) {
-          // Ignore storage failures and keep the in-memory token.
+          if (normalized) {
+            STORAGE_FALLBACK[key] = normalized;
+          } else {
+            delete STORAGE_FALLBACK[key];
+          }
         }
+        return normalized;
+      }
+
+      function loadStoredAuthToken() {
+        return safeStorageGet(() => window.sessionStorage, AUTH_TOKEN_STORAGE_KEY, "");
+      }
+
+      function saveStoredAuthToken(token) {
+        safeStorageSet(() => window.sessionStorage, AUTH_TOKEN_STORAGE_KEY, token);
       }
 
       function currentAppUrl() {
         return String(window.location.href || "").split("#")[0];
+      }
+
+      function canonicalAppUrl(value) {
+        const text = String(value || "").trim();
+        if (!text) return "";
+        try {
+          const url = new URL(text);
+          url.hash = "";
+          url.search = "";
+          url.pathname = url.pathname.replace(/\/u\/\d+(?=\/)/g, "");
+          url.pathname = url.pathname.replace(/\/{2,}/g, "/");
+          return url.toString();
+        } catch (error) {
+          return text.replace(/\/u\/\d+(?=\/)/g, "/").split("#")[0].split("?")[0];
+        }
       }
 
       function clearLocationHash() {
@@ -2186,28 +2275,28 @@
         if (!AUTH_CONFIG.githubAuthUrl) return "";
         const url = new URL(AUTH_CONFIG.githubAuthUrl);
         url.searchParams.set("client_id", AUTH_CONFIG.clientId || "");
-        url.searchParams.set("return_url", AUTH_CONFIG.webAppUrl || currentAppUrl());
+        url.searchParams.set("return_url", canonicalAppUrl(AUTH_CONFIG.webAppUrl || currentAppUrl()));
         url.searchParams.set("app_name", organizationName());
         return url.toString();
       }
 
       function loadStoredBool(name, fallback = false) {
-        const value = localStorage.getItem(storageKey(name));
+        const value = safeStorageGet(() => window.localStorage, storageKey(name), null);
         if (value === null) return fallback;
         return value === "true";
       }
 
       function saveStoredBool(name, value) {
-        localStorage.setItem(storageKey(name), String(Boolean(value)));
+        safeStorageSet(() => window.localStorage, storageKey(name), String(Boolean(value)));
       }
 
       function loadStoredString(name, fallback = "") {
-        const value = localStorage.getItem(storageKey(name));
+        const value = safeStorageGet(() => window.localStorage, storageKey(name), null);
         return value === null ? fallback : value;
       }
 
       function saveStoredString(name, value) {
-        localStorage.setItem(storageKey(name), String(value ?? ""));
+        safeStorageSet(() => window.localStorage, storageKey(name), String(value ?? ""));
       }
 
       function busyLabelForMethod(name) {
@@ -2243,7 +2332,24 @@
 
       function isAuthFailure(error) {
         const message = String(error?.message || error || "");
-        return /Google Sign-In|Google OAuth client ID|GitHub Pages auth|not authorized for Trust Ops|inactive:|archived:|verified email|wrong client/i.test(message);
+        return /Google Sign-In|Google OAuth client ID|GitHub Pages auth|not authorized for Trust Ops|inactive:|archived:|verified email|wrong client|403|restricted access|page not available/i.test(message);
+      }
+
+      function isRetryableServerMethod(name) {
+        return Boolean(RETRYABLE_SERVER_METHODS[String(name || "")]);
+      }
+
+      function isRetryableServerError(error) {
+        const message = String(error?.message || error || "");
+        return /NetworkError|HTTP 0|Failed to fetch|Load failed|The network connection was lost|Gateway Timeout|Service Unavailable|temporarily unavailable/i.test(message);
+      }
+
+      function mobileRecoveryHint(message) {
+        const text = String(message || "");
+        if (!/(403|restricted access|page not available|NetworkError|HTTP 0|Failed to fetch|Load failed)/i.test(text)) {
+          return "";
+        }
+        return "If you opened Trust Ops inside another app or with multiple Google accounts signed in, open the GitHub Pages login directly in Safari or Chrome. A private or incognito tab can help avoid account and cookie conflicts.";
       }
 
       function showFatalError(message) {
@@ -2254,6 +2360,7 @@
           <div class="error">
             <strong>Trust Ops crashed while loading.</strong><br>
             ${escapeHtml(message || "Unknown error")}
+            ${mobileRecoveryHint(message) ? `<div class="error-hint">${escapeHtml(mobileRecoveryHint(message))}</div>` : ""}
           </div>`;
       }
 
@@ -2272,23 +2379,31 @@
 
       function callServer(name, ...args) {
         const busyMessage = busyLabelForMethod(name);
+        const maxRetries = isRetryableServerMethod(name) ? 2 : 0;
         setBusy(busyMessage);
         return new Promise((resolve, reject) => {
           const authToken = currentAuthToken();
-          google.script.run
-            .withSuccessHandler((result) => {
-              clearBusy();
-              resolve(result);
-            })
-            .withFailureHandler((error) => {
-              clearBusy();
-              if (isAuthFailure(error)) {
-                clearAuthState(error.message || String(error));
-                renderAuthScreen(error.message || String(error));
-              }
-              reject(error);
-            })
-            .invokeServer(name, authToken, args);
+          const invoke = (remainingRetries) => {
+            google.script.run
+              .withSuccessHandler((result) => {
+                clearBusy();
+                resolve(result);
+              })
+              .withFailureHandler((error) => {
+                if (remainingRetries > 0 && isRetryableServerError(error)) {
+                  window.setTimeout(() => invoke(remainingRetries - 1), 650);
+                  return;
+                }
+                clearBusy();
+                if (isAuthFailure(error)) {
+                  clearAuthState(error.message || String(error));
+                  renderAuthScreen(error.message || String(error));
+                }
+                reject(error);
+              })
+              .invokeServer(name, authToken, args);
+          };
+          invoke(maxRetries);
         });
       }
 
@@ -3014,12 +3129,7 @@
             renderAuthScreen(error.message || String(error));
             return;
           }
-          document.getElementById("app").className = "error";
-          document.getElementById("app").innerHTML = `
-            <div class="error">
-              <strong>Unable to load Trust Ops.</strong><br>
-              ${escapeHtml(error.message || error)}
-            </div>`;
+          showFatalError(error.message || String(error));
         }
       }
 
@@ -3050,34 +3160,27 @@
             <div class="auth-panel login">
               <div>
                 <h2>GitHub Pages Login</h2>
-                <p>Use the Google account that appears in the Users sheet. The button opens the GitHub Pages login bridge, which runs Google Identity Services on a valid web origin.</p>
+                <p>Use the Google account that appears in the Users sheet. The login bridge opens on a valid top-level web origin so Google Identity Services can complete on mobile browsers.</p>
               </div>
               <div class="auth-button-slot">
-                <button type="button" class="primary" data-auth-continue ${githubAuthUrl ? "" : "disabled"}>Continue with Google</button>
+                ${githubAuthUrl
+                  ? `<a class="primary" data-auth-continue href="${escapeHtml(githubAuthUrl)}" target="_top" rel="noopener noreferrer">Continue with Google</a>`
+                  : `<button type="button" class="primary" data-auth-continue disabled>Continue with Google</button>`
+                }
               </div>
               <div class="auth-error ${state.auth.error ? "visible" : ""}">${escapeHtml(state.auth.error || "")}</div>
               <div class="auth-note">
                 Execute the web app as <code>Me</code>. Access is controlled by the Users table, not by direct spreadsheet sharing.
                 ${githubAuthUrl ? `The login bridge is ${escapeHtml(AUTH_CONFIG.githubAuthUrl)}.` : "Set the GitHub Pages auth URL in the script property TRUST_OPS_GITHUB_PAGES_AUTH_URL."}
+                If sign-in loops or the app crashes on mobile, open the GitHub Pages login in Safari or Chrome directly. Private or incognito tabs can help when multiple Google accounts are signed in.
               </div>
               <div class="auth-meta">
                 <span>Configured client ID: <code>${escapeHtml(AUTH_CONFIG.clientId || "missing")}</code></span>
                 <span>GitHub Pages auth URL: <code>${escapeHtml(AUTH_CONFIG.githubAuthUrl || "missing")}</code></span>
-                <span>Stored token lives only in this browser session.</span>
+                <span>Stored token lives only in this browser session, and falls back to in-memory storage if browser storage is blocked.</span>
               </div>
             </div>
           </section>`;
-        const continueButton = root.querySelector("[data-auth-continue]");
-        if (continueButton) {
-          continueButton.addEventListener("click", () => {
-            const target = buildGithubAuthUrl();
-            if (!target) {
-              renderAuthScreen("Set TRUST_OPS_GITHUB_PAGES_AUTH_URL before trying to sign in.");
-              return;
-            }
-            window.location.href = target;
-          });
-        }
       }
 
       function signOut() {

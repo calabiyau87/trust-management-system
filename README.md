@@ -82,9 +82,11 @@ The signed-in Google account must match `owner@example.com`. This creates the ca
 Deploy the Apps Script web app as:
 
 - Execute as: `Me`
-- Access: Anyone with a Google account
+- Access: Anyone, even anonymous
 - Set `GOOGLE_OAUTH_CLIENT_ID` and `TRUST_OPS_GITHUB_PAGES_AUTH_URL` before sharing the URL.
 - Add `https://<your-github-user>.github.io` to the OAuth client’s authorized JavaScript origins.
+
+Trust Ops still enforces Google Sign-In and the Users allowlist after the page loads, so the web app itself should be publicly reachable even though application access remains restricted.
 
 Use staging first. Do not connect the production spreadsheet until auth, permissions, time entry, pay summary, and audit smoke tests pass.
 
