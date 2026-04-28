@@ -28,6 +28,19 @@ var TrustOpsPermissionService = (function () {
     return TrustOpsManagerPermissionService.managerCan(context, capability);
   }
 
+  function canManageOwnTasks(context) {
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Manage Own Tasks");
+  }
+
+  function canCreateTasksForOthers(context) {
+    return isOwnerOrAdmin(context) || managerCan(context, "Can Create Tasks");
+  }
+
+  function createdByCurrentUser(context, record) {
+    if (!context || !record) return false;
+    return String(record["Created By User ID"] || "") === String(context.userId || "");
+  }
+
   function userIdIsOwner(userId) {
     if (!TrustOpsUtils.normalizeText(userId)) return false;
     var user = TrustOpsAuthService.getUserById(userId);
@@ -51,21 +64,21 @@ var TrustOpsPermissionService = (function () {
   }
 
   function canCreateTask(context) {
-    return isOwnerOrAdmin(context) || managerCan(context, "Can Create Tasks");
+    return canManageOwnTasks(context) || canCreateTasksForOthers(context);
   }
 
   function canEditTask(context, task) {
     if (!context || !task) return false;
     if (canAdminMutateRecord(context, task)) return true;
     if (managerCan(context, "Can Edit Tasks")) return true;
-    return String(task["Created By User ID"]) === String(context.userId);
+    return canManageOwnTasks(context) && createdByCurrentUser(context, task);
   }
 
   function canDeleteTask(context, task) {
     if (!context || !task) return false;
     if (canAdminMutateRecord(context, task)) return true;
     if (managerCan(context, "Can Delete Tasks")) return true;
-    return String(task["Created By User ID"]) === String(context.userId);
+    return canManageOwnTasks(context) && createdByCurrentUser(context, task);
   }
 
   function canCompleteTask(context, task) {
@@ -88,7 +101,9 @@ var TrustOpsPermissionService = (function () {
     var effectiveUserId = targetUserId || context.userId;
     if (isOwnerOrAdmin(context)) return true;
     if (managerCan(context, "Can Create Time For Others")) return true;
-    return String(effectiveUserId) === String(context.userId) && isAssignedToTask(context, task);
+    if (String(effectiveUserId) !== String(context.userId)) return false;
+    if (isAssignedToTask(context, task)) return true;
+    return canManageOwnTasks(context) && createdByCurrentUser(context, task);
   }
 
   function canCreateTimeEntry(context, targetUserId) {
@@ -192,6 +207,8 @@ var TrustOpsPermissionService = (function () {
     return {
       canViewBoard: canViewBoard(context),
       canCreateTask: canCreateTask(context),
+      canManageOwnTasks: canManageOwnTasks(context),
+      canCreateTasksForOthers: canCreateTasksForOthers(context),
       canEditTask: isOwnerOrAdmin(context) || managerCan(context, "Can Edit Tasks"),
       canDeleteTask: isOwnerOrAdmin(context) || managerCan(context, "Can Delete Tasks"),
       canCompleteTask: isOwnerOrAdmin(context) || managerCan(context, "Can Edit Tasks"),
@@ -233,6 +250,8 @@ var TrustOpsPermissionService = (function () {
     ownerControlled: ownerControlled,
     canAdminMutateRecord: canAdminMutateRecord,
     canViewBoard: canViewBoard,
+    canManageOwnTasks: canManageOwnTasks,
+    canCreateTasksForOthers: canCreateTasksForOthers,
     canCreateTask: canCreateTask,
     canEditTask: canEditTask,
     canDeleteTask: canDeleteTask,

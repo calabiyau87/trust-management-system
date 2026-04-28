@@ -475,8 +475,7 @@ var TrustOpsTaskService = (function () {
       })
       .filter(function (task) {
         if (task.Status === "Complete" || task.Status === "Archived") return false;
-        if (TrustOpsPermissionService.isPrivileged(context)) return true;
-        return TrustOpsUtils.splitList(task["Assignee User IDs"]).indexOf(String(targetUserId)) !== -1;
+        return TrustOpsPermissionService.canAddTimeToTask(context, task, targetUserId);
       });
   }
 

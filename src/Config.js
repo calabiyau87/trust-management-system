@@ -255,6 +255,7 @@ var TrustOpsConfig = (function () {
       "User ID",
       "Preset",
       "Overrides JSON",
+      "Can Manage Own Tasks",
       "Can Create Tasks",
       "Can Edit Tasks",
       "Can Delete Tasks",

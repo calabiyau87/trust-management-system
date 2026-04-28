@@ -31,11 +31,11 @@ Admin cannot assign the Owner role.
 Operational access:
 
 - View the Assignment Board.
-- Default preset can create/edit tasks, create time entries for others, and manage projects.
+- Default preset can manage their own tasks, create/edit tasks for others, create time entries for others, and manage projects.
 - Additional task, time, pay-period, and settings permissions are controlled by Manager Permission overrides.
 - Hierarchy creation and reparenting stay privileged; subprojects and subtasks are managed server-side.
 
-Managers can be granted approval, lock/unlock, edit, delete, and settings capabilities through explicit overrides.
+Managers can be granted approval, lock/unlock, edit, delete, own-task, and settings capabilities through explicit overrides.
 
 ## User
 
@@ -48,15 +48,18 @@ Basic access:
 - View own pay summary.
 - Set their own light/dark/system theme.
 - Upload their own profile image.
+- Manage tasks they created when their own-task capability is enabled.
 - Assigned users can complete leaf subtasks even if they cannot edit the parent task.
 
-Users can be granted explicit capabilities, including creating their own tasks, managing tags, and changing their profile color. Tasks a user creates can be edited and deleted by that user unless a broader server-side rule blocks the mutation.
+Users can be granted explicit capabilities, including creating/managing their own tasks, managing tags, and changing their profile color. Tasks a user creates can be edited and deleted by that user unless a broader server-side rule blocks the mutation. Tasks created by another user for them cannot be managed by the assignee except for completing and adding time.
 
 If `Track Pay` is enabled for a user, `Track Time` is also enforced on the server so payroll users remain time-trackable.
 
 ## User Permission Overrides
 
 The `Manager Permissions` sheet now stores per-capability overrides for any user, not only Managers. Existing Manager rows remain valid. Owner/Admin users can edit these overrides from the Users settings modal, while the server continues to enforce owner protections. The Owner's effective permissions are implicit and the UI does not need to display a matrix for that row.
+
+The `Can Manage Own Tasks` capability defaults on for all roles. It controls whether a user can create, edit, delete, and add time to tasks they created themselves. The broader `Can Create Tasks` capability still covers task creation for others.
 
 ## Locked Pay Periods
 

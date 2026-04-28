@@ -182,6 +182,14 @@ var TrustOpsPayService = (function () {
     });
   }
 
+  function listActivePayUsers() {
+    var users = TrustOpsUtils.recordsForClient(activePayUsers());
+    users.sort(function (a, b) {
+      return String(a["Full Name"] || "").localeCompare(String(b["Full Name"] || ""));
+    });
+    return users;
+  }
+
   function timeEntriesForRange(entries, range) {
     return (entries || []).filter(function (entry) {
       if (TrustOpsUtils.toBoolean(entry.Deleted)) return false;
@@ -514,6 +522,7 @@ var TrustOpsPayService = (function () {
     getPaySummary: getPaySummary,
     getPaySummaryDetail: getPaySummaryDetail,
     lockPayPeriod: lockPayPeriod,
-    unlockPayPeriod: unlockPayPeriod
+    unlockPayPeriod: unlockPayPeriod,
+    listActivePayUsers: listActivePayUsers
   };
 })();
