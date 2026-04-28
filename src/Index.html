@@ -932,6 +932,196 @@
         font-weight: 400;
       }
 
+      .permission-matrix {
+        display: grid;
+        gap: 12px;
+      }
+
+      .permission-matrix-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--modal-border);
+        border-radius: var(--radius-md);
+        background: linear-gradient(180deg, var(--surface), var(--surface-muted));
+      }
+
+      .permission-matrix-toolbar .permission-switch-row {
+        font-weight: 800;
+      }
+
+      .permission-matrix-badge,
+      .permission-group-badge {
+        color: var(--icon-neutral);
+        background: var(--icon-surface);
+        border-color: var(--icon-border);
+        font-weight: 700;
+      }
+
+      .permission-group {
+        border: 1px solid var(--modal-border);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        background: var(--surface);
+        box-shadow: var(--shadow-soft);
+      }
+
+      .permission-group-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--modal-border);
+        background: linear-gradient(180deg, var(--surface), var(--surface-muted));
+      }
+
+      .permission-group-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+        text-align: left;
+      }
+
+      .permission-group-summary:hover {
+        transform: none;
+        box-shadow: none;
+        border-color: transparent;
+      }
+
+      .permission-group-summary-main {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .permission-group-title {
+        font-weight: 800;
+        color: var(--text);
+      }
+
+      .permission-group-summary-icon {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1;
+        flex: 0 0 auto;
+      }
+
+      .permission-group-body {
+        padding: 14px 16px 16px;
+      }
+
+      .permission-group-items {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px;
+      }
+
+      .permission-switch-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 700;
+        min-width: 0;
+        cursor: pointer;
+      }
+
+      .permission-switch-text {
+        min-width: 0;
+        line-height: 1.35;
+      }
+
+      .permission-switch-control {
+        position: relative;
+        width: 42px;
+        height: 24px;
+        flex: 0 0 auto;
+      }
+
+      .permission-switch-control input {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .permission-switch-ui {
+        position: absolute;
+        inset: 0;
+        border: 1px solid var(--icon-border);
+        border-radius: 999px;
+        background: var(--surface-muted);
+        transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+      }
+
+      .permission-switch-ui::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--surface);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
+        transition: transform 0.16s ease, background-color 0.16s ease;
+      }
+
+      .permission-switch-control input:checked + .permission-switch-ui {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .permission-switch-control input:checked + .permission-switch-ui::after {
+        transform: translateX(18px);
+      }
+
+      .permission-switch-control input:indeterminate + .permission-switch-ui {
+        background: var(--icon-border);
+        border-color: var(--icon-border);
+      }
+
+      .permission-switch-control input:indeterminate + .permission-switch-ui::after {
+        transform: translateX(9px);
+      }
+
+      .permission-switch-control input:focus-visible + .permission-switch-ui {
+        box-shadow: var(--focus-ring);
+      }
+
+      .permission-switch-row.permission-switch-inline {
+        flex: 0 0 auto;
+        max-width: 100%;
+      }
+
+      .permission-switch-row.permission-switch-inline .permission-switch-text {
+        font-weight: 800;
+        color: var(--muted);
+      }
+
+      .permission-toggle-note {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 2px;
+      }
+
       .icon-button {
         display: inline-grid;
         place-items: center;
@@ -1980,17 +2170,21 @@
         });
       }
 
-      function taskTreeStateKey(taskId) {
-        return String(taskId || "");
+      function taskTreeStateKey(tableKey, taskId) {
+        return `${String(tableKey || "board")}:${String(taskId || "")}`;
       }
 
-      function isTaskNodeExpanded(taskId) {
-        return Boolean(state.taskTreeExpanded?.[taskTreeStateKey(taskId)]);
+      function isTaskNodeExpanded(tableKey, taskId) {
+        const key = taskTreeStateKey(tableKey, taskId);
+        if (Object.prototype.hasOwnProperty.call(state.taskTreeExpanded || {}, key)) {
+          return Boolean(state.taskTreeExpanded[key]);
+        }
+        return tableKey === "projectTasks";
       }
 
-      function setTaskNodeExpanded(taskId, expanded) {
+      function setTaskNodeExpanded(tableKey, taskId, expanded) {
         state.taskTreeExpanded = Object.assign({}, state.taskTreeExpanded, {
-          [taskTreeStateKey(taskId)]: Boolean(expanded)
+          [taskTreeStateKey(tableKey, taskId)]: Boolean(expanded)
         });
       }
 
@@ -2221,7 +2415,7 @@
         if (task._permissions?.canAddTime) {
           actions.push({ action: "add-time", symbol: "&#128336;", label: "Add time", attrs: { "data-task-id": taskId } });
         }
-        if (state.data.permissions.canCreateTask && !String(task["Parent Task ID"] || "")) {
+        if (state.data.permissions.canManageProjects && !String(task["Parent Task ID"] || "")) {
           actions.push({ action: "new-subtask", symbol: "&#10133;", label: "Add subtask", attrs: { "data-task-id": taskId } });
         }
         if (task._permissions?.canEdit) {
@@ -2414,6 +2608,11 @@
           state.timeFilters.payPeriodId = state.data.currentPayPeriod["Pay Period ID"];
           state.payFilters.userId = state.data.context.userId;
           state.payFilters.rangeMode = "current";
+          const payUserId = normalizedPayUserId();
+          if (payUserId !== state.payFilters.userId) {
+            state.payFilters.userId = payUserId;
+            state.data.paySummary = await callServer("getPaySummary", safePayFiltersForRefresh());
+          }
           applyUserPreferences();
           render();
         } catch (error) {
@@ -2794,7 +2993,7 @@
         const rootTasks = hierarchyRoots(tasks, "Parent Task ID", "Task ID");
         function renderTaskNode(task, level = 0) {
           const hasChildren = Number(task["Child Task Count"] || 0) > 0 && !String(task["Parent Task ID"] || "");
-          const expanded = isTaskNodeExpanded(task["Task ID"]);
+          const expanded = isTaskNodeExpanded(tableKey, task["Task ID"]);
           const childTasks = hasChildren ? sortTableRows(hierarchyChildren(tasks, "Parent Task ID", task["Task ID"]), tableKey, sortColumns) : [];
           return `
             <tr class="${level ? "hierarchy-child-row" : "hierarchy-parent-row"}" data-task-id="${escapeHtml(task["Task ID"])}" data-task-level="${escapeHtml(level)}">
@@ -2826,7 +3025,7 @@
             ${expanded ? childTasks.map((child) => renderTaskNode(child, level + 1)).join("") : ""}`;
         }
         return `
-          <div class="table-wrap" data-popover-boundary>
+          <div class="table-wrap" data-popover-boundary data-task-table-key="${escapeHtml(tableKey)}">
             <table class="${isProjectTaskTable ? "project-task-table" : "board-table"}">
               <thead>
                 <tr>
@@ -3127,7 +3326,7 @@
       function buildPayFilters(extra = {}) {
         const rangeMode = normalizedRangeMode(state.payFilters.rangeMode);
         const filters = {
-          userId: state.payFilters.userId || "",
+          userId: normalizedPayUserId(),
           rangeMode: rangeMode
         };
         if (rangeMode === "custom") {
@@ -3141,11 +3340,17 @@
         const filters = buildPayFilters();
         if (filters.rangeMode === "custom" && !(filters.startDate && filters.endDate)) {
           return {
-            userId: state.payFilters.userId || "",
+            userId: normalizedPayUserId(),
             rangeMode: "current"
           };
         }
         return filters;
+      }
+
+      function normalizedPayUserId() {
+        const payUsers = state.data?.payUsers || [];
+        const selected = String(state.payFilters.userId || "");
+        return payUsers.some((user) => String(user["User ID"]) === selected) ? selected : "";
       }
 
       function safeProjectFiltersForRefresh() {
@@ -3166,6 +3371,8 @@
         const summary = data.paySummary || { summaries: [] };
         const range = summary.range || {};
         const selectedPeriodId = summary.payPeriod?.["Pay Period ID"] || "";
+        const payUsers = data.payUsers || [];
+        const selectedPayUserId = normalizedPayUserId();
         const totalSummaryHours = (summary.summaries || []).reduce((sum, row) => sum + Number(row["Total Hours"] || 0), 0).toFixed(2);
         const sortedSummaries = sortTableRows(summary.summaries || [], "paySummary", {
           user: (row) => row["User Name"],
@@ -3198,7 +3405,7 @@
           </div>
           <section class="side-layout" data-sidebar-collapsed="${state.paySidebarCollapsed ? "true" : "false"}">
             ${renderLayoutSidebar("Filters", "paySidebarCollapsed", `
-              ${data.permissions.canViewAllPay ? `<label>User <select data-pay-filter="userId">${options(data.users, "User ID", "Full Name", state.payFilters.userId, true)}</select></label>` : ""}
+              ${data.permissions.canViewAllPay ? `<label>User <select data-pay-filter="userId">${options(payUsers, "User ID", "Full Name", selectedPayUserId, true)}</select></label>` : ""}
               <label>Range <select data-pay-filter="rangeMode">${payRangeOptions()}</select></label>
               ${state.payFilters.rangeMode === "custom" ? `
                 <label>Start Date <input type="date" data-pay-filter="startDate" value="${escapeHtml(state.payFilters.startDate || "")}"></label>
@@ -3422,8 +3629,7 @@
             </div>
           </section>
           <section class="settings-layout" data-sidebar-collapsed="${state.settingsSidebarCollapsed ? "true" : "false"}">
-            <aside class="panel side-pane" data-popover-boundary>
-              <button type="button" class="icon-button" data-action="toggle-settings-sidebar" title="${state.settingsSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}" aria-label="${state.settingsSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}">${state.settingsSidebarCollapsed ? "&#9654;" : "&#9664;"}</button>
+            ${renderLayoutSidebar("Settings", "settingsSidebarCollapsed", `
               ${sections.map(([id, label]) => {
                 if (id === "organization-group") {
                   return `
@@ -3436,7 +3642,7 @@
                 }
                 return `<button type="button" class="${state.settingsSection === id ? "active" : ""}" data-settings-section="${id}">${sidebarLabel(label.slice(0, 3), label)}</button>`;
               }).join("")}
-            </aside>
+            `)}
             <div>${renderSettingsContent()}</div>
           </section>
         `;
@@ -4081,21 +4287,148 @@
         return (state.data.userPermissions || []).find((row) => String(row["User ID"]) === String(userId))?.Permissions || {};
       }
 
+      function permissionMatrixGroups() {
+        const groups = state.data.constants.permissionGroups || [];
+        if (groups.length) return groups;
+        const capabilities = state.data.constants.permissionCapabilities || [];
+        return capabilities.length ? [{
+          key: "all",
+          label: "Permissions",
+          capabilities
+        }] : [];
+      }
+
+      function permissionLabel(capability) {
+        return String(capability || "").replace(/^Can /, "");
+      }
+
+      function renderPermissionSwitch(label, inputAttrs, checked, options = {}) {
+        const rowClass = options.rowClass ? ` ${options.rowClass}` : "";
+        return `<label class="permission-switch-row${rowClass}">
+          <span class="permission-switch-text">${escapeHtml(label)}</span>
+          <span class="permission-switch-control">
+            <input type="checkbox"${inputAttrs ? ` ${inputAttrs}` : ""}${checked ? " checked" : ""}>
+            <span class="permission-switch-ui" aria-hidden="true"></span>
+          </span>
+        </label>`;
+      }
+
+      function syncPermissionSwitchVisual(input, checked, mixed) {
+        if (!input) return;
+        input.checked = Boolean(checked);
+        input.indeterminate = Boolean(mixed);
+        input.dataset.toggleState = mixed ? "mixed" : checked ? "on" : "off";
+      }
+
+      function permissionGroupSection(form, groupKey) {
+        return Array.from(form.querySelectorAll("[data-permission-group-section]")).find((section) => section.dataset.permissionGroupKey === String(groupKey)) || null;
+      }
+
+      function syncPermissionMatrix(form) {
+        if (!form) return;
+        const groups = permissionMatrixGroups();
+        const permissionInputs = Array.from(form.querySelectorAll('[name="permission"]'));
+        const totalPermissions = permissionInputs.length;
+        const enabledPermissions = permissionInputs.filter((input) => input.checked).length;
+        const masterToggle = form.querySelector("[data-permission-master-toggle]");
+        syncPermissionSwitchVisual(masterToggle, enabledPermissions === totalPermissions && totalPermissions > 0, enabledPermissions > 0 && enabledPermissions < totalPermissions);
+        const masterBadge = form.querySelector("[data-permission-master-badge]");
+        if (masterBadge) {
+          masterBadge.textContent = `${enabledPermissions} enabled`;
+        }
+        groups.forEach((group) => {
+          const section = permissionGroupSection(form, group.key);
+          if (!section) return;
+          const groupInputs = Array.from(section.querySelectorAll('[name="permission"]'));
+          const groupEnabled = groupInputs.filter((input) => input.checked).length;
+          const groupToggle = section.querySelector("[data-permission-group-toggle]");
+          syncPermissionSwitchVisual(groupToggle, groupEnabled === groupInputs.length && groupInputs.length > 0, groupEnabled > 0 && groupEnabled < groupInputs.length);
+          const badge = section.querySelector("[data-permission-group-badge]");
+          if (badge) {
+            badge.textContent = `${groupEnabled} enabled`;
+          }
+        });
+      }
+
+      function setPermissionInputs(form, selector, checked) {
+        Array.from(form.querySelectorAll(selector)).forEach((input) => {
+          input.checked = checked;
+          input.indeterminate = false;
+          input.dataset.toggleState = checked ? "on" : "off";
+        });
+      }
+
+      function setPermissionGroupExpanded(section, expanded) {
+        if (!section) return;
+        const body = section.querySelector("[data-permission-group-body]");
+        const summary = section.querySelector("[data-permission-group-summary]");
+        const icon = section.querySelector("[data-permission-group-icon]");
+        if (body) {
+          body.hidden = !expanded;
+        }
+        if (summary) {
+          summary.setAttribute("aria-expanded", expanded ? "true" : "false");
+        }
+        if (icon) {
+          icon.innerHTML = expanded ? "&#9660;" : "&#9654;";
+        }
+        section.dataset.permissionGroupExpanded = expanded ? "true" : "false";
+      }
+
+      function renderPermissionGroup(group, permissions) {
+        const enabledCount = (group.capabilities || []).filter((capability) => Boolean(permissions[capability])).length;
+        const sectionId = `permission-group-${group.key}`;
+        const isExpanded = false;
+        return `
+          <section class="permission-group" data-permission-group-section data-permission-group-key="${escapeHtml(group.key)}" data-permission-group-expanded="${isExpanded ? "true" : "false"}">
+            <div class="permission-group-head">
+              <button type="button" class="permission-group-summary" data-action="toggle-permission-group-view" data-permission-group-key="${escapeHtml(group.key)}" data-permission-group-summary aria-controls="${escapeHtml(sectionId)}" aria-expanded="${isExpanded ? "true" : "false"}">
+                <span class="permission-group-summary-main">
+                  <span class="permission-group-title">${escapeHtml(group.label)}</span>
+                  <span class="badge permission-group-badge" data-permission-group-badge>${escapeHtml(`${enabledCount} enabled`)}</span>
+                </span>
+                <span class="permission-group-summary-icon" data-permission-group-icon aria-hidden="true">&#9654;</span>
+              </button>
+              ${renderPermissionSwitch(
+                "Enable all",
+                `data-permission-group-toggle="true" data-permission-group-key="${escapeHtml(group.key)}" aria-label="Enable all ${escapeHtml(group.label)} permissions"`,
+                enabledCount === (group.capabilities || []).length && (group.capabilities || []).length > 0,
+                { rowClass: "permission-switch-inline" }
+              )}
+            </div>
+            <div id="${escapeHtml(sectionId)}" class="permission-group-body" data-permission-group-body hidden>
+              <div class="permission-group-items">
+                ${(group.capabilities || []).map((capability) => renderPermissionSwitch(
+                  permissionLabel(capability),
+                  `name="permission" value="${escapeHtml(capability)}" data-permission-capability="${escapeHtml(capability)}" data-permission-group-key="${escapeHtml(group.key)}"`,
+                  Boolean(permissions[capability])
+                )).join("")}
+              </div>
+            </div>
+          </section>`;
+      }
+
       function renderUserPermissionControls(user) {
         if (!state.data.userPermissions?.length) return "";
         if (!user || !user["User ID"]) return "";
         if (user.Role === "Owner") return "";
         const permissions = effectivePermissionsForUser(user?.["User ID"]);
-        const capabilities = state.data.constants.permissionCapabilities || [];
-        return `<section class="panel" style="box-shadow:none;margin:0;">
+        const groups = permissionMatrixGroups();
+        const allCapabilities = groups.reduce((list, group) => list.concat(group.capabilities || []), []);
+        const enabledCount = allCapabilities.filter((capability) => Boolean(permissions[capability])).length;
+        return `<section class="panel permission-matrix" style="box-shadow:none;margin:0;">
           <h3>Permissions</h3>
-          <div class="checkbox-list">
-            ${capabilities.map((capability) => `
-              <label class="checkbox-row">
-                <input name="permission" type="checkbox" value="${escapeHtml(capability)}" ${permissions[capability] ? "checked" : ""}>
-                <span>${escapeHtml(capability.replace(/^Can /, ""))}</span>
-              </label>
-            `).join("")}
+          <div class="permission-matrix-toolbar">
+            ${renderPermissionSwitch(
+              "Enable all permissions",
+              `data-permission-master-toggle="true" aria-label="Enable all permissions"`,
+              enabledCount === allCapabilities.length && allCapabilities.length > 0,
+              { rowClass: "permission-switch-inline" }
+            )}
+            <span class="badge permission-matrix-badge" data-permission-master-badge>${escapeHtml(`${enabledCount} enabled`)}</span>
+          </div>
+          <div class="stack">
+            ${groups.map((group) => renderPermissionGroup(group, permissions)).join("")}
           </div>
         </section>`;
       }
@@ -4149,6 +4482,7 @@
             </form>
           </div>`);
         setTimeout(() => syncUserPayFields(document.querySelector('#modal-root [data-form="user"]')), 0);
+        setTimeout(() => syncPermissionMatrix(document.querySelector('#modal-root [data-form="user"]')), 0);
       }
 
       function openProjectModal(project = null, preset = {}) {
@@ -4300,6 +4634,16 @@
           closeTopModal();
           return;
         }
+        const permissionGroupViewToggle = event.target.closest("[data-action='toggle-permission-group-view']");
+        if (permissionGroupViewToggle) {
+          const form = permissionGroupViewToggle.closest('[data-form="user"]');
+          const section = form ? permissionGroupSection(form, permissionGroupViewToggle.dataset.permissionGroupKey) : null;
+          if (section) {
+            const body = section.querySelector("[data-permission-group-body]");
+            setPermissionGroupExpanded(section, Boolean(body && body.hidden));
+          }
+          return;
+        }
         const tabButton = event.target.closest("[data-tab]");
         if (tabButton) {
           state.tab = tabButton.dataset.tab;
@@ -4341,7 +4685,8 @@
         if (taskNodeToggle) {
           closeActionMenus();
           const taskId = taskNodeToggle.dataset.taskId;
-          setTaskNodeExpanded(taskId, !isTaskNodeExpanded(taskId));
+          const tableKey = taskNodeToggle.closest("[data-task-table-key]")?.dataset.taskTableKey || "board";
+          setTaskNodeExpanded(tableKey, taskId, !isTaskNodeExpanded(tableKey, taskId));
           render();
           return;
         }
@@ -4672,6 +5017,9 @@
         if (event.target.matches("[data-user-pay-type], [name='trackPay']")) {
           syncUserPayFields(event.target.closest('[data-form="user"]'));
         }
+        if (event.target.matches('[name="permission"]')) {
+          syncPermissionMatrix(event.target.closest('[data-form="user"]'));
+        }
         if (event.target.matches('[name="sourceType"]')) {
           state.migrationSourceType = event.target.value;
           syncMigrationMode(event.target.closest('[data-form="migration"]'));
@@ -4680,6 +5028,21 @@
           state.boardGrouping = event.target.value;
           state.boardGroupExpanded = {};
           render();
+        }
+        if (event.target.matches("[data-permission-master-toggle]")) {
+          const form = event.target.closest('[data-form="user"]');
+          if (form) {
+            setPermissionInputs(form, '[name="permission"]', event.target.checked);
+            syncPermissionMatrix(form);
+          }
+        }
+        if (event.target.matches("[data-permission-group-toggle]")) {
+          const form = event.target.closest('[data-form="user"]');
+          const section = form ? permissionGroupSection(form, event.target.dataset.permissionGroupKey) : null;
+          if (section) {
+            setPermissionInputs(section, '[name="permission"]', event.target.checked);
+            syncPermissionMatrix(form);
+          }
         }
         if (event.target.closest('[data-form="task-modal"]') && event.target.name === "parentTaskId") {
           syncTaskParentFields(event.target.closest('[data-form="task-modal"]'));
@@ -5106,6 +5469,7 @@
             }
             const result = await callServer("importLegacyWorkbook", payload);
             const summary = `Imported legacy data: ${result.projects.created + result.projects.updated} projects, ${result.users.created + result.users.updated} users, ${result.tags.imported || (result.tags.created + result.tags.updated)} tags, ${result.tasks.created + result.tasks.updated} tasks, ${result.timeEntries.created + result.timeEntries.updated} time entries, ${result.paySummaries.created + result.paySummaries.updated} pay summaries.`;
+            clearModals();
             await refreshData({ message: summary });
           } else if (formType === "tag") {
             const savedTag = await callServer("saveTag", {

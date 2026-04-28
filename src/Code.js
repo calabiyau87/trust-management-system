@@ -72,7 +72,8 @@ function getInitialData() {
       entryTypes: TrustOpsConfig.ENTRY_TYPES,
       themeModes: TrustOpsConfig.THEME_MODES,
       managerPresets: TrustOpsConfig.MANAGER_PRESETS,
-      permissionCapabilities: TrustOpsManagerPermissionService.CAPABILITIES
+      permissionCapabilities: TrustOpsManagerPermissionService.CAPABILITIES,
+      permissionGroups: TrustOpsManagerPermissionService.PERMISSION_GROUPS
     },
     currentUser: context.user,
     context: {
@@ -90,6 +91,7 @@ function getInitialData() {
     managerPermissions: TrustOpsPermissionService.isOwnerOrAdmin(context) ? TrustOpsManagerPermissionService.listManagerPermissions(context) : [],
     userPermissions: TrustOpsPermissionService.isOwnerOrAdmin(context) ? TrustOpsManagerPermissionService.listUserPermissions(context) : [],
     payPeriods: TrustOpsPayService.listPayPeriods(),
+    payUsers: TrustOpsPayService.listActivePayUsers(),
     currentPayPeriod: TrustOpsUtils.sanitizeForClient(currentPayPeriod),
     organizationName: TrustOpsSettingsService.getOrganizationName(),
     tasks: TrustOpsTaskService.listTasks(context, {}),
@@ -133,6 +135,8 @@ function refreshAppData(filters) {
     managerPermissions: TrustOpsPermissionService.isOwnerOrAdmin(context) ? TrustOpsManagerPermissionService.listManagerPermissions(context) : [],
     userPermissions: TrustOpsPermissionService.isOwnerOrAdmin(context) ? TrustOpsManagerPermissionService.listUserPermissions(context) : [],
     payPeriods: TrustOpsPayService.listPayPeriods(),
+    payUsers: TrustOpsPayService.listActivePayUsers(),
+    permissionGroups: TrustOpsManagerPermissionService.PERMISSION_GROUPS,
     timeRequests: TrustOpsTimeRequestService.listRequests(context, { status: TrustOpsConfig.REQUEST_STATUS.PENDING }),
     settings: TrustOpsPermissionService.canManageSettings(context) ? TrustOpsSettingsService.listSettings(context) : [],
     organizationName: TrustOpsSettingsService.getOrganizationName(),

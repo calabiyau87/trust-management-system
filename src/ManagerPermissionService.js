@@ -1,26 +1,69 @@
 var TrustOpsManagerPermissionService = (function () {
-  var CAPABILITIES = [
-    "Can Create Tasks",
-    "Can Edit Tasks",
-    "Can Delete Tasks",
-    "Can Create Time For Others",
-    "Can View All Time",
-    "Can Edit Time Entries",
-    "Can Delete Time Entries",
-    "Can Approve Time Requests",
-    "Can Lock Pay Periods",
-    "Can Unlock Pay Periods",
-    "Can View All Pay",
-    "Can Manage Users",
-    "Can Manage Projects",
-    "Can Manage Time Categories",
-    "Can Manage Tags",
-    "Can Manage Organization",
-    "Can Manage Board Views",
-    "Can Manage Settings",
-    "Can Change Profile Color",
-    "Can Import Legacy Data"
+  var PERMISSION_GROUPS = [
+    {
+      key: "tasks",
+      label: "Tasks",
+      capabilities: [
+        "Can Manage Own Tasks",
+        "Can Create Tasks",
+        "Can Edit Tasks",
+        "Can Delete Tasks"
+      ]
+    },
+    {
+      key: "time",
+      label: "Time",
+      capabilities: [
+        "Can Create Time For Others",
+        "Can View All Time",
+        "Can Edit Time Entries",
+        "Can Delete Time Entries",
+        "Can Approve Time Requests"
+      ]
+    },
+    {
+      key: "pay",
+      label: "Pay",
+      capabilities: [
+        "Can Lock Pay Periods",
+        "Can Unlock Pay Periods",
+        "Can View All Pay"
+      ]
+    },
+    {
+      key: "admin",
+      label: "Administration",
+      capabilities: [
+        "Can Manage Users",
+        "Can Manage Projects",
+        "Can Manage Time Categories",
+        "Can Manage Tags",
+        "Can Manage Organization",
+        "Can Manage Board Views",
+        "Can Manage Settings",
+        "Can Import Legacy Data"
+      ]
+    },
+    {
+      key: "profile",
+      label: "Profile",
+      capabilities: [
+        "Can Change Profile Color"
+      ]
+    }
   ];
+
+  function flattenCapabilities(groups) {
+    var capabilities = [];
+    (groups || []).forEach(function (group) {
+      (group.capabilities || []).forEach(function (capability) {
+        capabilities.push(capability);
+      });
+    });
+    return capabilities;
+  }
+
+  var CAPABILITIES = flattenCapabilities(PERMISSION_GROUPS);
 
   function defaultPermissions(preset, role) {
     var selectedPreset = preset || TrustOpsConfig.MANAGER_PRESETS.OPERATIONS;
@@ -28,20 +71,20 @@ var TrustOpsManagerPermissionService = (function () {
     CAPABILITIES.forEach(function (capability) {
       permissions[capability] = false;
     });
-    if (role !== TrustOpsConfig.ROLES.MANAGER) {
-      return permissions;
-    }
-    permissions["Can Create Tasks"] = true;
-    permissions["Can Edit Tasks"] = true;
-    permissions["Can Create Time For Others"] = true;
-    permissions["Can Manage Projects"] = true;
-    if (selectedPreset === TrustOpsConfig.MANAGER_PRESETS.ADMIN_LIKE) {
-      CAPABILITIES.forEach(function (capability) {
-        permissions[capability] = capability !== "Can Manage Users" && capability !== "Can Manage Settings" && capability !== "Can Manage Organization" && capability !== "Can Import Legacy Data";
-      });
-    } else if (selectedPreset === TrustOpsConfig.MANAGER_PRESETS.BASIC) {
-      permissions["Can Edit Tasks"] = false;
-      permissions["Can Manage Projects"] = false;
+    permissions["Can Manage Own Tasks"] = true;
+    if (role === TrustOpsConfig.ROLES.MANAGER) {
+      permissions["Can Create Tasks"] = true;
+      permissions["Can Edit Tasks"] = true;
+      permissions["Can Create Time For Others"] = true;
+      permissions["Can Manage Projects"] = true;
+      if (selectedPreset === TrustOpsConfig.MANAGER_PRESETS.ADMIN_LIKE) {
+        CAPABILITIES.forEach(function (capability) {
+          permissions[capability] = capability !== "Can Manage Users" && capability !== "Can Manage Settings" && capability !== "Can Manage Organization" && capability !== "Can Import Legacy Data";
+        });
+      } else if (selectedPreset === TrustOpsConfig.MANAGER_PRESETS.BASIC) {
+        permissions["Can Edit Tasks"] = false;
+        permissions["Can Manage Projects"] = false;
+      }
     }
     return permissions;
   }
@@ -162,6 +205,7 @@ var TrustOpsManagerPermissionService = (function () {
 
   return {
     CAPABILITIES: CAPABILITIES,
+    PERMISSION_GROUPS: PERMISSION_GROUPS,
     defaultPermissions: defaultPermissions,
     effectiveForUser: effectiveForUser,
     userCan: userCan,
