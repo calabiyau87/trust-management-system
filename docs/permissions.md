@@ -23,6 +23,7 @@ Administrative access:
 - View all pay summaries.
 - Lock pay periods.
 - Override locked-period edits with an audit reason.
+- Access to the spreadsheet can be granted explicitly as `None`, `View`, or `Editor`.
 
 Admin cannot assign the Owner role.
 
@@ -60,6 +61,8 @@ If `Track Pay` is enabled for a user, `Track Time` is also enforced on the serve
 The `Manager Permissions` sheet now stores per-capability overrides for any user, not only Managers. Existing Manager rows remain valid. Owner/Admin users can edit these overrides from the Users settings modal, while the server continues to enforce owner protections. The Owner's effective permissions are implicit and the UI does not need to display a matrix for that row.
 
 The `Can Manage Own Tasks` capability defaults on for all roles. It controls whether a user can create, edit, delete, and add time to tasks they created themselves. The broader `Can Create Tasks` capability still covers task creation for others.
+
+The `Sheet Access` field is only meaningful for Admin users. Owner access is implicit because the Owner owns the spreadsheet, and non-admin users do not receive direct spreadsheet sharing through the app.
 
 ## Locked Pay Periods
 

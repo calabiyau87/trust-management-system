@@ -40,6 +40,7 @@ var TrustOpsConfig = (function () {
       "Profile Image URL",
       "Profile Image File ID",
       "Role",
+      "Sheet Access",
       "Active",
       "Pay Type",
       "Hourly Rate",
@@ -333,6 +334,8 @@ var TrustOpsConfig = (function () {
     ADMIN_LIKE: "Admin Like"
   };
 
+  var SHEET_ACCESS_LEVELS = ["None", "View", "Editor"];
+
   var THEME_MODES = ["System", "Light", "Dark"];
 
   var DEFAULT_TASK_STATUS_COLORS = {
@@ -380,6 +383,7 @@ var TrustOpsConfig = (function () {
     REQUEST_TYPES: REQUEST_TYPES,
     VIEW_VISIBILITY: VIEW_VISIBILITY,
     MANAGER_PRESETS: MANAGER_PRESETS,
+    SHEET_ACCESS_LEVELS: SHEET_ACCESS_LEVELS,
     THEME_MODES: THEME_MODES,
     DEFAULT_TASK_STATUS_COLORS: DEFAULT_TASK_STATUS_COLORS,
     DEFAULT_PROJECT_STATUS_COLORS: DEFAULT_PROJECT_STATUS_COLORS,

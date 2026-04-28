@@ -21,6 +21,8 @@ Pay types:
 - Salary
 - None
 
+Sheet access for Admin users is stored in the `Sheet Access` column as `None`, `View`, or `Editor`. Owner access remains implicit and is not stored as a direct share setting.
+
 ## Projects
 
 Stable ID: `Project ID`

@@ -37,6 +37,14 @@ var TrustOpsUserService = (function () {
     return TrustOpsConfig.THEME_MODES.indexOf(mode) === -1 ? "System" : mode;
   }
 
+  function normalizeSheetAccess(value, role) {
+    if (role !== TrustOpsConfig.ROLES.ADMIN) {
+      return "None";
+    }
+    var access = TrustOpsUtils.normalizeText(value || "Editor");
+    return TrustOpsConfig.SHEET_ACCESS_LEVELS.indexOf(access) === -1 ? "Editor" : access;
+  }
+
   function listActiveUsers() {
     return TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.USERS)
       .filter(function (user) {
@@ -57,6 +65,8 @@ var TrustOpsUserService = (function () {
     var salaryFrequency = payload["Salary Frequency"] || payload.salaryFrequency || existing && existing["Salary Frequency"] || "";
     var trackPay = payload["Track Pay"] === undefined ? existing ? TrustOpsUtils.toBoolean(existing["Track Pay"]) : false : TrustOpsUtils.toBoolean(payload["Track Pay"]);
     var trackTime = payload["Track Time"] === undefined ? existing ? TrustOpsUtils.toBoolean(existing["Track Time"]) : true : TrustOpsUtils.toBoolean(payload["Track Time"]);
+    var role = payload.Role || payload.role || existing && existing.Role || TrustOpsConfig.ROLES.USER;
+    var existingSheetAccess = existing && existing.Role === TrustOpsConfig.ROLES.ADMIN ? existing["Sheet Access"] : "";
     if (trackPay) trackTime = true;
     if (payType === "Hourly") {
       salaryAmountValue = 0;
@@ -81,7 +91,11 @@ var TrustOpsUserService = (function () {
       "Google Profile Photo URL": payload["Google Profile Photo URL"] || payload.googleProfilePhotoUrl || existing && existing["Google Profile Photo URL"] || "",
       "Profile Image URL": payload["Profile Image URL"] || payload.profileImageUrl || existing && existing["Profile Image URL"] || "",
       "Profile Image File ID": payload["Profile Image File ID"] || payload.profileImageFileId || existing && existing["Profile Image File ID"] || "",
-      "Role": payload.Role || payload.role || TrustOpsConfig.ROLES.USER,
+      "Role": role,
+      "Sheet Access": normalizeSheetAccess(
+        payload["Sheet Access"] !== undefined ? payload["Sheet Access"] : payload.sheetAccess !== undefined ? payload.sheetAccess : existingSheetAccess,
+        role
+      ),
       "Active": payload.Active === undefined ? true : TrustOpsUtils.toBoolean(payload.Active),
       "Pay Type": payType,
       "Hourly Rate": TrustOpsUtils.toNumber(hourlyRateValue),
@@ -117,6 +131,15 @@ var TrustOpsUserService = (function () {
     var saved = existing
       ? TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.USERS, userId, record)
       : TrustOpsSheetService.appendRecord(TrustOpsConfig.SHEETS.USERS, record);
+    if (existing && TrustOpsUtils.normalizeText(existing.Email) && String(existing.Email) !== String(saved.Email || "")) {
+      syncSpreadsheetAccessForUsers(context, [{
+        "User ID": saved["User ID"],
+        Email: existing.Email,
+        Role: TrustOpsConfig.ROLES.USER,
+        "Sheet Access": "None"
+      }]);
+    }
+    syncSpreadsheetAccessForUsers(context, [saved]);
     TrustOpsAuditService.log(context, existing ? "USER_UPDATED" : "USER_CREATED", "User", saved["User ID"], existing, saved, "");
     return TrustOpsUtils.sanitizeForClient(saved);
   }
@@ -158,19 +181,40 @@ var TrustOpsUserService = (function () {
 
   function applySpreadsheetAccess_(file, user) {
     var email = TrustOpsUtils.requireValue(user && user.Email, "User email");
-    var privileged = user.Role === TrustOpsConfig.ROLES.OWNER || user.Role === TrustOpsConfig.ROLES.ADMIN;
-    if (privileged) {
-      file.addEditor(email);
+    if (user.Role === TrustOpsConfig.ROLES.OWNER) {
+      return null;
+    }
+    if (user.Role === TrustOpsConfig.ROLES.ADMIN) {
+      var accessLevel = normalizeSheetAccess(user["Sheet Access"], user.Role);
+      if (accessLevel === "Editor") {
+        file.addEditor(email);
+        try {
+          file.removeViewer(email);
+        } catch (error) {}
+        return "Editor";
+      }
+      if (accessLevel === "View") {
+        file.addViewer(email);
+        try {
+          file.removeEditor(email);
+        } catch (error) {}
+        return "View";
+      }
       try {
         file.removeViewer(email);
       } catch (error) {}
-      return "Editor";
+      try {
+        file.removeEditor(email);
+      } catch (error) {}
+      return "None";
     }
-    file.addViewer(email);
+    try {
+      file.removeViewer(email);
+    } catch (error) {}
     try {
       file.removeEditor(email);
     } catch (error) {}
-    return "Viewer";
+    return "None";
   }
 
   function syncSpreadsheetAccessForUsers(context, users) {
@@ -184,7 +228,19 @@ var TrustOpsUserService = (function () {
     var results = [];
     (users || []).forEach(function (user) {
       if (!user || !TrustOpsUtils.normalizeText(user.Email)) return;
-      var accessLevel = applySpreadsheetAccess_(file, user);
+      var accessLevel;
+      try {
+        accessLevel = applySpreadsheetAccess_(file, user);
+      } catch (error) {
+        var normalizedEmail = TrustOpsUtils.normalizeEmail(user.Email) || "unknown email";
+        throw new Error(
+          "Unable to sync spreadsheet access for " +
+          normalizedEmail +
+          ". Confirm the spreadsheet owner can manage sharing and that the deployment runs as Me. " +
+          (error && error.message ? error.message : String(error))
+        );
+      }
+      if (accessLevel === null) return;
       results.push({
         userId: user["User ID"],
         email: user.Email,
@@ -225,15 +281,18 @@ var TrustOpsUserService = (function () {
     );
     var user = TrustOpsSheetService.findById(TrustOpsConfig.SHEETS.USERS, userId);
     if (!user) throw new Error("User not found.");
+    if (user.Role !== TrustOpsConfig.ROLES.ADMIN) {
+      throw new Error("Only Admin users can be shared spreadsheet access.");
+    }
     var accessLevel = syncSpreadsheetAccessForUsers(context, [user])[0];
     var result = {
       userId: userId,
       email: user.Email,
-      shared: true,
-      accessLevel: accessLevel ? accessLevel.accessLevel : "Viewer",
+      shared: accessLevel ? accessLevel.accessLevel !== "None" : false,
+      accessLevel: accessLevel ? accessLevel.accessLevel : "None",
       sharedAt: TrustOpsUtils.nowIso()
     };
-    TrustOpsAuditService.log(context, "SPREADSHEET_SHARED_WITH_USER", "User", userId, null, result, "Granted spreadsheet access at the least-privilege level.");
+    TrustOpsAuditService.log(context, "SPREADSHEET_SHARED_WITH_USER", "User", userId, null, result, "Synchronized spreadsheet access at the least-privilege level.");
     return result;
   }
 

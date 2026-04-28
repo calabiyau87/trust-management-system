@@ -71,6 +71,7 @@ function getInitialData() {
       priorities: TrustOpsConfig.PRIORITIES,
       entryTypes: TrustOpsConfig.ENTRY_TYPES,
       themeModes: TrustOpsConfig.THEME_MODES,
+      sheetAccessLevels: TrustOpsConfig.SHEET_ACCESS_LEVELS,
       managerPresets: TrustOpsConfig.MANAGER_PRESETS,
       permissionCapabilities: TrustOpsManagerPermissionService.CAPABILITIES,
       permissionGroups: TrustOpsManagerPermissionService.PERMISSION_GROUPS
