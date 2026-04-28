@@ -2085,6 +2085,7 @@
         paySidebarCollapsed: false,
         projectFilters: { rangeMode: "current", includeArchived: false, projectId: "" },
         projectSidebarCollapsed: false,
+        projectTasksExpanded: false,
         projectEntriesModal: null,
         tableSorts: {},
         boardGroupExpanded: {},
@@ -2651,7 +2652,13 @@
         return `<span class="hierarchy-title-badges">${badges.join("")}</span>`;
       }
 
-      function renderTaskActionMenu(task) {
+      function renderTaskCountBadge(count) {
+        const total = Number(count || 0);
+        const label = `${total} task${total === 1 ? "" : "s"}`;
+        return `<span class="badge task-count-badge" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${escapeHtml(total)}</span>`;
+      }
+
+      function buildTaskActionItems(task) {
         const taskId = task["Task ID"];
         const actions = [];
         if (task._permissions?.canComplete && task.Status !== "Complete") {
@@ -2669,6 +2676,11 @@
         if (task._permissions?.canDelete) {
           actions.push({ action: "delete-task", symbol: "&#128465;", label: "Delete task", danger: true, attrs: { "data-task-id": taskId } });
         }
+        return actions;
+      }
+
+      function renderTaskActionMenu(task) {
+        const actions = buildTaskActionItems(task);
         return renderActionMenu(actions, "Task actions");
       }
 
@@ -2980,6 +2992,7 @@
           state.timeSidebarCollapsed = loadStoredBool("timeSidebarCollapsed", false);
           state.paySidebarCollapsed = loadStoredBool("paySidebarCollapsed", false);
           state.projectSidebarCollapsed = loadStoredBool("projectSidebarCollapsed", false);
+          state.projectTasksExpanded = loadStoredBool("projectTasksExpanded", false);
           state.settingsSection = loadStoredString("settingsSection", state.settingsSection);
           state.timeMode = loadStoredString("timeMode", "Log");
           state.timeEntryType = loadStoredString("timeEntryType", "Task");
@@ -3938,29 +3951,41 @@
                     <div class="metric-card"><span>Tasks</span><strong>${escapeHtml(selectedProject.summary["Task Count"])}</strong></div>
                     <div class="metric-card"><span>Users</span><strong>${escapeHtml(selectedProject.metrics.userCount)}</strong></div>
                   </div>
-                  <h3>Tasks</h3>
-                  ${selectedProject.tasks?.length ? `
-                    ${renderTaskTable(selectedProject.tasks, "projectTasks")}` : '<div class="empty">No related tasks.</div>'}
+                  <section class="panel stack" data-project-tasks-section>
+                    <div class="toolbar">
+                      <div>
+                        <h3>Tasks ${renderTaskCountBadge(selectedProject.summary["Task Count"])}</h3>
+                        <p>${state.projectTasksExpanded ? "Showing tasks for the selected range" : "Tasks are collapsed for the selected range"}</p>
+                      </div>
+                      <div class="actions">
+                        ${renderIcon("toggle-project-tasks", "", "", state.projectTasksExpanded ? "Collapse tasks" : "Expand tasks", state.projectTasksExpanded ? "&#9660;" : "&#9654;")}
+                      </div>
+                    </div>
+                    ${state.projectTasksExpanded ? `
+                      ${selectedProject.tasks?.length ? `
+                        ${renderTaskTable(selectedProject.tasks, "projectTasks")}` : '<div class="empty">No related tasks.</div>'}
                       ${selectedProject.childProjects?.length ? `
-                    <h3>Subprojects</h3>
-                    <div class="stack">
-                      ${selectedProject.childProjects.map((childProject) => renderCollapsibleSection(
-                        `<div class="hierarchy-summary"><strong>${escapeHtml(projectDisplayName(childProject.project))}</strong> ${renderProjectStatusBadge(childProject.summary.Status)} <span class="badge">${escapeHtml(childProject.summary["Progress Percent"])}%</span></div>`,
-                        `
-                          <div class="metric-grid">
-                            <div class="metric-card"><span>Tasks</span><strong>${escapeHtml(childProject.summary["Task Count"])}</strong></div>
-                            <div class="metric-card"><span>Hours</span><strong>${escapeHtml(childProject.metrics.totalHours)}</strong></div>
-                            <div class="metric-card"><span>Users</span><strong>${escapeHtml(childProject.metrics.userCount)}</strong></div>
-                            <div class="metric-card"><span>Progress</span><strong>${escapeHtml(childProject.summary["Progress Percent"])}%</strong></div>
-                          </div>
-                          <h4>Tasks</h4>
-                          ${childProject.tasks?.length ? renderTaskTable(childProject.tasks, "projectTasks") : '<div class="empty">No related tasks.</div>'}
-                        `,
-                        `${childProject.summary["Task Count"]} leaf task${childProject.summary["Task Count"] === 1 ? "" : "s"}`,
-                        false,
-                        true
-                      )).join("")}
-                    </div>` : ""}
+                        <h3>Subprojects</h3>
+                        <div class="stack">
+                          ${selectedProject.childProjects.map((childProject) => renderCollapsibleSection(
+                            `<div class="hierarchy-summary"><strong>${escapeHtml(projectDisplayName(childProject.project))}</strong> ${renderProjectStatusBadge(childProject.summary.Status)} <span class="badge">${escapeHtml(childProject.summary["Progress Percent"])}%</span></div>`,
+                            `
+                              <div class="metric-grid">
+                                <div class="metric-card"><span>Tasks</span><strong>${escapeHtml(childProject.summary["Task Count"])}</strong></div>
+                                <div class="metric-card"><span>Hours</span><strong>${escapeHtml(childProject.metrics.totalHours)}</strong></div>
+                                <div class="metric-card"><span>Users</span><strong>${escapeHtml(childProject.metrics.userCount)}</strong></div>
+                                <div class="metric-card"><span>Progress</span><strong>${escapeHtml(childProject.summary["Progress Percent"])}%</strong></div>
+                              </div>
+                              <h4>Tasks ${renderTaskCountBadge(childProject.summary["Task Count"])}</h4>
+                              ${childProject.tasks?.length ? renderTaskTable(childProject.tasks, "projectTasks") : '<div class="empty">No related tasks.</div>'}
+                            `,
+                            `${childProject.summary["Task Count"]} leaf task${childProject.summary["Task Count"] === 1 ? "" : "s"}`,
+                            false,
+                            true
+                          )).join("")}
+                        </div>` : ""}
+                    ` : ""}
+                  </section>
                   <div class="detail-grid" style="margin-top: 12px;">
                     <div>
                       <h3>Task Time</h3>
@@ -5280,6 +5305,10 @@
             await refreshBoardData("Board view deleted.");
           } else if (action === "refresh-project-dashboard") {
             await refreshProjectDashboardData("Project dashboard refreshed.");
+          } else if (action === "toggle-project-tasks") {
+            state.projectTasksExpanded = !state.projectTasksExpanded;
+            saveStoredBool("projectTasksExpanded", state.projectTasksExpanded);
+            render();
           } else if (action === "select-project-dashboard") {
             state.projectFilters.projectId = event.target.closest("[data-project-id]").dataset.projectId;
             await refreshProjectDashboardData("Project selected.");
