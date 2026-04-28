@@ -582,7 +582,7 @@
       #action-popover-root {
         position: fixed;
         inset: 0;
-        z-index: 18;
+        z-index: 50;
         pointer-events: none;
       }
 
@@ -614,7 +614,7 @@
         position: fixed;
         left: 0;
         top: 0;
-        z-index: 18;
+        z-index: 51;
         display: grid;
         gap: 4px;
         width: max-content;
@@ -667,6 +667,21 @@
         width: 100%;
         justify-content: flex-end;
       }
+
+      .project-user-entries-table th:nth-child(1) { width: 56%; }
+      .project-user-entries-table th:nth-child(2) { width: 18%; }
+      .project-user-entries-table th:nth-child(3) { width: 26%; }
+
+      .project-user-entries-table td[data-label="Actions"] .icon-button {
+        margin-left: auto;
+      }
+
+      .project-entries-table th:nth-child(1) { width: 12%; }
+      .project-entries-table th:nth-child(2) { width: 28%; }
+      .project-entries-table th:nth-child(3) { width: 22%; }
+      .project-entries-table th:nth-child(4) { width: 10%; }
+      .project-entries-table th:nth-child(5) { width: 16%; }
+      .project-entries-table th:nth-child(6) { width: 12%; }
 
       tr:last-child td {
         border-bottom: 0;
@@ -1580,11 +1595,6 @@
         z-index: 20;
       }
 
-      .modal-backdrop[data-modal-level="2"] {
-        z-index: 30;
-        background: rgba(16, 24, 32, 0.26);
-      }
-
       .modal {
         width: min(760px, 100%);
         max-height: 92vh;
@@ -2075,6 +2085,7 @@
         paySidebarCollapsed: false,
         projectFilters: { rangeMode: "current", includeArchived: false, projectId: "" },
         projectSidebarCollapsed: false,
+        projectEntriesModal: null,
         tableSorts: {},
         boardGroupExpanded: {},
         taskTreeExpanded: {},
@@ -2584,8 +2595,9 @@
         });
       }
 
-      function renderIcon(action, idName, idValue, label, symbol, danger = false) {
-        return `<button type="button" class="icon-button ${danger ? "danger" : ""}" data-action="${escapeHtml(action)}" ${idName ? `${idName}="${escapeHtml(idValue)}"` : ""} title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${symbol}</button>`;
+      function renderIcon(action, idName, idValue, label, symbol, danger = false, attrs = {}) {
+        const extraAttrs = Object.entries(attrs || {}).map(([key, value]) => `${escapeHtml(key)}="${escapeHtml(value)}"`).join(" ");
+        return `<button type="button" class="icon-button ${danger ? "danger" : ""}" data-action="${escapeHtml(action)}" ${idName ? `${idName}="${escapeHtml(idValue)}"` : ""}${extraAttrs ? ` ${extraAttrs}` : ""} title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${symbol}</button>`;
       }
 
       function sidebarLabel(shortLabel, fullLabel) {
@@ -2673,26 +2685,69 @@
         }).join("");
       }
 
+      const MODAL_Z_INDEX_BASE = 1000;
+      const MODAL_Z_INDEX_STEP = 20;
+      const ACTION_POPOVER_Z_INDEX_DEFAULT = 2500;
+      const ACTION_POPOVER_Z_INDEX_OFFSET = 8;
+
+      function parseZIndex(value, fallback = 0) {
+        const parsed = Number.parseInt(String(value || ""), 10);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      }
+
+      function modalBackdropZIndex(modal, fallbackLevel = 0) {
+        if (!modal) return MODAL_Z_INDEX_BASE + (fallbackLevel * MODAL_Z_INDEX_STEP);
+        const inline = parseZIndex(modal.style?.zIndex, 0);
+        if (inline) return inline;
+        const level = Number.parseInt(String(modal.dataset.modalLevel || ""), 10);
+        if (Number.isFinite(level) && level > 0) {
+          return MODAL_Z_INDEX_BASE + ((level - 1) * MODAL_Z_INDEX_STEP);
+        }
+        const computed = parseZIndex(window.getComputedStyle(modal).zIndex, 0);
+        return computed || (MODAL_Z_INDEX_BASE + (fallbackLevel * MODAL_Z_INDEX_STEP));
+      }
+
+      function syncModalStacking() {
+        const modals = Array.from(document.querySelectorAll("#modal-root .modal-backdrop"));
+        modals.forEach((modal, index) => {
+          const zIndex = MODAL_Z_INDEX_BASE + (index * MODAL_Z_INDEX_STEP);
+          modal.dataset.modalLevel = String(index + 1);
+          modal.style.zIndex = String(zIndex);
+          if (index > 0) {
+            modal.style.background = "rgba(16, 24, 32, 0.26)";
+          } else {
+            modal.style.background = "";
+          }
+        });
+        return modals;
+      }
+
       function setModal(html) {
         document.getElementById("modal-root").innerHTML = html;
+        syncModalStacking();
       }
 
       function pushModal(html) {
         const root = document.getElementById("modal-root");
         root.insertAdjacentHTML("beforeend", html);
-        Array.from(root.querySelectorAll(".modal-backdrop")).forEach((modal, index) => {
-          modal.dataset.modalLevel = String(index + 1);
-        });
+        syncModalStacking();
       }
 
       function closeTopModal() {
         const modals = document.querySelectorAll("#modal-root .modal-backdrop");
         if (!modals.length) return;
-        modals[modals.length - 1].remove();
+        const removed = modals[modals.length - 1];
+        removed.remove();
+        syncModalStacking();
+        if (removed.dataset.projectEntriesModal === "true" && !document.querySelector("#modal-root .modal-backdrop[data-project-entries-modal='true']")) {
+          state.projectEntriesModal = null;
+        }
       }
 
       function clearModals() {
+        closeActionMenus();
         document.getElementById("modal-root").innerHTML = "";
+        state.projectEntriesModal = null;
       }
 
       const ACTION_POPOVER_CLOSE_DELAY_MS = 85;
@@ -2737,7 +2792,10 @@
         clearActionPopoverCloseTimer();
         activeActionPopover = null;
         const root = getActionPopoverRoot();
-        if (root) root.innerHTML = "";
+        if (root) {
+          root.innerHTML = "";
+          root.style.zIndex = String(ACTION_POPOVER_Z_INDEX_DEFAULT);
+        }
         document.querySelectorAll("[data-action-popover]").forEach((menu) => {
           menu.dataset.open = "false";
           menu.dataset.hoverOpen = "false";
@@ -2805,11 +2863,25 @@
         if (!root || !popover) return null;
         const template = popover.querySelector(".action-popover-menu");
         if (!template) return null;
+        const sourceBackdrop = popover.closest(".modal-backdrop");
+        const stackSource = sourceBackdrop?.dataset.stackSource || (sourceBackdrop?.dataset.projectEntriesModal === "true" ? "project-entries" : "");
         root.innerHTML = `
-          <div class="action-popover action-popover-floating" data-action-popover-floating aria-hidden="false">
+          <div class="action-popover action-popover-floating" data-action-popover-floating${stackSource ? ` data-stack-source="${escapeHtml(stackSource)}"` : ""} aria-hidden="false">
             ${template.innerHTML}
           </div>`;
         return root.querySelector("[data-action-popover-floating]");
+      }
+
+      function syncActionPopoverStacking(popover, floating) {
+        const root = getActionPopoverRoot();
+        if (!root) return;
+        const sourceModal = popover?.closest(".modal-backdrop") || activeActionPopover?.closest(".modal-backdrop") || null;
+        const sourceZIndex = sourceModal ? modalBackdropZIndex(sourceModal) : ACTION_POPOVER_Z_INDEX_DEFAULT;
+        const rootZIndex = sourceModal ? sourceZIndex + ACTION_POPOVER_Z_INDEX_OFFSET : ACTION_POPOVER_Z_INDEX_DEFAULT;
+        root.style.zIndex = String(rootZIndex);
+        if (floating) {
+          floating.style.zIndex = String(rootZIndex + 1);
+        }
       }
 
       function openActionPopover(popover, mode = "click") {
@@ -2824,9 +2896,11 @@
         popover.dataset.measuring = "true";
         trigger.setAttribute("aria-expanded", "true");
         const floating = renderActionPopoverOverlay(popover);
+        syncActionPopoverStacking(popover, floating);
         requestAnimationFrame(() => {
           if (!popover.isConnected) return;
           if (!floating || activeActionPopover !== popover) return;
+          syncActionPopoverStacking(popover, floating);
           measureActionPopover(popover);
           popover.dataset.measuring = "false";
         });
@@ -3894,7 +3968,7 @@
                     </div>
                     <div>
                       <h3>Users</h3>
-                      ${renderHoursList(selectedProject.userTotals, "No user time in this range.", "projectUserTotals")}
+                      ${renderProjectUserTotalsList(selectedProject)}
                     </div>
                     <div>
                       <h3>Categories</h3>
@@ -4529,15 +4603,15 @@
         setTimeout(() => syncTaskParentFields(document.querySelector('#modal-root [data-form="task-modal"]')), 0);
       }
 
-      function openTimeModal(entry) {
+      function openTimeModal(entry, modalOptions = {}) {
         const data = state.data;
         const tracker = data.tracker || {};
         const selectedPeriod = findClientPayPeriodForDate(entry.Date) || tracker.selectedPayPeriod || data.currentPayPeriod || {};
         const canSelectUser = data.permissions.canCreateTimeForAnyUser;
         const entrySource = entry["Entry Source"] || "Logged";
         const isClocked = entrySource === "Clocked";
-        setModal(`
-          <div class="modal-backdrop">
+        const html = `
+          <div class="modal-backdrop"${modalOptions.stackSource ? ` data-stack-source="${escapeHtml(modalOptions.stackSource)}"` : ""}>
             <form class="modal stack" data-form="time-modal">
               <div class="modal-header">
                 <h3>Edit Time Entry ${renderTimeSourceBadge(entrySource)}</h3>
@@ -4569,7 +4643,9 @@
               <div data-time-lock-fields>${renderTimeLockFields(selectedPeriod)}</div>
               <div class="actions"><button class="primary" type="submit">Save Entry</button></div>
             </form>
-          </div>`);
+          </div>`;
+        if (modalOptions.stack) pushModal(html);
+        else setModal(html);
       }
 
       function openBoardViewModal() {
@@ -4865,9 +4941,9 @@
         else setModal(html);
       }
 
-      function openConfirmModal(message, action, payloadName, payloadValue, confirmLabel = "Delete", title = "Confirm Delete") {
-        setModal(`
-          <div class="modal-backdrop">
+      function openConfirmModal(message, action, payloadName, payloadValue, confirmLabel = "Delete", title = "Confirm Delete", options = {}) {
+        const html = `
+          <div class="modal-backdrop"${options.stackSource ? ` data-stack-source="${escapeHtml(options.stackSource)}"` : ""}>
             <div class="modal stack">
               <div class="modal-header"><h3>${escapeHtml(title)}</h3><button type="button" data-action="close-modal">Close</button></div>
               <p>${escapeHtml(message)}</p>
@@ -4876,7 +4952,9 @@
                 <button type="button" data-action="close-modal">Cancel</button>
               </div>
             </div>
-          </div>`);
+          </div>`;
+        if (options.stack) pushModal(html);
+        else setModal(html);
       }
 
       function openCategoryBackfillModal(info) {
@@ -4902,6 +4980,130 @@
         return `<div class="table-wrap" data-popover-boundary><table><thead><tr>${renderSortHeader(tableKey, "name", "Name")}${renderSortHeader(tableKey, "hours", "Hours")}</tr></thead><tbody>
           ${sortedRows.map((row) => `<tr><td data-label="Name">${escapeHtml(row.label)}</td><td data-label="Hours">${escapeHtml(row.hours)}</td></tr>`).join("")}
         </tbody></table></div>`;
+      }
+
+      function projectEntryMatchesUser(entry, userFilter) {
+        if (!userFilter) return true;
+        const userId = String(userFilter.userId || "");
+        const userKey = String(userFilter.userKey || "");
+        if (userId) return String(entry["User ID"] || "") === userId;
+        if (userKey) {
+          return String(entry["User ID"] || "") === userKey || String(entry["User Name"] || "") === userKey;
+        }
+        return true;
+      }
+
+      function projectEntriesForUser(entries, userFilter) {
+        return (entries || []).filter((entry) => projectEntryMatchesUser(entry, userFilter));
+      }
+
+      function renderProjectUserTotalsList(projectDetail) {
+        const rows = projectDetail?.userTotals || [];
+        if (!rows.length) return `<div class="empty">No user time in this range.</div>`;
+        const tableKey = "projectUserTotals";
+        const sortedRows = sortTableRows(rows, tableKey, {
+          name: (row) => row.label,
+          hours: (row) => row.hours
+        });
+        return `
+          <div class="table-wrap" data-popover-boundary>
+            <table class="time-table project-user-entries-table">
+              <thead><tr>${renderSortHeader(tableKey, "name", "Name")}${renderSortHeader(tableKey, "hours", "Hours")}${renderActionsHeader()}</tr></thead>
+              <tbody>
+                ${sortedRows.map((row) => `
+                  <tr>
+                    <td data-label="Name">${escapeHtml(row.label)}</td>
+                    <td data-label="Hours">${escapeHtml(row.hours)}</td>
+                    <td data-label="Actions">
+                      ${row.userId || row.key ? renderIcon("view-project-user-entries", "", "", "View Entries", "&#128065;", false, {
+                        "data-project-id": projectDetail?.project?.["Project ID"] || "",
+                        "data-user-id": row.userId || "",
+                        "data-user-key": row.key || row.userId || "",
+                        "data-user-label": row.label || ""
+                      }) : ""}
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>`;
+      }
+
+      function renderProjectEntriesTable(entries, tableKey = "projectEntries") {
+        const sortedEntries = sortTableRows(entries, tableKey, {
+          date: (entry) => entry.Date,
+          entry: (entry) => entry["Task / Category"],
+          project: (entry) => entry["Project Name"],
+          hours: (entry) => entry.Hours,
+          payPeriod: (entry) => entry["Pay Period Label"]
+        });
+        return `
+          <div class="table-wrap" data-popover-boundary>
+            <table class="time-table project-entries-table">
+              <thead><tr>${renderSortHeader(tableKey, "date", "Date", "desc")}${renderSortHeader(tableKey, "entry", "Entry")}${renderSortHeader(tableKey, "project", "Project")}${renderSortHeader(tableKey, "hours", "Hours")}${renderSortHeader(tableKey, "payPeriod", "Pay Period")}${renderActionsHeader()}</tr></thead>
+              <tbody>
+                ${sortedEntries.map((entry) => `
+                  <tr>
+                    <td data-label="Date">${escapeHtml(entry.Date)}</td>
+                    <td data-label="Entry">
+                      <span class="task-title-row">
+                        <strong>${escapeHtml(entry["Task / Category"])}</strong>
+                        ${renderTimeSourceBadge(entry["Entry Source"])}
+                        ${renderNoteIcon(entry.Notes, "Time entry note")}
+                      </span>
+                      ${renderTimeEntrySubtitle(entry)}
+                    </td>
+                    <td data-label="Project">${escapeHtml(entry["Project Name"])}</td>
+                    <td data-label="Hours">${escapeHtml(entry.Hours)}</td>
+                    <td data-label="Pay Period">${escapeHtml(entry["Pay Period Label"])}</td>
+                    <td data-label="Actions">
+                      ${renderActionMenu([
+                        entry._permissions?.canEdit ? { action: "edit-time", symbol: "&#9998;", label: "Edit time entry", attrs: { "data-entry-id": entry["Time Entry ID"] } } : null,
+                        entry._permissions?.canDelete ? { action: "delete-time", symbol: "&#128465;", label: "Delete time entry", danger: true, attrs: { "data-entry-id": entry["Time Entry ID"] } } : null
+                      ].filter(Boolean), "Time entry actions")}
+                    </td>
+                  </tr>`).join("")}
+              </tbody>
+            </table>
+          </div>`;
+      }
+
+      function openProjectEntriesModal(projectDetail, userFilter = {}, options = {}) {
+        if (!projectDetail?.project) return;
+        const user = userFilter.userId ? findUser(userFilter.userId) : null;
+        const userLabel = userFilter.userLabel || user?.["Full Name"] || userFilter.userKey || "Unknown user";
+        const filteredEntries = projectEntriesForUser(projectDetail.entries || [], userFilter);
+        const totalHours = filteredEntries.reduce((sum, entry) => sum + Number(entry.Hours || 0), 0);
+        const modalState = {
+          projectId: projectDetail.project["Project ID"] || "",
+          userId: userFilter.userId || "",
+          userKey: userFilter.userKey || userFilter.userId || "",
+          userLabel: userLabel
+        };
+        state.projectEntriesModal = modalState;
+        const html = `
+          <div class="modal-backdrop" data-project-entries-modal="true" data-project-id="${escapeHtml(modalState.projectId)}" data-user-id="${escapeHtml(modalState.userId)}" data-user-key="${escapeHtml(modalState.userKey)}" ${options.stackSource ? `data-stack-source="${escapeHtml(options.stackSource)}"` : ""}>
+            <div class="modal stack">
+              <div class="modal-header">
+                <h3>${escapeHtml(userLabel)} Entries</h3>
+                <button type="button" data-action="close-modal">Close</button>
+              </div>
+              <div class="profile-preview" style="margin-bottom:12px;">
+                ${user ? avatarForUser(user) : ""}
+                <strong>${escapeHtml(projectDisplayName(projectDetail.project))}</strong>
+                <span>${escapeHtml(projectDetail.range?.label || "")}</span>
+              </div>
+              <div class="metric-grid" style="margin-bottom:12px;">
+                <div class="metric-card"><span>Hours</span><strong>${escapeHtml(totalHours.toFixed(2))}</strong></div>
+                <div class="metric-card"><span>Entries</span><strong>${escapeHtml(filteredEntries.length)}</strong></div>
+                <div class="metric-card"><span>Scope</span><strong>${escapeHtml(projectDetail.summary?.["Display Name"] || projectDisplayName(projectDetail.project))}</strong></div>
+                <div class="metric-card"><span>Range</span><strong>${escapeHtml(projectDetail.range?.label || "")}</strong></div>
+              </div>
+              ${filteredEntries.length ? renderProjectEntriesTable(filteredEntries, "projectEntries") : '<div class="empty">No entries for this user in the selected project range.</div>'}
+            </div>
+          </div>`;
+        if (options.stack) pushModal(html);
+        else setModal(html);
       }
 
       function renderCollapsibleSection(title, bodyHtml, meta = "", open = false, titleIsHtml = false) {
@@ -5017,6 +5219,8 @@
         }
         const actionElement = event.target.closest("[data-action]");
         const action = actionElement?.dataset.action;
+        const actionPopoverSurface = event.target.closest("[data-action-popover-floating], [data-action-popover]");
+        const actionPopoverStackSource = actionPopoverSurface?.dataset.stackSource || actionPopoverSurface?.closest(".modal-backdrop")?.dataset.stackSource || "";
         const actionMenuTrigger = event.target.closest("[data-action-menu-trigger]");
         if (actionMenuTrigger) {
           const menu = actionMenuTrigger.closest("[data-action-popover]");
@@ -5103,26 +5307,70 @@
           } else if (action === "complete-task") {
             await callServer("completeTask", event.target.closest("[data-task-id]").dataset.taskId);
             await refreshBoardData("Task completed.");
-          } else if (action === "add-time") {
+        } else if (action === "add-time") {
             const taskId = event.target.closest("[data-task-id]").dataset.taskId;
             state.tab = "time";
             render();
             const taskSelect = document.querySelector('[name="taskId"]');
             if (taskSelect) taskSelect.value = taskId;
+          } else if (action === "view-project-user-entries") {
+            const button = event.target.closest("[data-project-id][data-user-key]");
+            const projectId = button?.dataset.projectId || "";
+            const selectedProject = state.data.projectDashboard?.selectedProject;
+            if (selectedProject && String(selectedProject.project?.["Project ID"] || "") === String(projectId)) {
+              openProjectEntriesModal(selectedProject, {
+                userId: button.dataset.userId || "",
+                userKey: button.dataset.userKey || button.dataset.userId || "",
+                userLabel: button.dataset.userLabel || ""
+              });
+            }
           } else if (action === "edit-time") {
             const entryId = event.target.closest("[data-entry-id]").dataset.entryId;
-            const entry = (state.data.tracker.entries || []).find((item) => item["Time Entry ID"] === entryId);
-            openTimeModal(entry);
+            const inProjectEntriesModal = actionPopoverStackSource === "project-entries" || Boolean(event.target.closest("[data-project-entries-modal='true']"));
+            const sourceEntries = inProjectEntriesModal
+              ? (state.data.projectDashboard?.selectedProject?.entries || [])
+              : (state.data.tracker.entries || []);
+            const entry = sourceEntries.find((item) => item["Time Entry ID"] === entryId) || (state.data.tracker.entries || []).find((item) => item["Time Entry ID"] === entryId);
+            if (!entry) return;
+            openTimeModal(entry, inProjectEntriesModal ? { stack: true, stackSource: "project-entries" } : {});
           } else if (action === "delete-time") {
-            openConfirmModal("Delete this time entry?", "confirm-delete-time", "data-entry-id", event.target.closest("[data-entry-id]").dataset.entryId);
+            const entryId = event.target.closest("[data-entry-id]").dataset.entryId;
+            const inProjectEntriesModal = actionPopoverStackSource === "project-entries" || Boolean(event.target.closest("[data-project-entries-modal='true']"));
+            openConfirmModal(
+              "Delete this time entry?",
+              "confirm-delete-time",
+              "data-entry-id",
+              entryId,
+              "Delete",
+              "Confirm Delete",
+              inProjectEntriesModal ? { stack: true, stackSource: "project-entries" } : {}
+            );
           } else if (action === "confirm-delete-time") {
-            await callServer("deleteTimeEntry", {
-              timeEntryId: event.target.closest("[data-entry-id]").dataset.entryId,
+            const confirmModal = event.target.closest(".modal-backdrop");
+            const stackSource = confirmModal?.dataset.stackSource || "";
+            const entryId = event.target.closest("[data-entry-id]").dataset.entryId;
+            const result = await callServer("deleteTimeEntry", {
+              timeEntryId: entryId,
               overrideReason: state.data.permissions.canOverrideLockedPeriod ? "Deleted by permitted user from Time Tracker" : "",
               requestReason: "Delete requested from Time Tracker"
             });
-            clearModals();
-            await refreshTrackerData("Time entry deleted or request created.");
+            if (stackSource === "project-entries") {
+              closeTopModal();
+              if (result.requestCreated) {
+                setStatus("Time entry deleted or request created.");
+              } else {
+                await refreshProjectDashboardData("Time entry deleted or request created.");
+                if (state.projectEntriesModal) {
+                  const projectDetail = state.data.projectDashboard?.selectedProject;
+                  if (projectDetail) {
+                    openProjectEntriesModal(projectDetail, state.projectEntriesModal);
+                  }
+                }
+              }
+            } else {
+              clearModals();
+              await refreshTrackerData("Time entry deleted or request created.");
+            }
           } else if (action === "lock-period") {
             const periodId = state.data.paySummary?.payPeriod?.["Pay Period ID"];
             const saved = await callServer("lockPayPeriod", periodId);
@@ -5695,7 +5943,8 @@
               await refreshTrackerData("Time saved or request created.");
             }
           } else if (formType === "time-modal") {
-            await callServer("updateTimeEntry", {
+            const stackSource = form.closest(".modal-backdrop")?.dataset.stackSource || "";
+            const result = await callServer("updateTimeEntry", {
               timeEntryId: form.timeEntryId.value,
               userId: form.userId?.value || undefined,
               entryType: form.entryType.value,
@@ -5710,8 +5959,23 @@
               overrideReason: form.overrideReason?.value || "",
               requestReason: form.requestReason?.value || ""
             });
-            clearModals();
-            await refreshTrackerData("Time entry updated or request created.");
+            if (stackSource === "project-entries") {
+              closeTopModal();
+              if (result.requestCreated) {
+                setStatus("Time entry updated or request created.");
+              } else {
+                await refreshProjectDashboardData("Time entry updated or request created.");
+                if (state.projectEntriesModal) {
+                  const projectDetail = state.data.projectDashboard?.selectedProject;
+                  if (projectDetail) {
+                    openProjectEntriesModal(projectDetail, state.projectEntriesModal);
+                  }
+                }
+              }
+            } else {
+              clearModals();
+              await refreshTrackerData("Time entry updated or request created.");
+            }
           } else if (formType === "board-view-modal") {
             const saved = await callServer("saveBoardView", buildBoardViewPayload(form));
             state.selectedBoardViewId = saved["Board View ID"];

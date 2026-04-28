@@ -273,6 +273,33 @@ var TrustOpsProjectService = (function () {
       });
   }
 
+  function groupUserHours(entries) {
+    var grouped = {};
+    (entries || []).forEach(function (entry) {
+      var userId = String(entry["User ID"] || "");
+      var key = userId || String(entry["User Name"] || "Unassigned");
+      grouped[key] = grouped[key] || {
+        key: key,
+        userId: userId,
+        label: entry["User Name"] || "Unknown user",
+        hours: 0
+      };
+      grouped[key].hours += TrustOpsUtils.toNumber(entry.Hours);
+    });
+    return Object.keys(grouped)
+      .sort(function (a, b) {
+        return String(grouped[a].label).localeCompare(String(grouped[b].label));
+      })
+      .map(function (key) {
+        return {
+          key: grouped[key].key,
+          userId: grouped[key].userId,
+          label: grouped[key].label,
+          hours: Math.round(grouped[key].hours * 100) / 100
+        };
+      });
+  }
+
   function projectEntriesForRange(context, range, projectContext, scopeIds) {
     var canViewAll = TrustOpsPermissionService.canViewTimeEntries(context, "__all__");
     var scopeMap = {};
@@ -580,7 +607,7 @@ var TrustOpsProjectService = (function () {
     throw new Error("Unsupported project dashboard range.");
   }
 
-  function buildProjectDetailNode(project, projectContext, tasks, entries, range) {
+  function buildProjectDetailNode(context, project, projectContext, tasks, entries, range) {
     var projectId = project["Project ID"];
     var scopeIds = projectScopeIds(project, projectContext);
     var scopeMap = {};
@@ -597,6 +624,14 @@ var TrustOpsProjectService = (function () {
       if (a.Date === b.Date) return String(a["Task / Category"]).localeCompare(String(b["Task / Category"]));
       return String(a.Date).localeCompare(String(b.Date));
     });
+    var projectEntryRecords = projectEntries.map(function (entry) {
+      var record = TrustOpsUtils.sanitizeForClient(entry);
+      record._permissions = {
+        canEdit: TrustOpsPermissionService.canEditTimeEntry(context, entry),
+        canDelete: TrustOpsPermissionService.canDeleteTimeEntry(context, entry)
+      };
+      return record;
+    });
     var totalHours = projectEntries.reduce(function (sum, entry) {
       return sum + TrustOpsUtils.toNumber(entry.Hours);
     }, 0);
@@ -610,14 +645,14 @@ var TrustOpsProjectService = (function () {
       });
     });
     var childProjects = (projectContext.childProjectsByParentId[projectId] || []).map(function (childProject) {
-      return buildProjectDetailNode(childProject, projectContext, tasks, entries, range);
+      return buildProjectDetailNode(context, childProject, projectContext, tasks, entries, range);
     });
     return {
       project: TrustOpsUtils.sanitizeForClient(project),
       range: range,
       tasks: TrustOpsUtils.recordsForClient(projectTasks),
       childProjects: childProjects,
-      entries: TrustOpsUtils.recordsForClient(projectEntries),
+      entries: projectEntryRecords,
       summary: buildProjectSummary(project, projectContext, { visibleTasks: tasks }, entries),
       taskTotals: groupHours(
         projectEntries.filter(function (entry) {
@@ -630,15 +665,7 @@ var TrustOpsProjectService = (function () {
           return entry["Task / Category"];
         }
       ),
-      userTotals: groupHours(
-        projectEntries,
-        function (entry) {
-          return entry["User ID"] || entry["User Name"];
-        },
-        function (entry) {
-          return entry["User Name"] || "Unknown user";
-        }
-      ),
+      userTotals: groupUserHours(projectEntries),
       categoryTotals: groupHours(
         projectEntries.filter(function (entry) {
           return entry["Entry Type"] === TrustOpsConfig.ENTRY_TYPES.GENERAL;
@@ -681,6 +708,7 @@ var TrustOpsProjectService = (function () {
       : summaries;
     var selectedProject = projectId
       ? buildProjectDetailNode(
+          context,
           projectContext.allById[String(projectId)] || null,
           projectContext,
           tasks,
@@ -735,7 +763,7 @@ var TrustOpsProjectService = (function () {
     if (!project) throw new Error("Project not found.");
     var tasks = TrustOpsTaskService.listTasks(context, {});
     var entries = projectEntriesForRange(context, range, projectContext);
-    return buildProjectDetailNode(project, projectContext, tasks, entries, range);
+    return buildProjectDetailNode(context, project, projectContext, tasks, entries, range);
   }
 
   function archiveCategory(context, categoryId) {
