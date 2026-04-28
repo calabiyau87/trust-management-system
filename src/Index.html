@@ -83,6 +83,7 @@
         font: 14px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
         -webkit-font-smoothing: antialiased;
         text-rendering: optimizeLegibility;
+        overflow-x: hidden;
       }
 
       button,
@@ -99,6 +100,7 @@
         color: var(--text);
         cursor: pointer;
         padding: 8px 11px;
+        touch-action: manipulation;
         transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
       }
 
@@ -263,6 +265,8 @@
         background: var(--surface);
         border-bottom: 1px solid var(--border);
         overflow-x: auto;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
       }
 
       nav button {
@@ -372,6 +376,8 @@
         border-radius: var(--radius-md);
         background: var(--surface);
         box-shadow: var(--shadow-soft);
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
       }
 
       .table-wrap table {
@@ -1553,12 +1559,6 @@
         color: var(--text);
       }
 
-      @media (max-width: 900px) {
-        .auth-card {
-          grid-template-columns: 1fr;
-        }
-      }
-
       .status-line {
         min-height: 22px;
         display: flex;
@@ -1738,7 +1738,108 @@
         display: none !important;
       }
 
-      @media (max-width: 820px) {
+      @media (hover: none) and (pointer: coarse) {
+        button:hover,
+        button.primary:hover,
+        .sort-header:hover,
+        .task-note-icon:hover,
+        .icon-button:not(.danger):hover,
+        .action-popover-floating button:hover,
+        .action-popover-menu button:hover {
+          box-shadow: none;
+          transform: none;
+        }
+
+        button:hover {
+          border-color: var(--border);
+        }
+
+        button.primary:hover {
+          background: var(--accent);
+          border-color: var(--accent);
+        }
+
+        .sort-header:hover {
+          background: transparent;
+        }
+
+        .task-note-icon:hover,
+        .task-note-icon:focus-visible {
+          color: var(--icon-neutral-strong);
+          background: var(--icon-surface);
+          border-color: var(--icon-border);
+        }
+
+        .icon-button:not(.danger):hover,
+        .icon-button:not(.danger):focus-visible {
+          color: var(--icon-neutral);
+          background: var(--icon-surface);
+          border-color: var(--icon-border);
+        }
+
+        .board-group-toggle:hover,
+        .board-group-toggle:focus-visible {
+          background: var(--surface-muted);
+        }
+
+        .action-popover-floating button:hover,
+        .action-popover-floating button:focus-visible,
+        .action-popover-menu button:hover,
+        .action-popover-menu button:focus-visible {
+          background: transparent;
+          box-shadow: none;
+          transform: none;
+        }
+
+        .project-summary-row:hover,
+        .pay-row:hover,
+        tbody tr:hover td {
+          background: transparent;
+        }
+
+        .hierarchy-child-row:hover td {
+          background: var(--hierarchy-child-row-bg);
+        }
+
+        button,
+        input:not([type="checkbox"]):not([type="radio"]),
+        select,
+        textarea {
+          min-height: 44px;
+        }
+
+        nav button,
+        .sidebar-actions button,
+        .action-popover-floating button,
+        .action-popover-menu button,
+        .board-group-toggle,
+        .sort-header,
+        .task-note-icon,
+        .hierarchy-toggle,
+        .icon-button {
+          min-height: 44px;
+        }
+
+        .icon-button,
+        .action-popover-trigger,
+        .task-note-icon,
+        .hierarchy-toggle {
+          width: 44px;
+          height: 44px;
+        }
+
+        .action-popover-floating button,
+        .action-popover-menu button {
+          white-space: normal;
+          padding: 10px 12px;
+        }
+      }
+
+      @media (max-width: 960px) {
+        .auth-card {
+          grid-template-columns: 1fr;
+        }
+
         header {
           align-items: flex-start;
           flex-direction: column;
@@ -1751,26 +1852,121 @@
           padding-right: 14px;
         }
 
+        .toolbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .sticky-region {
+          position: static;
+          top: auto;
+          padding-bottom: 0;
+        }
+
         .filters,
         .form-grid,
         .form-grid.two,
         .admin-grid,
-        .side-layout,
-        .settings-layout {
-          grid-template-columns: 1fr;
-        }
-
         .metric-grid,
-        .detail-grid {
+        .detail-grid,
+        .side-layout,
+        .settings-layout,
+        .auth-card {
           grid-template-columns: 1fr;
         }
 
-        .side-layout[data-sidebar-collapsed="true"],
-        .settings-layout[data-sidebar-collapsed="true"],
-        .settings-layout {
-          grid-template-columns: 1fr;
+        .auth-panel {
+          padding: 24px;
         }
 
+        .side-pane {
+          position: static;
+          top: auto;
+          width: auto;
+          max-height: none;
+          overflow: visible;
+        }
+
+        .side-layout[data-sidebar-collapsed="true"] .side-pane,
+        .settings-layout[data-sidebar-collapsed="true"] .side-pane {
+          width: auto;
+          padding: 16px;
+          overflow: visible;
+          align-items: stretch;
+          justify-items: stretch;
+        }
+
+        .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-head,
+        .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-head {
+          justify-content: space-between;
+        }
+
+        .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-short,
+        .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-short {
+          display: none;
+        }
+
+        .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-text,
+        .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-head strong,
+        .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-text,
+        .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-head strong {
+          display: inline;
+        }
+
+        .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-body,
+        .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-body,
+        .side-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-group .sidebar-children,
+        .settings-layout[data-sidebar-collapsed="true"] .side-pane .sidebar-group .sidebar-children {
+          display: grid;
+        }
+
+        .side-layout[data-sidebar-collapsed="true"] .side-pane button,
+        .settings-layout[data-sidebar-collapsed="true"] .side-pane button {
+          text-align: left;
+          padding-left: 10px;
+          padding-right: 10px;
+        }
+
+        .modal-backdrop {
+          padding: 10px;
+        }
+
+        .modal {
+          width: 100%;
+          max-height: calc(100dvh - 20px);
+          padding: 16px;
+          border-radius: 18px;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-gutter: stable;
+        }
+
+        .modal-header {
+          align-items: flex-start;
+          flex-wrap: wrap;
+        }
+
+        .pay-detail-modal .modal-header {
+          padding-bottom: 12px;
+        }
+
+        .collapsible-section > summary {
+          padding: 12px 14px;
+        }
+
+        .collapsible-body {
+          padding: 0 14px 14px;
+        }
+
+        .auth-panel.hero h1 {
+          font-size: clamp(26px, 7vw, 38px);
+        }
+
+        .auth-panel.login h2 {
+          font-size: 22px;
+        }
+      }
+
+      @media (max-width: 720px) {
         table,
         thead,
         tbody,
@@ -1787,7 +1983,7 @@
         tr {
           border: 1px solid var(--border);
           border-radius: var(--radius-md);
-          margin-bottom: 10px;
+          margin-bottom: 12px;
           background: var(--surface);
           box-shadow: var(--shadow-soft);
           overflow: hidden;
@@ -1796,9 +1992,10 @@
         td {
           border: 0;
           display: grid;
-          grid-template-columns: 110px 1fr;
-          gap: 8px;
-          padding: 9px 10px;
+          grid-template-columns: minmax(92px, 36%) minmax(0, 1fr);
+          gap: 10px;
+          padding: 11px 12px;
+          align-items: start;
         }
 
         td::before {
@@ -1806,6 +2003,37 @@
           color: var(--muted);
           font-weight: 800;
           font-size: 12px;
+          line-height: 1.25;
+          min-width: 0;
+          overflow-wrap: anywhere;
+        }
+
+        td[data-label="Actions"] {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
+        td[data-label="Actions"]::before {
+          flex: 1 1 auto;
+        }
+
+        td[data-label="Actions"] .action-popover {
+          flex: 0 0 auto;
+          width: auto;
+          justify-content: flex-end;
+        }
+
+        .table-wrap td[data-label="Actions"] .action-popover {
+          width: auto;
+        }
+
+        .settings-actions-table .actions-header,
+        .settings-actions-table td[data-label="Actions"] {
+          width: auto;
+          min-width: 0;
+          max-width: none;
         }
       }
     </style>
@@ -2470,6 +2698,7 @@
       const ACTION_POPOVER_CLOSE_DELAY_MS = 85;
       let actionPopoverCloseTimer = null;
       let activeActionPopover = null;
+      const supportsHoverInteraction = Boolean(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
 
       function getActionPopoverRoot() {
         return document.getElementById("action-popover-root");
@@ -5069,6 +5298,7 @@
       });
 
       document.addEventListener("mouseover", (event) => {
+        if (!supportsHoverInteraction) return;
         if (isInsideActiveActionPopover(event.target)) {
           clearActionPopoverCloseTimer();
         }
@@ -5080,6 +5310,7 @@
       });
 
       document.addEventListener("mouseout", (event) => {
+        if (!supportsHoverInteraction) return;
         const surface = getActionPopoverSurface(event.target);
         if (!surface) return;
         const related = event.relatedTarget;
@@ -5092,6 +5323,7 @@
       });
 
       document.addEventListener("focusin", (event) => {
+        if (!supportsHoverInteraction) return;
         if (isInsideActiveActionPopover(event.target)) {
           clearActionPopoverCloseTimer();
         }
@@ -5104,6 +5336,7 @@
       });
 
       document.addEventListener("focusout", (event) => {
+        if (!supportsHoverInteraction) return;
         const surface = getActionPopoverSurface(event.target);
         if (!surface) return;
         const related = event.relatedTarget;
