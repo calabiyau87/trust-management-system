@@ -1453,78 +1453,7 @@
         border-color: #dfb7b7;
       }
 
-      .auth-shell {
-        min-height: 100vh;
-        display: grid;
-        place-items: center;
-        padding: 28px 20px;
-        background:
-          radial-gradient(circle at top left, rgba(35, 93, 87, 0.18), transparent 32%),
-          radial-gradient(circle at bottom right, rgba(16, 65, 61, 0.16), transparent 34%),
-          linear-gradient(180deg, #f4f7f9 0%, #ebeff3 100%);
-      }
-
-      body[data-theme="dark"] .auth-shell {
-        background:
-          radial-gradient(circle at top left, rgba(87, 172, 161, 0.16), transparent 28%),
-          radial-gradient(circle at bottom right, rgba(18, 26, 31, 0.92), transparent 30%),
-          linear-gradient(180deg, #11171c 0%, #0b1014 100%);
-      }
-
-      .auth-card {
-        width: min(940px, 100%);
-        display: grid;
-        grid-template-columns: minmax(0, 1.05fr) minmax(320px, 420px);
-        gap: 0;
-        border: 1px solid var(--border);
-        border-radius: 24px;
-        overflow: hidden;
-        background: var(--surface);
-        box-shadow: 0 24px 72px rgba(21, 34, 50, 0.16);
-      }
-
-      .auth-panel {
-        padding: 34px;
-      }
-
-      .auth-panel.hero {
-        position: relative;
-        display: grid;
-        align-content: start;
-        gap: 18px;
-        color: #fff;
-        background:
-          linear-gradient(135deg, rgba(19, 33, 45, 0.88), rgba(20, 77, 71, 0.9)),
-          radial-gradient(circle at top right, rgba(255, 255, 255, 0.14), transparent 28%);
-      }
-
-      .auth-brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 12px;
-      }
-
-      .auth-brand .brand-mark {
-        width: 42px;
-        height: 42px;
-        font-size: 15px;
-      }
-
-      .auth-panel.hero h1 {
-        margin: 0;
-        font-size: clamp(30px, 4vw, 44px);
-        line-height: 1.02;
-        letter-spacing: -0.04em;
-      }
-
-      .auth-panel.hero p {
-        margin: 0;
-        max-width: 54ch;
-        color: rgba(255, 255, 255, 0.82);
-        font-size: 15px;
-      }
-
-      .auth-bullets {
+      .auth-bullets-legacy-unused {
         display: grid;
         gap: 10px;
         margin: 6px 0 0;
@@ -1533,81 +1462,275 @@
         color: rgba(255, 255, 255, 0.9);
       }
 
-      .auth-bullets li {
+      .auth-bullets-legacy-unused li {
         display: flex;
         gap: 10px;
         align-items: flex-start;
       }
 
-      .auth-bullets li::before {
+      .auth-bullets-legacy-unused li::before {
         content: "•";
         color: rgba(255, 255, 255, 0.7);
         line-height: 1.2;
       }
 
-      .auth-panel.login {
+      .auth-shell,
+      .boot-shell {
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding:
+          calc(28px + env(safe-area-inset-top))
+          calc(18px + env(safe-area-inset-right))
+          calc(28px + env(safe-area-inset-bottom))
+          calc(18px + env(safe-area-inset-left));
+        background:
+          radial-gradient(circle at top left, rgba(35, 93, 87, 0.14), transparent 32%),
+          radial-gradient(circle at bottom right, rgba(16, 65, 61, 0.12), transparent 34%),
+          linear-gradient(180deg, #f5f8fb 0%, #edf2f6 100%);
+      }
+
+      body[data-theme="dark"] .auth-shell,
+      body[data-theme="dark"] .boot-shell {
+        background:
+          radial-gradient(circle at top left, rgba(87, 172, 161, 0.14), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(18, 26, 31, 0.92), transparent 30%),
+          linear-gradient(180deg, #11171c 0%, #0b1014 100%);
+      }
+
+      .auth-card,
+      .boot-card {
+        width: min(560px, 100%);
         display: grid;
         gap: 18px;
+        padding: 32px;
+        justify-items: center;
+        text-align: center;
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        background: rgba(255, 255, 255, 0.94);
+        box-shadow: 0 24px 72px rgba(21, 34, 50, 0.16);
+        backdrop-filter: blur(16px);
       }
 
-      .auth-panel.login h2 {
-        margin: 0;
-        font-size: 24px;
-        letter-spacing: -0.02em;
+      body[data-theme="dark"] .auth-card,
+      body[data-theme="dark"] .boot-card {
+        background: rgba(23, 29, 34, 0.9);
       }
 
-      .auth-panel.login p {
+      .auth-brand,
+      .boot-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .auth-brand .brand-mark,
+      .boot-brand .brand-mark {
+        width: 44px;
+        height: 44px;
+        font-size: 15px;
+      }
+
+      .auth-eyebrow,
+      .boot-eyebrow {
         margin: 0;
         color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
       }
 
-      .auth-button-slot {
+      .auth-title,
+      .boot-title {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 40px);
+        line-height: 1.04;
+        letter-spacing: -0.04em;
+      }
+
+      .auth-copy,
+      .boot-copy {
+        margin: 0;
+        max-width: 34ch;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      .auth-actions {
         display: grid;
         gap: 12px;
-        justify-items: start;
-        min-height: 48px;
+        justify-items: center;
       }
 
-      .auth-note {
-        padding: 14px 16px;
-        border-radius: var(--radius-md);
-        background: var(--surface-muted);
+      .auth-actions .primary {
+        min-width: 220px;
+      }
+
+      .auth-note,
+      .boot-note {
+        margin: 0;
+        max-width: 34ch;
         color: var(--muted);
+        font-size: 13px;
       }
 
-      .auth-error {
-        display: none;
-        padding: 12px 14px;
-        border: 1px solid #dfb7b7;
-        border-radius: var(--radius-md);
-        background: #fff7f7;
+      .auth-denial {
+        display: grid;
+        gap: 8px;
+        justify-items: center;
+        text-align: center;
+        padding: 14px 16px;
+        border: 1px solid rgba(176, 69, 69, 0.18);
+        border-radius: 16px;
+        background: rgba(176, 69, 69, 0.08);
         color: var(--danger);
       }
 
-      body[data-theme="dark"] .auth-error {
+      body[data-theme="dark"] .auth-denial {
         background: rgba(103, 37, 37, 0.2);
       }
 
-      .auth-error.visible {
-        display: block;
+      .auth-denial strong {
+        color: var(--danger);
       }
 
-      .auth-meta {
+      .boot-steps {
         display: grid;
-        gap: 8px;
-        font-size: 12px;
-        color: var(--muted);
+        gap: 10px;
+        width: 100%;
       }
 
-      .auth-meta code {
-        padding: 1px 6px;
-        border-radius: 999px;
+      .boot-step {
+        display: grid;
+        grid-template-columns: 18px minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        border-radius: 16px;
         background: var(--surface-muted);
-        color: var(--text);
+        color: var(--muted);
+        text-align: left;
       }
 
-      .error-hint {
-        margin-top: 12px;
+      .boot-step::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        margin-top: 4px;
+        border: 2px solid currentColor;
+        border-radius: 999px;
+        opacity: 0.55;
+      }
+
+      .boot-step.is-active {
+        color: var(--accent-strong);
+        border-color: rgba(35, 93, 87, 0.22);
+        background: rgba(35, 93, 87, 0.08);
+      }
+
+      body[data-theme="dark"] .boot-step.is-active {
+        border-color: rgba(87, 172, 161, 0.24);
+        background: rgba(87, 172, 161, 0.14);
+      }
+
+      .boot-step.is-active::before {
+        border-color: var(--accent);
+        background: var(--accent);
+        opacity: 1;
+        box-shadow: 0 0 0 5px rgba(35, 93, 87, 0.08);
+      }
+
+      body[data-theme="dark"] .boot-step.is-active::before {
+        box-shadow: 0 0 0 5px rgba(87, 172, 161, 0.08);
+      }
+
+      .boot-step.is-complete {
+        color: var(--ok);
+        border-color: rgba(47, 115, 81, 0.18);
+        background: rgba(47, 115, 81, 0.08);
+      }
+
+      .boot-step.is-complete::before {
+        content: "✓";
+        display: grid;
+        place-items: center;
+        width: 14px;
+        content: "\\2713";
+        height: 14px;
+        margin-top: 2px;
+        border: 0;
+        color: var(--ok);
+        background: transparent;
+        box-shadow: none;
+        font-size: 10px;
+        font-weight: 800;
+        opacity: 1;
+      }
+
+      .boot-step-label {
+        display: block;
+        font-weight: 800;
+      }
+
+      .boot-step-copy {
+        display: block;
+        margin-top: 4px;
+        color: inherit;
+        font-size: 13px;
+        opacity: 0.9;
+      }
+
+      .boot-footer {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .boot-spinner {
+        flex: 0 0 auto;
+        width: 18px;
+        height: 18px;
+        border-width: 2px;
+      }
+
+      .boot-shell-error {
+        background:
+          radial-gradient(circle at top left, rgba(176, 69, 69, 0.12), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(176, 69, 69, 0.08), transparent 32%),
+          linear-gradient(180deg, #f8f1f1 0%, #f2ebeb 100%);
+      }
+
+      body[data-theme="dark"] .boot-shell-error {
+        background:
+          radial-gradient(circle at top left, rgba(227, 129, 129, 0.18), transparent 24%),
+          radial-gradient(circle at bottom right, rgba(51, 24, 24, 0.9), transparent 30%),
+          linear-gradient(180deg, #1a1111 0%, #0f0a0a 100%);
+      }
+
+      .boot-card-error {
+        gap: 16px;
+        border-color: rgba(176, 69, 69, 0.2);
+      }
+
+      .boot-error-title {
+        color: var(--danger);
+      }
+
+      .boot-error-message {
+        margin: 0;
+        color: var(--text);
+        font-size: 15px;
+        word-break: break-word;
+      }
+
+      .boot-error-hint {
+        margin: 0;
         color: var(--muted);
         font-size: 13px;
       }
@@ -1698,10 +1821,15 @@
         color: var(--muted);
         font-size: 14px;
         line-height: 1;
+        content: "\\25B8";
       }
 
       .collapsible-section[open] > summary::after {
         content: "▾";
+      }
+
+      .collapsible-section[open] > summary::after {
+        content: "\\25BE";
       }
 
       .collapsible-meta {
@@ -1885,8 +2013,14 @@
       }
 
       @media (max-width: 960px) {
-        .auth-card {
-          grid-template-columns: 1fr;
+        .auth-card,
+        .boot-card {
+          padding: 24px;
+        }
+
+        .auth-title,
+        .boot-title {
+          font-size: clamp(24px, 7vw, 32px);
         }
 
         header {
@@ -1919,13 +2053,8 @@
         .metric-grid,
         .detail-grid,
         .side-layout,
-        .settings-layout,
-        .auth-card {
+        .settings-layout {
           grid-template-columns: 1fr;
-        }
-
-        .auth-panel {
-          padding: 24px;
         }
 
         .side-pane {
@@ -2006,13 +2135,6 @@
           padding: 0 14px 14px;
         }
 
-        .auth-panel.hero h1 {
-          font-size: clamp(26px, 7vw, 38px);
-        }
-
-        .auth-panel.login h2 {
-          font-size: 22px;
-        }
       }
 
       @media (max-width: 720px) {
@@ -2088,7 +2210,7 @@
     </style>
   </head>
   <body>
-    <div id="app" class="loading">Loading Trust Ops...</div>
+    <div id="app"></div>
     <div id="modal-root"></div>
     <div id="action-popover-root"></div>
 
@@ -2103,6 +2225,11 @@
       const state = {
         tab: "board",
         data: null,
+        boot: {
+          phase: "idle",
+          message: "",
+          error: ""
+        },
         auth: {
           idToken: "",
           email: "",
@@ -2352,16 +2479,196 @@
         return "If you opened Trust Ops inside another app or with multiple Google accounts signed in, open the GitHub Pages login directly in Safari or Chrome. A private or incognito tab can help avoid account and cookie conflicts.";
       }
 
-      function showFatalError(message) {
+      function isAccessDeniedError(message) {
+        const text = String(message || "");
+        return /not authorized for Trust Ops|is archived|is inactive/i.test(text);
+      }
+
+      function authScreenCopy(message) {
+        if (isAccessDeniedError(message)) {
+          return "This Google account is not on the Trust Ops users list.";
+        }
+        if (String(message || "").trim()) {
+          return "We couldn't verify sign-in. Try again.";
+        }
+        return "Sign in with Google to verify your access.";
+      }
+
+      function authScreenNote(message) {
+        if (isAccessDeniedError(message)) {
+          return "If this looks wrong, try another organization account or contact your admin.";
+        }
+        if (String(message || "").trim()) {
+          return "Continue with Google to verify your account, then return to Trust Ops automatically.";
+        }
+        return "Continue with Google to verify your account.";
+      }
+
+      function authScreenButtonLabel(message) {
+        return isAccessDeniedError(message) ? "Try another account" : "Sign in with Google";
+      }
+
+      function bootTitleForPhase(phase) {
+        if (phase === "loading-app") return "Loading App";
+        if (phase === "error") return "Trust Ops could not finish loading.";
+        return "Verifying User";
+      }
+
+      function bootCopyForPhase(phase) {
+        if (phase === "loading-app") {
+          return "Preparing your workspace and recent data.";
+        }
+        if (phase === "error") {
+          return "Trust Ops stopped during startup.";
+        }
+        return "Checking your Google account and permissions.";
+      }
+
+      function buildCardBrand(prefix, eyebrowText, titleText, extraTitleClass = "") {
+        const brand = document.createElement("div");
+        const mark = document.createElement("div");
+        const text = document.createElement("div");
+        const eyebrow = document.createElement("p");
+        const title = document.createElement("h1");
+
+        brand.className = `${prefix}-brand`;
+        mark.className = "brand-mark";
+        mark.textContent = "TO";
+        eyebrow.className = `${prefix}-eyebrow`;
+        eyebrow.textContent = eyebrowText;
+        title.className = `${prefix}-title${extraTitleClass ? ` ${extraTitleClass}` : ""}`;
+        title.textContent = titleText;
+
+        text.append(eyebrow, title);
+        brand.append(mark, text);
+        return brand;
+      }
+
+      function buildCardText(tagName, className, text) {
+        const element = document.createElement(tagName);
+        element.className = className;
+        element.textContent = text;
+        return element;
+      }
+
+      function clearRootAnnouncements(root) {
+        root.removeAttribute("role");
+        root.removeAttribute("aria-live");
+        root.removeAttribute("aria-atomic");
+      }
+
+      function buildBootStep(step, phase) {
+        const item = document.createElement("div");
+        const label = document.createElement("span");
+        const copy = document.createElement("span");
+        const isActive = phase === step.phase;
+        const isComplete = phase === "loading-app" && step.phase === "verifying-user";
+
+        item.className = `boot-step${isActive ? " is-active" : ""}${isComplete ? " is-complete" : ""}`;
+        item.dataset.bootStep = step.phase;
+        if (isActive) {
+          item.setAttribute("aria-current", "step");
+        }
+
+        label.className = "boot-step-label";
+        label.textContent = step.label;
+        copy.className = "boot-step-copy";
+        copy.textContent = step.copy;
+        item.append(label, copy);
+        return item;
+      }
+
+      function renderBootScreen(options = {}) {
+        const phase = String(options.phase || state.boot.phase || "verifying-user");
+        const message = Object.prototype.hasOwnProperty.call(options, "message")
+          ? String(options.message || "")
+          : bootCopyForPhase(phase);
+        const error = Object.prototype.hasOwnProperty.call(options, "error")
+          ? String(options.error || "")
+          : String(state.boot.error || "");
         const root = document.getElementById("app");
         if (!root) return;
-        root.className = "error";
-        root.innerHTML = `
-          <div class="error">
-            <strong>Trust Ops crashed while loading.</strong><br>
-            ${escapeHtml(message || "Unknown error")}
-            ${mobileRecoveryHint(message) ? `<div class="error-hint">${escapeHtml(mobileRecoveryHint(message))}</div>` : ""}
-          </div>`;
+        state.boot.phase = phase;
+        state.boot.message = message;
+        state.boot.error = error;
+        root.className = phase === "error" ? "boot-shell boot-shell-error" : "boot-shell";
+        root.setAttribute("role", phase === "error" ? "alert" : "status");
+        root.setAttribute("aria-live", phase === "error" ? "assertive" : "polite");
+        root.setAttribute("aria-atomic", "true");
+        if (phase === "error") {
+          const hint = mobileRecoveryHint(error || message);
+          const section = document.createElement("section");
+          section.className = "boot-card boot-card-error";
+          section.append(
+            buildCardBrand("boot", "Trust Ops", bootTitleForPhase("error"), "boot-error-title"),
+            buildCardText("p", "boot-copy", message || bootCopyForPhase("error")),
+            buildCardText("p", "boot-error-message", error || "Unknown error")
+          );
+          if (hint) {
+            section.append(buildCardText("p", "boot-error-hint", hint));
+          }
+          root.replaceChildren(section);
+          return;
+        }
+        const section = document.createElement("section");
+        const steps = document.createElement("div");
+        const footer = document.createElement("div");
+        const spinner = document.createElement("span");
+        const footerText = document.createElement("span");
+
+        section.className = "boot-card";
+        steps.className = "boot-steps";
+        steps.setAttribute("aria-label", "Startup stages");
+        [
+          {
+            phase: "verifying-user",
+            label: "Verifying User",
+            copy: "Checking Google sign-in and access."
+          },
+          {
+            phase: "loading-app",
+            label: "Loading App",
+            copy: "Preparing your workspace."
+          }
+        ].forEach((step) => {
+          steps.append(buildBootStep(step, phase));
+        });
+
+        footer.className = "boot-footer";
+        spinner.className = "spinner boot-spinner";
+        spinner.setAttribute("aria-hidden", "true");
+        footerText.textContent = phase === "loading-app"
+          ? "Loading the app shell and recent data."
+          : "Please wait while Trust Ops verifies access.";
+        footer.append(spinner, footerText);
+
+        section.append(
+          buildCardBrand("boot", "Trust Ops", bootTitleForPhase(phase)),
+          buildCardText("p", "boot-copy", message || bootCopyForPhase(phase)),
+          steps,
+          footer
+        );
+        root.replaceChildren(section);
+      }
+
+      function setBootStage(phase, message = "", error = "") {
+        const resolvedMessage = message || bootCopyForPhase(phase);
+        renderBootScreen({ phase, message: resolvedMessage, error });
+        state.boot.message = resolvedMessage;
+      }
+
+      function showFatalError(message) {
+        const text = String(message || "Unknown error");
+        state.auth.loading = false;
+        state.auth.initialized = false;
+        state.boot.phase = "error";
+        state.boot.message = bootCopyForPhase("error");
+        state.boot.error = text;
+        renderBootScreen({
+          phase: "error",
+          message: bootCopyForPhase("error"),
+          error: text
+        });
       }
 
       function clearAuthState(message = "") {
@@ -2373,6 +2680,9 @@
         state.auth.initialized = false;
         state.auth.error = message || "";
         state.data = null;
+        state.boot.phase = "idle";
+        state.boot.message = "";
+        state.boot.error = "";
         saveStoredAuthToken("");
         clearLocationHash();
       }
@@ -3088,12 +3398,23 @@
         }
         if (!state.auth.idToken) {
           state.auth.loading = false;
+          state.boot.phase = "idle";
+          state.boot.message = "";
+          state.boot.error = "";
           renderAuthScreen(state.auth.error || "");
           return;
         }
         state.auth.loading = true;
-        document.getElementById("app").className = "loading";
-        document.getElementById("app").textContent = "Verifying Google sign-in...";
+        state.auth.error = "";
+        setBootStage("verifying-user");
+        await new Promise((resolve) => {
+          if (window.requestAnimationFrame) {
+            window.requestAnimationFrame(() => resolve());
+          } else {
+            window.setTimeout(resolve, 16);
+          }
+        });
+        setBootStage("loading-app");
         try {
           state.data = await callServer("getInitialData");
           state.auth.loading = false;
@@ -3134,53 +3455,61 @@
       }
 
       function renderAuthScreen(message = "") {
+        state.boot.phase = "idle";
+        state.boot.message = "";
+        state.boot.error = "";
         if (message) {
           state.auth.error = message;
         }
         const githubAuthUrl = buildGithubAuthUrl();
+        const authMessage = String(state.auth.error || "");
+        const denied = isAccessDeniedError(authMessage);
         const root = document.getElementById("app");
+        const section = document.createElement("section");
+        const actions = document.createElement("div");
+
         root.className = "auth-shell";
-        root.innerHTML = `
-          <section class="auth-card">
-            <div class="auth-panel hero">
-              <div class="auth-brand">
-                <div class="brand-mark">TO</div>
-                <div>
-                  <p style="margin: 0; color: rgba(255,255,255,0.72); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;">Trust Ops</p>
-                  <h1>Sign in on GitHub Pages to continue.</h1>
-                </div>
-              </div>
-              <p>This app verifies your Google ID token against the Users allowlist, then loads tasks, time, pay, and administration without exposing the spreadsheet to regular users.</p>
-              <ul class="auth-bullets">
-                <li>Regular users only need app access.</li>
-                <li>Owner and operator actions stay server-side and audited.</li>
-                <li>Inactive or archived Users rows are rejected after sign-in.</li>
-              </ul>
-            </div>
-            <div class="auth-panel login">
-              <div>
-                <h2>GitHub Pages Login</h2>
-                <p>Use the Google account that appears in the Users sheet. The login bridge opens on a valid top-level web origin so Google Identity Services can complete on mobile browsers.</p>
-              </div>
-              <div class="auth-button-slot">
-                ${githubAuthUrl
-                  ? `<a class="primary" data-auth-continue href="${escapeHtml(githubAuthUrl)}" target="_top" rel="noopener noreferrer">Continue with Google</a>`
-                  : `<button type="button" class="primary" data-auth-continue disabled>Continue with Google</button>`
-                }
-              </div>
-              <div class="auth-error ${state.auth.error ? "visible" : ""}">${escapeHtml(state.auth.error || "")}</div>
-              <div class="auth-note">
-                Execute the web app as <code>Me</code>. Access is controlled by the Users table, not by direct spreadsheet sharing.
-                ${githubAuthUrl ? `The login bridge is ${escapeHtml(AUTH_CONFIG.githubAuthUrl)}.` : "Set the GitHub Pages auth URL in the script property TRUST_OPS_GITHUB_PAGES_AUTH_URL."}
-                If sign-in loops or the app crashes on mobile, open the GitHub Pages login in Safari or Chrome directly. Private or incognito tabs can help when multiple Google accounts are signed in.
-              </div>
-              <div class="auth-meta">
-                <span>Configured client ID: <code>${escapeHtml(AUTH_CONFIG.clientId || "missing")}</code></span>
-                <span>GitHub Pages auth URL: <code>${escapeHtml(AUTH_CONFIG.githubAuthUrl || "missing")}</code></span>
-                <span>Stored token lives only in this browser session, and falls back to in-memory storage if browser storage is blocked.</span>
-              </div>
-            </div>
-          </section>`;
+        clearRootAnnouncements(root);
+        section.className = "auth-card";
+        section.dataset.authState = denied ? "denied" : "landing";
+        actions.className = "auth-actions";
+
+        if (githubAuthUrl) {
+          const link = document.createElement("a");
+          link.className = "primary";
+          link.dataset.authContinue = "true";
+          link.href = githubAuthUrl;
+          link.target = "_top";
+          link.rel = "noopener noreferrer";
+          link.textContent = authScreenButtonLabel(authMessage);
+          actions.append(link);
+        } else {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "primary";
+          button.dataset.authContinue = "true";
+          button.disabled = true;
+          button.textContent = authScreenButtonLabel(authMessage);
+          actions.append(button);
+        }
+
+        section.append(
+          buildCardBrand("auth", denied ? "Access denied" : "Trust Ops", denied ? "This account does not have access." : "Welcome to Trust Ops."),
+          buildCardText("p", "auth-copy", authScreenCopy(authMessage)),
+          actions
+        );
+        if (denied) {
+          const denial = document.createElement("div");
+          const strong = document.createElement("strong");
+          const note = document.createElement("div");
+          denial.className = "auth-denial";
+          strong.textContent = "Access denied";
+          note.textContent = authScreenNote(authMessage);
+          denial.append(strong, note);
+          section.append(denial);
+        }
+        section.append(buildCardText("p", "auth-note", authScreenNote(authMessage)));
+        root.replaceChildren(section);
       }
 
       function signOut() {
@@ -3273,6 +3602,14 @@
       function render() {
         const data = state.data;
         if (!data) {
+          if (state.boot.phase === "error" || state.boot.phase === "verifying-user" || state.boot.phase === "loading-app") {
+            renderBootScreen({
+              phase: state.boot.phase,
+              message: state.boot.message,
+              error: state.boot.error
+            });
+            return;
+          }
           renderAuthScreen(state.auth.error || "");
           return;
         }
@@ -3285,6 +3622,9 @@
           ["pay", "Pay Summary"]
         ];
         tabs.push(["settings", "Settings"]);
+        state.boot.phase = "idle";
+        state.boot.message = "";
+        state.boot.error = "";
         document.getElementById("app").className = "app-shell";
         document.getElementById("app").innerHTML = `
           <div class="app-topbar">
@@ -6295,11 +6635,6 @@
       window.addEventListener("unhandledrejection", (event) => {
         showFatalError(event.reason?.message || String(event.reason || "Unhandled promise rejection"));
       });
-      window.setTimeout(() => {
-        if (state.auth.loading && !state.data) {
-          showFatalError("Trust Ops is still waiting for the Apps Script backend.");
-        }
-      }, 10000);
       loadInitial().catch((error) => {
         showFatalError(error.message || String(error));
       });

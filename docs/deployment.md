@@ -18,6 +18,8 @@ copy .env.example .env
 npm run clasp:configure
 ```
 
+`.env.example` only contains placeholder values. Keep real Apps Script IDs, OAuth values, and auth-bridge URLs in your local `.env` / `.env.local` files or in GitHub repository secrets.
+
 `main` uses `TRUST_OPS_PRODUCTION_SCRIPT_ID`. `testing` uses `TRUST_OPS_TESTING_SCRIPT_ID`. Any other branch uses `TRUST_OPS_WORKING_SCRIPT_ID`.
 
 For local development, put branch-specific script IDs in `.env` or `.env.local`. `scripts/configure-clasp.js` will load those files automatically if the shell does not already define the variables.
@@ -74,8 +76,9 @@ Host the sign-in page on GitHub Pages from this repository:
 - Use the `docs/` folder as the GitHub Pages source.
 - The published site root should be the login page.
 - Add `https://<your-github-user>.github.io` to the OAuth client's authorized JavaScript origins.
-- The login page receives `client_id` and `return_url` query parameters from the Apps Script app and redirects back with the Google ID token in the URL fragment.
-- On mobile, the login bridge now shows a `Continue to Trust Ops` button after sign-in instead of forcing an automatic redirect. That makes it less likely to get trapped by Google Drive or another in-app browser.
+- The login page receives `client_id` and `return_url` query parameters from the Apps Script app and runs as a same-page GitHub auth bridge.
+- Google Identity Services may still show Google's own account chooser or consent popup, but Trust Ops itself keeps the bridge flow same-page.
+- After successful sign-in, the bridge returns the same browser page to the deployed Apps Script URL with the Google ID token.
 - The Apps Script deployment should pass its canonical web app URL to the bridge; that keeps the return target on the actual deployed app instead of the internal iframe URL.
 
 Example deployment URL:
@@ -110,7 +113,7 @@ Subprojects and subtasks are rendered as collapsible children in the app UI. The
 - Owner/Admin can view and edit all time.
 - A non-listed Google account is rejected after sign-in.
 - An inactive or archived `Users` row is rejected after sign-in.
-- Sign-out returns the browser to the GitHub Pages login screen.
+- Sign-out returns the browser to the Trust Ops landing screen, and the next sign-in restarts the GitHub Pages bridge.
 - Locked pay-period override requires a reason and writes audit.
 
 ## Legacy Data Migration
@@ -137,7 +140,7 @@ If a newly added user cannot enter:
 - If the app cannot load, confirm the deployment is still set to execute as `Me` and that the user has access to the web app URL.
 - If the login bridge says the client ID or return URL is missing, confirm the GitHub Pages site root is the login page and that the Apps Script app is passing both query parameters.
 - If sign-in or loading behaves differently on iPhone or Android, open the GitHub Pages login page directly in Safari/Chrome and try a private/incognito tab if multiple Google accounts are already signed in.
-- If the browser keeps trying to hand the page to Google Drive, finish sign-in on the GitHub Pages page and tap `Continue to Trust Ops` manually.
+- If the browser keeps trying to hand the page to Google Drive or another embedded viewer, open the Trust Ops URL directly in Safari or Chrome so the same-page bridge can return to the deployed app cleanly.
 - If the browser returns to a blank page after sign-in, confirm the bridge is targeting the deployed web app URL and not the internal `script.googleusercontent.com` iframe URL.
 
 ## OAuth Scope Notes

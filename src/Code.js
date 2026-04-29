@@ -39,6 +39,9 @@ var TrustOpsRequestAuth = {
 
 function resetTrustOpsRequest_() {
   TrustOpsSheetService.resetRequestCache();
+  if (TrustOpsManagerPermissionService && typeof TrustOpsManagerPermissionService.resetRequestCache === "function") {
+    TrustOpsManagerPermissionService.resetRequestCache();
+  }
 }
 
 function requireTrustOpsContext_() {
@@ -109,7 +112,6 @@ function getInitialData() {
     payPeriods: TrustOpsPayService.listPayPeriods(),
     payUsers: TrustOpsPayService.listActivePayUsers(),
     currentPayPeriod: TrustOpsUtils.sanitizeForClient(currentPayPeriod),
-    organizationName: TrustOpsSettingsService.getOrganizationName(),
     tasks: TrustOpsTaskService.listTasks(context, {}),
     tracker: TrustOpsTimeService.getTrackerData(context, { userId: context.userId, payPeriodId: currentPayPeriod["Pay Period ID"] }),
     paySummary: TrustOpsPayService.getPaySummary(context, { userId: context.userId, payPeriodId: currentPayPeriod["Pay Period ID"] }),
@@ -152,7 +154,6 @@ function refreshAppData(filters) {
     userPermissions: TrustOpsPermissionService.isOwnerOrAdmin(context) ? TrustOpsManagerPermissionService.listUserPermissions(context) : [],
     payPeriods: TrustOpsPayService.listPayPeriods(),
     payUsers: TrustOpsPayService.listActivePayUsers(),
-    permissionGroups: TrustOpsManagerPermissionService.PERMISSION_GROUPS,
     timeRequests: TrustOpsTimeRequestService.listRequests(context, { status: TrustOpsConfig.REQUEST_STATUS.PENDING }),
     settings: TrustOpsPermissionService.canManageSettings(context) ? TrustOpsSettingsService.listSettings(context) : [],
     organizationName: TrustOpsSettingsService.getOrganizationName(),

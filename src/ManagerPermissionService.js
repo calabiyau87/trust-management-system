@@ -1,4 +1,5 @@
 var TrustOpsManagerPermissionService = (function () {
+  var requestCache = {};
   var PERMISSION_GROUPS = [
     {
       key: "tasks",
@@ -65,6 +66,10 @@ var TrustOpsManagerPermissionService = (function () {
 
   var CAPABILITIES = flattenCapabilities(PERMISSION_GROUPS);
 
+  function resetRequestCache() {
+    requestCache = {};
+  }
+
   function defaultPermissions(preset, role) {
     var selectedPreset = preset || TrustOpsConfig.MANAGER_PRESETS.OPERATIONS;
     var permissions = {};
@@ -100,6 +105,10 @@ var TrustOpsManagerPermissionService = (function () {
   }
 
   function effectiveForUser(userId) {
+    var cacheKey = String(userId || "");
+    if (requestCache[cacheKey]) {
+      return TrustOpsUtils.clone(requestCache[cacheKey]);
+    }
     var user = TrustOpsAuthService.getUserById(userId);
     var rows = TrustOpsSheetService.readTable(TrustOpsConfig.SHEETS.MANAGER_PERMISSIONS);
     var record = rows.filter(function (row) {
@@ -119,12 +128,14 @@ var TrustOpsManagerPermissionService = (function () {
         }
       });
     }
-    return {
+    var result = {
       userId: userId,
       preset: record && record.Preset || TrustOpsConfig.MANAGER_PRESETS.OPERATIONS,
       permissions: permissions,
       record: record || null
     };
+    requestCache[cacheKey] = TrustOpsUtils.clone(result);
+    return TrustOpsUtils.clone(result);
   }
 
   function userCan(context, capability) {
@@ -195,6 +206,7 @@ var TrustOpsManagerPermissionService = (function () {
     var saved = existing
       ? TrustOpsSheetService.updateById(TrustOpsConfig.SHEETS.MANAGER_PERMISSIONS, existing["Manager Permission ID"], record)
       : TrustOpsSheetService.appendRecord(TrustOpsConfig.SHEETS.MANAGER_PERMISSIONS, record);
+    resetRequestCache();
     TrustOpsAuditService.log(context, existing ? "USER_PERMISSIONS_UPDATED" : "USER_PERMISSIONS_CREATED", "User Permissions", saved["Manager Permission ID"], existing, saved, "");
     return TrustOpsUtils.sanitizeForClient(saved);
   }
@@ -206,6 +218,7 @@ var TrustOpsManagerPermissionService = (function () {
   return {
     CAPABILITIES: CAPABILITIES,
     PERMISSION_GROUPS: PERMISSION_GROUPS,
+    resetRequestCache: resetRequestCache,
     defaultPermissions: defaultPermissions,
     effectiveForUser: effectiveForUser,
     userCan: userCan,

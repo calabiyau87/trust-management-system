@@ -35,11 +35,15 @@ var TrustOpsSheetService = (function () {
     return config;
   }
 
-  function getSheet(sheetName) {
+  function getSheet(sheetName, options) {
+    var settings = options || {};
     var ss = getSpreadsheet();
     var sheet = ss.getSheetByName(sheetName);
-    if (!sheet) {
+    if (!sheet && settings.createIfMissing) {
       sheet = ss.insertSheet(sheetName);
+    }
+    if (!sheet) {
+      throw new Error("Missing required sheet: " + sheetName + ". Run setupTrustOps(spreadsheetId, ownerEmail) first.");
     }
     ensureHeaders(sheetName, sheet);
     return sheet;
@@ -55,7 +59,10 @@ var TrustOpsSheetService = (function () {
     if (!existingHeaders.length || !existingHeaders[0]) {
       sheet.getRange(1, 1, 1, config.columns.length).setValues([config.columns]);
       sheet.setFrozenRows(1);
-      applyColumnFormats(sheet, config.columns);
+      applyColumnFormats(sheet, config.columns, {
+        rowStart: 1,
+        rowCount: Math.max(sheet.getMaxRows(), 1)
+      });
       return;
     }
     var missingColumns = config.columns.filter(function (column) {
@@ -63,14 +70,18 @@ var TrustOpsSheetService = (function () {
     });
     if (missingColumns.length) {
       sheet.getRange(1, existingHeaders.length + 1, 1, missingColumns.length).setValues([missingColumns]);
+      applyColumnFormats(sheet, missingColumns, {
+        columnOffset: existingHeaders.length,
+        rowStart: 1,
+        rowCount: Math.max(sheet.getMaxRows(), 1)
+      });
     }
     sheet.setFrozenRows(1);
-    applyColumnFormats(sheet, config.columns);
   }
 
   function ensureAllSheets() {
     Object.keys(TrustOpsConfig.TABLES).forEach(function (sheetName) {
-      getSheet(sheetName);
+      getSheet(sheetName, { createIfMissing: true });
     });
   }
 
@@ -134,13 +145,17 @@ var TrustOpsSheetService = (function () {
     return value;
   }
 
-  function applyColumnFormats(sheet, headers) {
+  function applyColumnFormats(sheet, headers, options) {
+    var settings = options || {};
+    var columnOffset = Number(settings.columnOffset || 0);
+    var rowStart = Math.max(1, Number(settings.rowStart || 1));
+    var rowCount = Math.max(1, Number(settings.rowCount || Math.max(sheet.getMaxRows() - rowStart + 1, 1)));
     headers.forEach(function (header, index) {
-      var column = index + 1;
+      var column = columnOffset + index + 1;
       if (isDateTimeHeader(header)) {
-        sheet.getRange(1, column, sheet.getMaxRows(), 1).setNumberFormat("yyyy-mm-dd hh:mm:ss");
+        sheet.getRange(rowStart, column, rowCount, 1).setNumberFormat("yyyy-mm-dd hh:mm:ss");
       } else if (isDateHeader(header)) {
-        sheet.getRange(1, column, sheet.getMaxRows(), 1).setNumberFormat("yyyy-mm-dd");
+        sheet.getRange(rowStart, column, rowCount, 1).setNumberFormat("yyyy-mm-dd");
       }
     });
   }
@@ -223,7 +238,10 @@ var TrustOpsSheetService = (function () {
         return cellForRecordByHeader(header, normalizedRecord[header]);
       });
       sheet.appendRow(row);
-      applyColumnFormats(sheet, headers);
+      applyColumnFormats(sheet, headers, {
+        rowStart: sheet.getLastRow(),
+        rowCount: 1
+      });
       delete requestCache[sheetName];
       return findById(sheetName, normalizedRecord[config.idColumn]);
     });
@@ -266,7 +284,10 @@ var TrustOpsSheetService = (function () {
         return cellForRecordByHeader(header, updated[header]);
       });
       sheet.getRange(record._rowNumber, 1, 1, headers.length).setValues([row]);
-      applyColumnFormats(sheet, headers);
+      applyColumnFormats(sheet, headers, {
+        rowStart: record._rowNumber,
+        rowCount: 1
+      });
       delete requestCache[sheetName];
       return findById(sheetName, id);
     });

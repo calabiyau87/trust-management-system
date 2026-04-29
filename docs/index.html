@@ -7,240 +7,208 @@
     <title>Trust Ops Sign-In</title>
     <style>
       :root {
-        color-scheme: dark;
-        --bg: #0f1519;
-        --panel: rgba(18, 24, 30, 0.82);
-        --panel-strong: #12181e;
-        --text: #ecf2f7;
-        --muted: #a8b4c0;
-        --border: rgba(255, 255, 255, 0.12);
-        --accent: #6bb7ad;
-        --accent-strong: #93d7cd;
-        --shadow: 0 20px 60px rgba(0, 0, 0, 0.38);
+        color-scheme: light;
+        --bg: #eef2f5;
+        --surface: #ffffff;
+        --surface-muted: #f4f7f9;
+        --text: #13212d;
+        --muted: #5f6f7d;
+        --border: #d6dfe6;
+        --accent: #235d57;
+        --accent-strong: #16413d;
+        --danger: #b04545;
+        --ok: #2f7351;
+        --shadow: 0 24px 72px rgba(21, 34, 50, 0.16);
+        --shadow-soft: 0 4px 14px rgba(21, 34, 50, 0.05);
         --radius: 28px;
+        --radius-sm: 8px;
       }
 
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
 
       body {
         margin: 0;
         min-height: 100vh;
-        font: 16px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
         color: var(--text);
+        font: 14px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
         background:
-          radial-gradient(circle at top left, rgba(107, 183, 173, 0.28), transparent 32%),
-          radial-gradient(circle at bottom right, rgba(146, 215, 205, 0.16), transparent 28%),
-          linear-gradient(160deg, #0d1317, #10181d 42%, #0e1418);
+          radial-gradient(circle at top left, rgba(35, 93, 87, 0.14), transparent 32%),
+          radial-gradient(circle at bottom right, rgba(16, 65, 61, 0.12), transparent 34%),
+          linear-gradient(180deg, #f5f8fb 0%, #edf2f6 100%);
+      }
+
+      h1,
+      p {
+        margin: 0;
+      }
+
+      a {
+        color: inherit;
       }
 
       .page {
         min-height: 100vh;
         display: grid;
         place-items: center;
-        padding: 28px;
+        padding:
+          calc(28px + env(safe-area-inset-top))
+          calc(18px + env(safe-area-inset-right))
+          calc(28px + env(safe-area-inset-bottom))
+          calc(18px + env(safe-area-inset-left));
       }
 
-      .card {
-        width: min(1120px, 100%);
+      .verification-card {
+        width: min(560px, 100%);
         display: grid;
-        grid-template-columns: 1.2fr 0.95fr;
-        overflow: hidden;
+        gap: 18px;
+        padding: 32px;
+        justify-items: center;
+        text-align: center;
         border: 1px solid var(--border);
         border-radius: var(--radius);
-        background: var(--panel);
+        background: rgba(255, 255, 255, 0.94);
         box-shadow: var(--shadow);
         backdrop-filter: blur(16px);
       }
 
-      .hero,
-      .panel {
-        padding: 40px;
-      }
-
-      .hero {
-        display: grid;
-        align-content: space-between;
-        gap: 26px;
-        background:
-          linear-gradient(155deg, rgba(46, 62, 68, 0.92), rgba(18, 29, 31, 0.96)),
-          linear-gradient(180deg, #11181e, #0f1418);
-      }
-
-      .eyebrow {
+      .verification-brand {
         display: inline-flex;
         align-items: center;
-        gap: 10px;
-        color: var(--muted);
-        font-size: 12px;
-        letter-spacing: 0.22em;
-        text-transform: uppercase;
+        gap: 12px;
       }
 
-      .mark {
+      .verification-brand .mark {
         width: 44px;
         height: 44px;
         display: inline-grid;
         place-items: center;
         border-radius: 14px;
-        background: linear-gradient(180deg, rgba(107, 183, 173, 0.26), rgba(67, 104, 102, 0.36));
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: linear-gradient(180deg, rgba(35, 93, 87, 0.22), rgba(35, 93, 87, 0.12));
+        border: 1px solid rgba(35, 93, 87, 0.14);
+        color: var(--accent-strong);
         font-weight: 800;
-        color: white;
       }
 
-      h1,
-      h2,
-      p {
+      .verification-eyebrow {
         margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
       }
 
-      h1 {
-        max-width: 12ch;
-        margin-top: 14px;
-        font-size: clamp(2.6rem, 6vw, 5rem);
-        line-height: 0.95;
-        letter-spacing: -0.05em;
-      }
-
-      .hero p {
-        max-width: 56ch;
-        color: rgba(236, 242, 247, 0.82);
-        font-size: 1.05rem;
-      }
-
-      .points {
-        display: grid;
-        gap: 12px;
-        margin-top: 8px;
-        padding: 0;
-        list-style: none;
-        color: rgba(236, 242, 247, 0.88);
-      }
-
-      .points li {
-        display: grid;
-        grid-template-columns: 18px 1fr;
-        gap: 12px;
-        align-items: start;
-      }
-
-      .points li::before {
-        content: "";
-        width: 8px;
-        height: 8px;
-        margin-top: 8px;
-        border-radius: 999px;
-        background: var(--accent-strong);
-        box-shadow: 0 0 0 5px rgba(147, 215, 205, 0.12);
-      }
-
-      .panel {
-        display: grid;
-        align-content: center;
-        gap: 20px;
-        background: rgba(250, 252, 253, 0.98);
-        color: #15212c;
-      }
-
-      .panel h2 {
-        font-size: clamp(2rem, 4vw, 3rem);
-        line-height: 1.05;
+      .verification-title {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 40px);
+        line-height: 1.04;
         letter-spacing: -0.04em;
       }
 
-      .panel p {
-        color: #5e6c78;
-        font-size: 1.05rem;
+      .verification-copy {
+        margin: 0;
+        max-width: 34ch;
+        color: var(--muted);
+        font-size: 15px;
       }
 
-      .auth-box {
+      .verification-box {
+        width: 100%;
         display: grid;
-        gap: 14px;
-        padding: 22px;
+        gap: 12px;
+        padding: 20px;
+        justify-items: center;
+        text-align: center;
+        border: 1px solid var(--border);
         border-radius: 22px;
-        border: 1px solid #e1e8ee;
-        background: linear-gradient(180deg, #ffffff, #f7f9fb);
-        box-shadow: 0 10px 24px rgba(18, 24, 30, 0.08);
-      }
-
-      .meta {
-        display: grid;
-        gap: 8px;
-        color: #647380;
-        font-size: 14px;
-      }
-
-      .meta code {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 999px;
-        background: #edf2f6;
-        color: #0f1820;
-      }
-
-      .error {
-        display: none;
-        padding: 12px 14px;
-        border-radius: 14px;
-        background: rgba(176, 69, 69, 0.08);
-        color: #9e3737;
-        border: 1px solid rgba(176, 69, 69, 0.16);
-        font-size: 14px;
-      }
-
-      .error.visible {
-        display: block;
+        background: var(--surface-muted);
+        box-shadow: var(--shadow-soft);
       }
 
       #google-signin-button {
+        display: flex;
+        justify-content: center;
         min-height: 48px;
       }
 
-      .hint {
-        font-size: 13px;
-        color: #6f7d89;
+      .verification-status {
+        min-height: 22px;
+        color: var(--muted);
+        font-size: 14px;
       }
 
-      .continue-step {
+      .verification-status.visible {
+        color: var(--accent);
+      }
+
+      .verification-status.error {
+        color: var(--danger);
+      }
+
+      .verification-return {
         display: grid;
-        gap: 12px;
+        gap: 10px;
+        justify-items: center;
       }
 
+      a.primary,
       .continue-link {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-height: 48px;
-        padding: 0 18px;
-        border-radius: 999px;
-        background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+        min-height: 38px;
+        min-width: 220px;
+        padding: 8px 11px;
+        border: 1px solid var(--accent);
+        border-radius: var(--radius-sm);
+        background: var(--accent);
         color: #fff;
+        cursor: pointer;
         text-decoration: none;
-        font-weight: 700;
-        box-shadow: 0 10px 22px rgba(18, 24, 30, 0.14);
+        touch-action: manipulation;
+        transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
       }
 
+      a.primary:hover,
+      .continue-link:hover {
+        border-color: var(--accent-strong);
+        background: var(--accent-strong);
+        box-shadow: var(--shadow-soft);
+        transform: translateY(-1px);
+      }
+
+      a.primary:focus-visible,
+      .continue-link:focus-visible {
+        outline: 0;
+        box-shadow: 0 0 0 3px rgba(35, 93, 87, 0.14);
+      }
+
+      a.primary:visited,
       .continue-link:visited {
         color: #fff;
       }
 
-      .continue-link:focus-visible {
-        outline: 0;
-        box-shadow: 0 0 0 4px rgba(107, 183, 173, 0.2), 0 10px 22px rgba(18, 24, 30, 0.14);
+      .verification-note {
+        margin: 0;
+        max-width: 34ch;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .verification-hint {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
       }
 
       @media (max-width: 900px) {
-        .card {
-          grid-template-columns: 1fr;
+        .verification-card {
+          padding: 24px;
         }
 
-        .hero,
-        .panel {
-          padding: 28px;
-        }
-
-        h1 {
-          max-width: 14ch;
+        .verification-title {
+          font-size: clamp(24px, 7vw, 32px);
         }
       }
     </style>
@@ -248,36 +216,22 @@
   </head>
   <body>
     <main class="page">
-      <section class="card">
-        <div class="hero">
+      <section class="verification-card">
+        <div class="verification-brand">
+          <div class="mark">TO</div>
           <div>
-            <div class="eyebrow"><span class="mark">TO</span> Trust Ops</div>
-            <h1>Sign in with Google to continue.</h1>
-          </div>
-          <div>
-            <p>This page runs Google Identity Services on a valid GitHub Pages origin, then sends the Google ID token back to the Apps Script app. The spreadsheet stays hidden from regular users.</p>
-            <ul class="points">
-              <li>Regular users only need app access.</li>
-              <li>The Apps Script backend still verifies the token against the Users table.</li>
-              <li>Sign-out in the app clears the stored token from this browser session.</li>
-            </ul>
+            <p class="verification-eyebrow">Trust Ops verification</p>
+            <h1 class="verification-title">Verify your Google account.</h1>
           </div>
         </div>
-        <div class="panel">
-          <div>
-            <h2>Google Sign-In</h2>
-            <p>Open this page from Trust Ops so it can pass the deployment URL and OAuth client ID automatically.</p>
-          </div>
-          <div class="auth-box">
-            <div id="google-signin-button"></div>
-            <div id="error" class="error"></div>
-            <div class="meta">
-              <div>Client ID: <code id="client-id">missing</code></div>
-              <div>Return URL: <code id="return-url">missing</code></div>
-            </div>
-            <div class="hint">If you open this page manually, append <code>?client_id=...</code> and <code>&amp;return_url=...</code>.</div>
-          </div>
+        <p class="verification-copy">Use the Google account on the Trust Ops users list.</p>
+        <div class="verification-box">
+          <div id="google-signin-button"></div>
+          <div id="status" class="verification-status"></div>
+          <div id="error" class="verification-status error"></div>
+          <div id="return-slot"></div>
         </div>
+        <p class="verification-note">You will return to Trust Ops automatically after verification.</p>
       </section>
     </main>
 
@@ -288,7 +242,8 @@
         returnUrl: params.get("return_url") || "",
         appName: params.get("app_name") || "Trust Ops",
         initialized: false,
-        credential: ""
+        credential: "",
+        returning: false
       };
 
       function escapeHtml(value) {
@@ -306,9 +261,18 @@
         error.classList.toggle("visible", Boolean(message));
       }
 
-      function updateMeta() {
-        document.getElementById("client-id").textContent = state.clientId || "missing";
-        document.getElementById("return-url").textContent = state.returnUrl || "missing";
+      function setStatus(message) {
+        const status = document.getElementById("status");
+        status.textContent = message || "";
+        status.classList.toggle("visible", Boolean(message));
+      }
+
+      function returnUrlOrigin() {
+        try {
+          return state.returnUrl ? new URL(state.returnUrl).origin : "";
+        } catch (error) {
+          return "";
+        }
       }
 
       function buildReturnUrl(token) {
@@ -318,25 +282,82 @@
           url.hash = `id_token=${encodeURIComponent(token)}`;
           return url.toString();
         } catch (error) {
-          setError("The return_url is not a valid absolute URL.");
+          setError("Open this page from Trust Ops again.");
           return "";
         }
       }
 
-      function renderContinueStep(token) {
-        const slot = document.getElementById("google-signin-button");
+      function renderReturnStep(token) {
+        const slot = document.getElementById("return-slot");
         const redirectUrl = buildReturnUrl(token);
         if (!slot) return;
         if (!redirectUrl) {
-          slot.innerHTML = "<div class=\"hint\">Unable to build the return link. Open this page from Trust Ops again.</div>";
+          slot.innerHTML = "<div class=\"verification-status error visible\">Open this page from Trust Ops again.</div>";
+          return;
+        }
+        slot.innerHTML = `
+          <div class="verification-return">
+            <div class="verification-status visible">Verification complete.</div>
+            <a class="continue-link" href="${escapeHtml(redirectUrl)}" target="_top" rel="noopener noreferrer" data-return-to-trust-ops>Return to Trust Ops</a>
+            <div class="verification-hint">If this page stays open, tap Return to Trust Ops.</div>
+          </div>`;
+        const returnLink = slot.querySelector("[data-return-to-trust-ops]");
+        if (returnLink) {
+          returnLink.addEventListener("click", (event) => {
+            event.preventDefault();
+            returnToTrustOps(token, redirectUrl);
+          });
+        }
+      }
+
+      function closePopupSoon() {
+        window.setTimeout(() => {
+          try {
+            window.close();
+          } catch (error) {}
+        }, 200);
+      }
+
+      function returnToTrustOps(token, redirectUrl) {
+        const opener = window.opener;
+        if (opener) {
+          try {
+            opener.location.replace(redirectUrl);
+            closePopupSoon();
+            return;
+          } catch (error) {}
+          try {
+            opener.postMessage({
+              type: "trust-ops-auth",
+              token,
+              app_name: state.appName,
+              return_url: state.returnUrl
+            }, returnUrlOrigin() || "*");
+            closePopupSoon();
+            return;
+          } catch (error) {}
+        }
+        window.location.replace(redirectUrl);
+      }
+
+      function finishAuth(token) {
+        const redirectUrl = buildReturnUrl(token);
+        if (!redirectUrl) {
           return;
         }
         state.credential = token;
-        slot.innerHTML = `
-          <div class="continue-step">
-            <a class="continue-link" href="${escapeHtml(redirectUrl)}" target="_top" rel="noopener noreferrer">Continue to Trust Ops</a>
-            <div class="hint">Sign-in is complete. Tap Continue to return to the app. If mobile keeps trying to open Google Drive, use the browser app directly and try again.</div>
-          </div>`;
+        window.name = JSON.stringify({
+          trust_ops_token: token,
+          app_name: state.appName,
+          ts: Date.now()
+        });
+        setError("");
+        setStatus("Verification complete. Returning to Trust Ops...");
+        renderReturnStep(token);
+        if (!state.returning) {
+          state.returning = true;
+          window.setTimeout(() => returnToTrustOps(token, redirectUrl), 180);
+        }
       }
 
       function handleCredentialResponse(response) {
@@ -346,27 +367,21 @@
           return;
         }
         if (!state.returnUrl) {
-          setError("Missing return_url. Open this page from Trust Ops so it can provide the Apps Script URL.");
+          setError("Open this page from Trust Ops again.");
           return;
         }
-        window.name = JSON.stringify({
-          trust_ops_token: token,
-          app_name: state.appName,
-          ts: Date.now()
-        });
-        setError("");
-        renderContinueStep(token);
+        finishAuth(token);
       }
 
       function renderButton() {
         const slot = document.getElementById("google-signin-button");
         slot.innerHTML = "";
         if (!state.clientId || !state.returnUrl) {
-          slot.innerHTML = "<div class=\"hint\">The page needs both client_id and return_url query parameters.</div>";
+          slot.innerHTML = "<div class=\"verification-hint\">Open this page from Trust Ops again.</div>";
           return;
         }
         if (!window.google || !google.accounts || !google.accounts.id) {
-          slot.innerHTML = "<div class=\"hint\">Loading Google Sign-In...</div>";
+          slot.innerHTML = "<div class=\"verification-hint\">Loading Google Sign-In...</div>";
           setTimeout(renderButton, 100);
           return;
         }
@@ -389,7 +404,6 @@
       }
 
       function boot() {
-        updateMeta();
         renderButton();
       }
 

@@ -59,6 +59,8 @@ The checker validates required files, JSON manifests, Apps Script JavaScript syn
 copy .env.example .env
 ```
 
+`.env.example` only contains placeholder values. Keep real Apps Script IDs, OAuth settings, and auth-bridge URLs in your local `.env` / `.env.local` files or in GitHub secrets.
+
 4. Set the `GOOGLE_OAUTH_CLIENT_ID` script property for each Apps Script environment before opening the web app.
 5. Set the `TRUST_OPS_GITHUB_PAGES_AUTH_URL` script property to your GitHub Pages login page.
 
@@ -84,13 +86,19 @@ Deploy the Apps Script web app as:
 - Execute as: `Me`
 - Access: Anyone, even anonymous
 - Set `GOOGLE_OAUTH_CLIENT_ID` and `TRUST_OPS_GITHUB_PAGES_AUTH_URL` before sharing the URL.
-- Add `https://<your-github-user>.github.io` to the OAuth client’s authorized JavaScript origins.
+- Add `https://<your-github-user>.github.io` to the OAuth client's authorized JavaScript origins.
 
 Trust Ops still enforces Google Sign-In and the Users allowlist after the page loads, so the web app itself should be publicly reachable even though application access remains restricted.
 
+The auth handoff is a same-page GitHub Pages bridge:
+
+- Trust Ops navigates the current browser page to the GitHub Pages verification page.
+- Google Identity Services may still open Google's own account chooser or consent surface.
+- After successful verification, the bridge returns the same browser page to the deployed Apps Script URL with the Google ID token.
+
 Use staging first. Do not connect the production spreadsheet until auth, permissions, time entry, pay summary, and audit smoke tests pass.
 
-For local work, keep your script IDs in `.env` or `.env.local`. The clasp helper reads those files automatically when the corresponding shell variables are not set.
+For local work, keep your script IDs in `.env` or `.env.local`. Keep production values out of tracked files. The clasp helper reads those files automatically when the corresponding shell variables are not set.
 
 GitHub pushes are branch-routed as follows:
 

@@ -4,7 +4,7 @@
   "private": true,
   "description": "Google Apps Script and Google Sheets MVP for internal trust operations management.",
   "scripts": {
-    "check": "node scripts/static-check.js && node scripts/verify-time-guards.js",
+    "check": "node scripts/static-check.js && node scripts/verify-auth-config.js && node scripts/verify-manager-permissions.js && node scripts/verify-sheet-service.js && node scripts/verify-time-guards.js",
     "clasp:configure": "node scripts/configure-clasp.js",
     "clasp:login": "npx @google/clasp login",
     "clasp:push": "node scripts/configure-clasp.js && npx @google/clasp push",

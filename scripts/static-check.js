@@ -47,7 +47,11 @@ const requiredFiles = [
   "docs/agents/qa-agent.md",
   "docs/agents/release-agent.md",
   "docs/agents/performance-agent.md",
-  "docs/agents/ux-ui-designer.md"
+  "docs/agents/ux-ui-designer.md",
+  "scripts/verify-auth-config.js",
+  "scripts/verify-manager-permissions.js",
+  "scripts/verify-sheet-service.js",
+  "scripts/verify-time-guards.js"
 ];
 
 function fail(message) {
@@ -90,6 +94,11 @@ for (const needle of ["google.script.run", "Assignment Board", "Time Tracker", "
     fail(`Index.html does not include expected text: ${needle}`);
   }
 }
+for (const forbidden of ["window.open(", "launchGithubAuthPopup"]) {
+  if (indexHtml.includes(forbidden)) {
+    fail(`Index.html still includes obsolete auth popup code: ${forbidden}`);
+  }
+}
 
 const scriptMatches = [...indexHtml.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)];
 scriptMatches.forEach((match, index) => {
@@ -115,6 +124,40 @@ pagesScriptMatches.forEach((match, index) => {
     fail(`docs/index.html inline script ${index + 1} has a JavaScript syntax error: ${error.message}`);
   }
 });
+
+const tmpInlinePath = path.join(root, "tmp-inline.js");
+if (fs.existsSync(tmpInlinePath)) {
+  fail("tmp-inline.js should not be tracked in the repository.");
+}
+
+const envExample = fs.readFileSync(path.join(root, ".env.example"), "utf8");
+const envEntries = Object.fromEntries(
+  envExample
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#") && line.includes("="))
+    .map((line) => {
+      const separator = line.indexOf("=");
+      return [line.slice(0, separator), line.slice(separator + 1)];
+    })
+);
+[
+  "TRUST_OPS_PRODUCTION_SCRIPT_ID",
+  "TRUST_OPS_TESTING_SCRIPT_ID",
+  "TRUST_OPS_WORKING_SCRIPT_ID",
+  "GOOGLE_OAUTH_CLIENT_ID",
+  "TRUST_OPS_GITHUB_PAGES_AUTH_URL"
+].forEach((key) => {
+  const value = envEntries[key] || "";
+  if (!value || !value.startsWith("REPLACE_WITH_")) {
+    fail(`.env.example must use obvious placeholder values for ${key}.`);
+  }
+});
+
+const deploymentDoc = fs.readFileSync(path.join(root, "docs", "deployment.md"), "utf8");
+if (!deploymentDoc.includes("same-page")) {
+  fail("docs/deployment.md must describe the same-page GitHub auth bridge flow.");
+}
 
 if (!process.exitCode) {
   console.log("static-check passed");
