@@ -2910,6 +2910,46 @@
         return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
       }
 
+      function taskAssigneeLabel(task) {
+        const names = selectedList(task?.Assignees);
+        if (names.length) return names.join(", ");
+        return selectedList(task?.["Assignee User IDs"]).map((assigneeId) => {
+          const user = findUser(assigneeId);
+          return user?.["Full Name"] || assigneeId;
+        }).filter(Boolean).join(", ");
+      }
+
+      function boardTaskMatchesAssigneeFilter(task, assigneeUserId) {
+        const selectedUserId = String(assigneeUserId || "");
+        if (!selectedUserId) return true;
+        const assigneeIds = selectedList(task?.["Assignee User IDs"]);
+        if (assigneeIds.includes(selectedUserId)) return true;
+        const user = findUser(selectedUserId);
+        if (!user) return false;
+        const assigneeNames = selectedList(task?.Assignees).map((name) => String(name || "").toLowerCase());
+        if (!assigneeNames.length) return false;
+        if (assigneeNames.includes(String(user["Full Name"] || "").toLowerCase())) return true;
+        if (assigneeNames.includes(String(user.Email || "").toLowerCase())) return true;
+        if (!assigneeIds.length && assigneeNames.includes(String(user["First Name"] || "").toLowerCase())) return true;
+        return false;
+      }
+
+      function boardTaskSearchText(task) {
+        return [
+          task?.Title,
+          task?.["Display Name"],
+          task?.["Parent Task Title"],
+          task?.Notes,
+          task?.Status,
+          task?.Assignees,
+          taskAssigneeLabel(task),
+          task?.["Project Display Name"],
+          task?.["Project Name"],
+          task?.Priority,
+          task?.Tags
+        ].join(" ").toLowerCase();
+      }
+
       function renderCheckboxList(name, items, valueKey, labelKey, selectedValues) {
         const selected = new Set(selectedValues || []);
         return `<div class="checkbox-list">${(items || []).map((item) => `
@@ -3671,10 +3711,10 @@
           if (filters.status && task.Status !== filters.status) return false;
           if (filters.projectId && !taskProjectMatchesFilter(task, filters.projectId, projectsById)) return false;
           if (filters.priority && task.Priority !== filters.priority) return false;
-          if (filters.assigneeUserId && !String(task["Assignee User IDs"] || "").split(",").map((id) => id.trim()).includes(filters.assigneeUserId)) return false;
+          if (filters.assigneeUserId && !boardTaskMatchesAssigneeFilter(task, filters.assigneeUserId)) return false;
           if (filters.tag && selectedList(task.Tags).indexOf(filters.tag) === -1) return false;
           if (search) {
-            const haystack = [task.Title, task["Display Name"], task.Notes, task.Status, task.Assignees, task["Project Display Name"], task["Project Name"], task.Priority, task.Tags].join(" ").toLowerCase();
+            const haystack = boardTaskSearchText(task);
             if (!haystack.includes(search)) return false;
           }
           return true;
@@ -3706,7 +3746,7 @@
         const grouping = state.boardGrouping || "";
         if (grouping === "Status") return task.Status || "No status";
         if (grouping === "Project") return task["Project Display Name"] || task["Project Name"] || "No project";
-        if (grouping === "Assignee") return task.Assignees || "Unassigned";
+        if (grouping === "Assignee") return taskAssigneeLabel(task) || "Unassigned";
         if (grouping === "Priority") return task.Priority || "No priority";
         if (grouping === "Tag") return task.Tags || "No tag";
         if (grouping === "Due Week") return task["Due Date"] ? task["Due Date"].slice(0, 10) : "No due date";
@@ -3815,12 +3855,12 @@
         const sortColumns = tableKey === "projectTasks" ? {
           task: (task) => taskDisplayName(task),
           status: (task) => task.Status,
-          assignees: (task) => task.Assignees || selectedList(task["Assignee User IDs"]).join(", "),
+          assignees: (task) => taskAssigneeLabel(task),
           priority: (task) => task.Priority
         } : {
           task: (task) => taskDisplayName(task),
           status: (task) => task.Status,
-          assignees: (task) => task.Assignees || selectedList(task["Assignee User IDs"]).join(", "),
+          assignees: (task) => taskAssigneeLabel(task),
           project: (task) => task["Project Display Name"] || task["Project Name"],
           priority: (task) => task.Priority,
           due: (task) => task["Due Date"]

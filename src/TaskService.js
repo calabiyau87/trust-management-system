@@ -190,6 +190,50 @@ var TrustOpsTaskService = (function () {
     return output;
   }
 
+  function taskAssigneeLabel(task, usersById) {
+    var names = TrustOpsUtils.splitList(task.Assignees);
+    if (names.length) return names.join(", ");
+    return TrustOpsUtils.splitList(task["Assignee User IDs"]).map(function (assigneeId) {
+      var user = usersById && usersById[String(assigneeId)];
+      return user ? user["Full Name"] : assigneeId;
+    }).filter(Boolean).join(", ");
+  }
+
+  function taskMatchesAssigneeFilter(task, assigneeUserId, usersById) {
+    var selectedUserId = String(assigneeUserId || "");
+    if (!selectedUserId) return true;
+    var assigneeIds = TrustOpsUtils.splitList(task["Assignee User IDs"]);
+    if (assigneeIds.indexOf(selectedUserId) !== -1) return true;
+    var user = usersById && usersById[selectedUserId];
+    if (!user) return false;
+    var assigneeNames = TrustOpsUtils.splitList(task.Assignees).map(function (name) {
+      return TrustOpsUtils.normalizeKey(name);
+    });
+    if (!assigneeNames.length) return false;
+    if (assigneeNames.indexOf(TrustOpsUtils.normalizeKey(user["Full Name"])) !== -1) return true;
+    if (assigneeNames.indexOf(TrustOpsUtils.normalizeEmail(user.Email)) !== -1) return true;
+    if (!assigneeIds.length && assigneeNames.indexOf(TrustOpsUtils.normalizeKey(user["First Name"])) !== -1) return true;
+    return false;
+  }
+
+  function taskSearchText(task, usersById) {
+    return [
+      task.Title,
+      task["Display Name"],
+      task["Parent Task Title"],
+      task.Notes,
+      task.Status,
+      task.Assignees,
+      taskAssigneeLabel(task, usersById),
+      task["Project Name"],
+      task["Project Display Name"],
+      task.Priority,
+      task.Tags
+    ]
+      .join(" ")
+      .toLowerCase();
+  }
+
   function validateTaskHierarchy(context, payload, existing) {
     var hasParentField = Object.prototype.hasOwnProperty.call(payload || {}, "Parent Task ID") ||
       Object.prototype.hasOwnProperty.call(payload || {}, "parentTaskId");
@@ -418,6 +462,8 @@ var TrustOpsTaskService = (function () {
     var payload = filters || {};
     var search = TrustOpsUtils.normalizeKey(payload.search);
     var hierarchy = buildVisibleTaskContext(false);
+    var visibleUsers = TrustOpsUserService.listUsers(context, false);
+    var visibleUsersById = mapById(visibleUsers, "User ID");
     var decorated = hierarchy.visibleTasks.map(function (task) {
       return decorateTask(context, task, hierarchy);
     });
@@ -425,22 +471,9 @@ var TrustOpsTaskService = (function () {
       if (payload.status && task.Status !== payload.status) return false;
       if (payload.projectId && !taskMatchesProjectFilter(task, payload.projectId, hierarchy)) return false;
       if (payload.priority && task.Priority !== payload.priority) return false;
-      if (payload.assigneeUserId && TrustOpsUtils.splitList(task["Assignee User IDs"]).indexOf(payload.assigneeUserId) === -1) return false;
+      if (payload.assigneeUserId && !taskMatchesAssigneeFilter(task, payload.assigneeUserId, visibleUsersById)) return false;
       if (search) {
-        var haystack = [
-          task.Title,
-          task["Display Name"],
-          task["Parent Task Title"],
-          task.Notes,
-          task.Status,
-          task.Assignees,
-          task["Project Name"],
-          task["Project Display Name"],
-          task.Priority,
-          task.Tags
-        ]
-          .join(" ")
-          .toLowerCase();
+        var haystack = taskSearchText(task, visibleUsersById);
         if (haystack.indexOf(search) === -1) return false;
       }
       return true;
